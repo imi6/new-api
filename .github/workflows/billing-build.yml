@@ -21,7 +21,7 @@ jobs:
 
       - name: Determine Version
         run: |
-          git fetch --tags --force
+          git fetch --force https://github.com/QuantumNous/new-api.git '+refs/tags/*:refs/tags/*'
           VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*')
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "official version: $VERSION"
