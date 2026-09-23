@@ -450,6 +450,13 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 	}
 
 	if !summary.hasBillableUsage() {
+		// 阶梯求值失败时会退回整笔预扣。完全没有 token（含缓存、图片、音频）时按 0 结算并退回预扣。
+		// 仅有缓存读取时 TotalTokens 仍为 0，但阶梯结果已经含缓存费用，不能清掉。
+		if summary.CacheTokens == 0 && summary.CacheCreationTokens == 0 &&
+			summary.CacheCreationTokens5m == 0 && summary.CacheCreationTokens1h == 0 &&
+			summary.ImageTokens == 0 && summary.AudioTokens == 0 {
+			summary.Quota = 0
+		}
 		extraContent = append(extraContent, "上游没有返回计费信息，无法扣费（可能是上游超时）")
 		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, summary.ModelName, relayInfo.FinalPreConsumedQuota))
 	} else {
