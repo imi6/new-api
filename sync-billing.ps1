@@ -76,7 +76,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Step "推送 local/billing，GitHub 会自动重新构建 newapi-zzs"
+Write-Step "推送 local/billing，GitHub 会自动重新构建 new-api-zzs"
 Invoke-Git push --force-with-lease origin local/billing
 
 Write-Host ""
