@@ -1,15 +1,18 @@
 package claude
 
 import (
+	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/relayconvert"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -308,6 +311,85 @@ func TestBuildOpenAIStyleUsageFromClaudeUsagePreservesCacheCreationRemainder(t *
 			}
 		})
 	}
+}
+
+func TestHandleStreamFinalResponseEmptyStreamKeepsPromptEstimateUnbilled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	info := &relaycommon.RelayInfo{
+		RelayFormat: types.RelayFormatClaude,
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "claude-opus-4-8"},
+	}
+	info.SetEstimatePromptTokens(1061907)
+	info.StreamStatus = relaycommon.NewStreamStatus()
+	info.StreamStatus.SetEndReason(relaycommon.StreamEndReasonClientGone, context.Canceled)
+
+	claudeInfo := &ClaudeResponseInfo{Usage: &dto.Usage{}}
+	HandleStreamFinalResponse(c, info, claudeInfo)
+
+	require.Zero(t, claudeInfo.Usage.PromptTokens)
+	require.Zero(t, claudeInfo.Usage.CompletionTokens)
+	require.Zero(t, claudeInfo.Usage.TotalTokens)
+	require.Nil(t, claudeInfo.Usage.BillingUsage)
+	assert.False(t, common.GetContextKeyBool(c, constant.ContextKeyLocalCountTokens))
+}
+
+func TestHandleStreamFinalResponsePartialTextDoesNotSettlePromptEstimate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	info := &relaycommon.RelayInfo{
+		RelayFormat:           types.RelayFormatClaude,
+		ReceivedResponseCount: 2,
+		ChannelMeta:           &relaycommon.ChannelMeta{UpstreamModelName: "claude-opus-4-8"},
+	}
+	info.SetEstimatePromptTokens(1780546)
+
+	claudeInfo := &ClaudeResponseInfo{Usage: &dto.Usage{}}
+	claudeInfo.ResponseText.WriteString("hello")
+	HandleStreamFinalResponse(c, info, claudeInfo)
+
+	require.Zero(t, claudeInfo.Usage.PromptTokens)
+	require.Positive(t, claudeInfo.Usage.CompletionTokens)
+	require.NotNil(t, claudeInfo.Usage.BillingUsage)
+	assert.True(t, claudeInfo.Usage.BillingUsage.Estimated)
+	assert.Equal(t, 0, claudeInfo.Usage.BillingUsage.ClaudeUsage.InputTokens)
+	assert.Positive(t, claudeInfo.Usage.BillingUsage.ClaudeUsage.OutputTokens)
+}
+
+func TestHandleStreamFinalResponseStartedStreamWithoutTextKeepsPromptEstimateUnbilled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	info := &relaycommon.RelayInfo{
+		RelayFormat:           types.RelayFormatClaude,
+		ReceivedResponseCount: 1,
+		ChannelMeta:           &relaycommon.ChannelMeta{UpstreamModelName: "claude-opus-4-8"},
+	}
+	info.SetEstimatePromptTokens(1780546)
+
+	claudeInfo := &ClaudeResponseInfo{Usage: &dto.Usage{}}
+	HandleStreamFinalResponse(c, info, claudeInfo)
+
+	require.Zero(t, claudeInfo.Usage.PromptTokens)
+	require.Zero(t, claudeInfo.Usage.CompletionTokens)
+	require.Nil(t, claudeInfo.Usage.BillingUsage)
+	assert.False(t, common.GetContextKeyBool(c, constant.ContextKeyLocalCountTokens))
+}
+
+func TestHandleStreamFinalResponseDoneStillUsesPromptEstimate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	info := &relaycommon.RelayInfo{
+		RelayFormat: types.RelayFormatClaude,
+		ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "claude-opus-4-8"},
+	}
+	info.SetEstimatePromptTokens(1000)
+
+	claudeInfo := &ClaudeResponseInfo{Usage: &dto.Usage{}, Done: true}
+	HandleStreamFinalResponse(c, info, claudeInfo)
+
+	require.Equal(t, 1000, claudeInfo.Usage.PromptTokens)
+	require.NotNil(t, claudeInfo.Usage.BillingUsage)
+	assert.False(t, claudeInfo.Usage.BillingUsage.Estimated)
 }
 
 func TestBuildOpenAIStyleUsageFromClaudeUsageDefaultsAggregateCacheCreationTo5m(t *testing.T) {
