@@ -80,6 +80,28 @@ const maxTaskArtifacts = 64
 // maxTaskPluginPersistedJSONBytes is the shared ceiling for taskData and plugin state.
 const maxTaskPluginPersistedJSONBytes = 1 << 20
 
+// maxTaskPluginInlineImageBytes is the read ceiling for an OpenAI Images
+// response. The payload is Base64, returned inline, and discarded instead of
+// being stored on the task row. One 4K image exceeds the 1 MiB task snapshot
+// and can also exceed 32 MiB once encoded, so the ceiling matches the default
+// request body limit.
+const maxTaskPluginInlineImageBytes = 128 << 20
+
+func submitResponseLimit(c *gin.Context) int {
+	if c == nil {
+		return maxTaskPluginPersistedJSONBytes
+	}
+	pinnedValue, exists := c.Get(pluginruntime.ContextKeyPinnedEndpoint)
+	if !exists {
+		return maxTaskPluginPersistedJSONBytes
+	}
+	pinned, ok := pinnedValue.(pluginruntime.PinnedEndpoint)
+	if !ok || pinned.Protocol != pluginruntime.ProtocolOpenAIImage {
+		return maxTaskPluginPersistedJSONBytes
+	}
+	return maxTaskPluginInlineImageBytes
+}
+
 type TaskAdaptor struct {
 	plugin         *pluginruntime.LoadedPlugin
 	info           *relaycommon.RelayInfo
@@ -472,9 +494,10 @@ func (a *TaskAdaptor) ParseResponse(c *gin.Context, resp *http.Response, info *r
 		defer resp.Body.Close()
 		responseBody, err = a.readSubmitEvents(c.Request.Context(), resp, a.submitContext(c, info))
 	} else {
+		limit := submitResponseLimit(c)
 		var body []byte
-		body, err = io.ReadAll(io.LimitReader(resp.Body, maxTaskPluginPersistedJSONBytes+1))
-		if err == nil && len(body) > maxTaskPluginPersistedJSONBytes {
+		body, err = io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
+		if err == nil && len(body) > limit {
 			err = fmt.Errorf("task submit response exceeds size limit")
 		}
 		responseBody = string(body)
@@ -520,10 +543,11 @@ func (a *TaskAdaptor) ParseResponse(c *gin.Context, resp *http.Response, info *r
 		)
 		return nil, service.TaskErrorWrapper(err, "plugin_submit_response_invalid", http.StatusBadGateway)
 	}
+	responseLimit := submitResponseLimit(c)
 	var taskData []byte
 	if parsed.TaskData != nil {
 		taskData, err = common.Marshal(parsed.TaskData)
-		if err != nil || len(taskData) > maxTaskPluginPersistedJSONBytes {
+		if err != nil || len(taskData) > responseLimit {
 			if err == nil {
 				err = fmt.Errorf("task data exceeds size limit")
 			}
