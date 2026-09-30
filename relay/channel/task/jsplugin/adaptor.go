@@ -103,33 +103,26 @@ const maxTaskArtifacts = 64
 // maxTaskPluginPersistedJSONBytes is the shared ceiling for taskData and plugin state.
 const maxTaskPluginPersistedJSONBytes = 1 << 20
 
-// maxTaskPluginInlineImageBytes is the read ceiling for an OpenAI Images
-// response. The payload is Base64, returned inline, and discarded instead of
-// being stored on the task row. One 4K image exceeds the 1 MiB task snapshot
-// and can also exceed 32 MiB once encoded, so the ceiling matches the default
-// request body limit.
-const maxTaskPluginInlineImageBytes = 128 << 20
-
-func (a *TaskAdaptor) submitResponseLimit(c *gin.Context) int {
+// inlineImageRelay reports an OpenAI Images task-plugin response. The body is
+// the image, returned inline the same way as the default image relay, and is
+// not stored on the task row. The 1 MiB task snapshot does not apply.
+func (a *TaskAdaptor) inlineImageRelay(c *gin.Context) bool {
 	if a != nil && a.plugin != nil {
 		for _, claim := range a.plugin.Meta.Protocols {
 			if claim.Name == pluginruntime.ProtocolOpenAIImage {
-				return maxTaskPluginInlineImageBytes
+				return true
 			}
 		}
 	}
 	if c == nil {
-		return maxTaskPluginPersistedJSONBytes
+		return false
 	}
 	pinnedValue, exists := c.Get(pluginruntime.ContextKeyPinnedEndpoint)
 	if !exists {
-		return maxTaskPluginPersistedJSONBytes
+		return false
 	}
 	pinned, ok := pinnedValue.(pluginruntime.PinnedEndpoint)
-	if !ok || pinned.Protocol != pluginruntime.ProtocolOpenAIImage {
-		return maxTaskPluginPersistedJSONBytes
-	}
-	return maxTaskPluginInlineImageBytes
+	return ok && pinned.Protocol == pluginruntime.ProtocolOpenAIImage
 }
 
 type TaskAdaptor struct {
@@ -552,11 +545,15 @@ func (a *TaskAdaptor) ParseResponse(c *gin.Context, resp *http.Response, info *r
 		defer resp.Body.Close()
 		responseBody, err = a.readSubmitEvents(c.Request.Context(), resp, a.submitContext(c, info))
 	} else {
-		limit := a.submitResponseLimit(c)
 		var body []byte
-		body, err = io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
-		if err == nil && len(body) > limit {
-			err = fmt.Errorf("task submit response exceeds size limit (%d bytes, limit %d)", len(body), limit)
+		if a.inlineImageRelay(c) {
+			body, err = io.ReadAll(resp.Body)
+		} else {
+			limit := maxTaskPluginPersistedJSONBytes
+			body, err = io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
+			if err == nil && len(body) > limit {
+				err = fmt.Errorf("task submit response exceeds size limit (%d bytes, limit %d)", len(body), limit)
+			}
 		}
 		responseBody = string(body)
 		var decoded any
@@ -601,13 +598,12 @@ func (a *TaskAdaptor) ParseResponse(c *gin.Context, resp *http.Response, info *r
 		)
 		return nil, service.TaskErrorWrapper(err, "plugin_submit_response_invalid", http.StatusBadGateway)
 	}
-	responseLimit := a.submitResponseLimit(c)
 	var taskData []byte
 	if parsed.TaskData != nil {
 		taskData, err = common.Marshal(parsed.TaskData)
-		if err != nil || len(taskData) > responseLimit {
+		if err != nil || (!a.inlineImageRelay(c) && len(taskData) > maxTaskPluginPersistedJSONBytes) {
 			if err == nil {
-				err = fmt.Errorf("task data exceeds size limit (%d bytes, limit %d)", len(taskData), responseLimit)
+				err = fmt.Errorf("task data exceeds size limit (%d bytes, limit %d)", len(taskData), maxTaskPluginPersistedJSONBytes)
 			}
 			return nil, service.TaskErrorWrapper(err, "plugin_submit_response_invalid", http.StatusBadGateway)
 		}
