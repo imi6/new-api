@@ -87,7 +87,14 @@ const maxTaskPluginPersistedJSONBytes = 1 << 20
 // request body limit.
 const maxTaskPluginInlineImageBytes = 128 << 20
 
-func submitResponseLimit(c *gin.Context) int {
+func (a *TaskAdaptor) submitResponseLimit(c *gin.Context) int {
+	if a != nil && a.plugin != nil {
+		for _, claim := range a.plugin.Meta.Protocols {
+			if claim.Name == pluginruntime.ProtocolOpenAIImage {
+				return maxTaskPluginInlineImageBytes
+			}
+		}
+	}
 	if c == nil {
 		return maxTaskPluginPersistedJSONBytes
 	}
@@ -494,11 +501,11 @@ func (a *TaskAdaptor) ParseResponse(c *gin.Context, resp *http.Response, info *r
 		defer resp.Body.Close()
 		responseBody, err = a.readSubmitEvents(c.Request.Context(), resp, a.submitContext(c, info))
 	} else {
-		limit := submitResponseLimit(c)
+		limit := a.submitResponseLimit(c)
 		var body []byte
 		body, err = io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
 		if err == nil && len(body) > limit {
-			err = fmt.Errorf("task submit response exceeds size limit")
+			err = fmt.Errorf("task submit response exceeds size limit (%d bytes, limit %d)", len(body), limit)
 		}
 		responseBody = string(body)
 		var decoded any
@@ -543,13 +550,13 @@ func (a *TaskAdaptor) ParseResponse(c *gin.Context, resp *http.Response, info *r
 		)
 		return nil, service.TaskErrorWrapper(err, "plugin_submit_response_invalid", http.StatusBadGateway)
 	}
-	responseLimit := submitResponseLimit(c)
+	responseLimit := a.submitResponseLimit(c)
 	var taskData []byte
 	if parsed.TaskData != nil {
 		taskData, err = common.Marshal(parsed.TaskData)
 		if err != nil || len(taskData) > responseLimit {
 			if err == nil {
-				err = fmt.Errorf("task data exceeds size limit")
+				err = fmt.Errorf("task data exceeds size limit (%d bytes, limit %d)", len(taskData), responseLimit)
 			}
 			return nil, service.TaskErrorWrapper(err, "plugin_submit_response_invalid", http.StatusBadGateway)
 		}
