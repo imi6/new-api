@@ -220,9 +220,19 @@ func (e *NewAPIError) ToClaudeError(upstreamURLs ...string) ClaudeError {
 	switch e.errorType {
 	case ErrorTypeOpenAIError:
 		if openAIError, ok := e.RelayError.(OpenAIError); ok {
+			errorType := strings.TrimSpace(openAIError.Type)
+			if openAIError.Code != nil {
+				codeText := strings.TrimSpace(fmt.Sprint(openAIError.Code))
+				if codeText != "" && codeText != "<nil>" {
+					errorType = codeText
+				}
+			}
+			if errorType == "" {
+				errorType = "upstream_error"
+			}
 			result = ClaudeError{
 				Message: e.Error(),
-				Type:    fmt.Sprintf("%v", openAIError.Code),
+				Type:    errorType,
 			}
 		}
 	case ErrorTypeClaudeError:
