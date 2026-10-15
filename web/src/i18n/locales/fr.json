@@ -1067,6 +1067,7 @@
     "Changes which model names inherit this metadata. Prices are not inherited.": "Modifie les noms de modèles qui héritent de ces métadonnées. Les prix ne sont pas hérités.",
     "Changing...": "Modification en cours...",
     "Channel": "Canal",
+    "Channel Status": "Statut des canaux",
     "Channel {{name}}": "Canal {{name}}",
     "Channel {{name}} model {{model}}": "Canal {{name}} modèle {{model}}",
     "Channel Affinity": "Affinité de canal",

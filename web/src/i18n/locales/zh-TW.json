@@ -1067,6 +1067,7 @@
     "Changes which model names inherit this metadata. Prices are not inherited.": "會修改哪些模型名稱繼承此中繼資料，不會繼承價格。",
     "Changing...": "修改中...",
     "Channel": "渠道",
+    "Channel Status": "渠道狀態",
     "Channel {{name}}": "渠道 {{name}}",
     "Channel {{name}} model {{model}}": "渠道 {{name}} 模型 {{model}}",
     "Channel Affinity": "渠道親和性",
