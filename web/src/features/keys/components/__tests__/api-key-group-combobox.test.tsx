@@ -96,6 +96,61 @@ function getCommandItem(label: string): HTMLElement {
   return item
 }
 
+describe('API key group combobox families', () => {
+  test('shows a major group heading and the subgroup name, while selecting the full group', () => {
+    setReducedMotion(false)
+    const familyOptions = [
+      {
+        value: 'OpenAI GPT 特价分组',
+        label: 'OpenAI GPT 特价分组',
+        desc: '福利价格',
+        ratio: 0.065,
+      },
+      {
+        value: 'OpenAI GPT 普通分组',
+        label: 'OpenAI GPT 普通分组',
+        desc: '标准价格',
+        ratio: 0.12,
+      },
+      {
+        value: 'Claude Code Max 分组',
+        label: 'Claude Code Max 分组',
+        desc: 'Claude Code Max 分组',
+        ratio: 1,
+      },
+    ]
+
+    function FamilyHarness() {
+      const [value, setValue] = useState('')
+      return (
+        <I18nextProvider i18n={i18n}>
+          <ApiKeyGroupCombobox
+            options={familyOptions}
+            value={value}
+            onValueChange={setValue}
+          />
+          <output data-testid='selected-group'>{value}</output>
+        </I18nextProvider>
+      )
+    }
+
+    render(<FamilyHarness />)
+    fireEvent.click(getTrigger())
+
+    expect(screen.getByText('OpenAI GPT')).toBeInTheDocument()
+    const saleOption = getCommandItem('福利价格')
+    expect(within(saleOption).getByText('特价分组')).toBeInTheDocument()
+    expect(within(saleOption).queryByText('OpenAI GPT 特价分组')).toBe(null)
+    expect(getCommandItem('Claude Code Max 分组')).toBeInTheDocument()
+
+    fireEvent.click(saleOption)
+    expect(screen.getByTestId('selected-group')).toHaveTextContent(
+      'OpenAI GPT 特价分组'
+    )
+    expect(getTrigger()).toHaveTextContent('OpenAI GPT / 特价分组')
+  })
+})
+
 describe('API key group combobox Auto effect', () => {
   test('uses the compact table capsules in the selected group and dropdown options', () => {
     setReducedMotion(false)
