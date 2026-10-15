@@ -37,6 +37,7 @@ import {
 import { useMediaQuery } from '@/hooks'
 import { cn } from '@/lib/utils'
 
+import { groupApiKeyOptions } from '../lib/api-key-group-sections'
 import {
   AUTO_GROUP_FRAME_CLASS_NAME,
   AutoGroupFlowBorder,
@@ -71,6 +72,18 @@ export function ApiKeyGroupCombobox({
   const shouldReduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const selectedOption = options.find((option) => option.value === value)
   const isAutoSelected = selectedOption?.value === 'auto'
+  const selectedDisplay = useMemo(() => {
+    if (!selectedOption) return ''
+    for (const section of groupApiKeyOptions(options)) {
+      const match = section.options.find(
+        (option) => option.value === selectedOption.value
+      )
+      if (!match) continue
+      if (!section.title) return match.itemLabel
+      return `${section.title} / ${match.itemLabel}`
+    }
+    return selectedOption.label
+  }, [options, selectedOption])
 
   const filteredOptions = useMemo(() => {
     const search = searchValue.trim().toLowerCase()
@@ -86,6 +99,29 @@ export function ApiKeyGroupCombobox({
       )
     })
   }, [options, searchValue])
+  const optionSections = useMemo(() => {
+    const sections = groupApiKeyOptions(filteredOptions)
+    const blocks: Array<{
+      id: string
+      title: string | null
+      options: (typeof sections)[number]['options']
+    }> = []
+
+    for (const section of sections) {
+      const previous = blocks[blocks.length - 1]
+      if (!section.title && previous && !previous.title) {
+        previous.options.push(...section.options)
+        continue
+      }
+      blocks.push({
+        id: section.id,
+        title: section.title,
+        options: [...section.options],
+      })
+    }
+
+    return blocks
+  }, [filteredOptions])
 
   const handleSelect = (selectedValue: string) => {
     onValueChange(selectedValue)
@@ -121,7 +157,7 @@ export function ApiKeyGroupCombobox({
         <span className='flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-3'>
           <span className='min-w-0'>
             <span className='block truncate font-medium'>
-              {selectedOption?.label || placeholder || t('Select a group')}
+              {selectedDisplay || placeholder || t('Select a group')}
             </span>
             {selectedOption?.desc && (
               <span className='text-muted-foreground block truncate text-[11px] sm:text-xs'>
@@ -156,56 +192,63 @@ export function ApiKeyGroupCombobox({
           />
           <CommandList className='max-h-[360px]'>
             <CommandEmpty>{t('No group found.')}</CommandEmpty>
-            <CommandGroup>
-              {filteredOptions.map((option) => {
-                const isAutoOption = option.value === 'auto'
+            {optionSections.map((section) => (
+              <CommandGroup
+                key={section.id}
+                heading={section.title ?? undefined}
+              >
+                {section.options.map((option) => {
+                  const isAutoOption = option.value === 'auto'
 
-                return (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    data-auto-group-effect={isAutoOption ? 'option' : undefined}
-                    onSelect={() => handleSelect(option.value)}
-                    className={cn(
-                      'data-[selected=true]:bg-muted items-start gap-3 rounded-lg px-3 py-3 transition-colors',
-                      isAutoOption &&
-                        cn(
-                          AUTO_GROUP_FRAME_CLASS_NAME,
-                          'border-primary/35 data-[selected=true]:border-primary/55'
-                        )
-                    )}
-                  >
-                    {isAutoOption && (
-                      <AutoGroupFlowBorder
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      data-auto-group-effect={
+                        isAutoOption ? 'option' : undefined
+                      }
+                      onSelect={() => handleSelect(option.value)}
+                      className={cn(
+                        'data-[selected=true]:bg-muted items-start gap-3 rounded-lg px-3 py-3 transition-colors',
+                        isAutoOption &&
+                          cn(
+                            AUTO_GROUP_FRAME_CLASS_NAME,
+                            'border-primary/35 data-[selected=true]:border-primary/55'
+                          )
+                      )}
+                    >
+                      {isAutoOption && (
+                        <AutoGroupFlowBorder
+                          shouldReduceMotion={shouldReduceMotion}
+                        />
+                      )}
+                      <Check
+                        aria-hidden='true'
+                        className={cn(
+                          'mt-0.5 size-4',
+                          value === option.value ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <span className='min-w-0 flex-1'>
+                        <span className='block truncate font-medium'>
+                          {option.itemLabel}
+                        </span>
+                        {option.desc && option.desc !== option.label && (
+                          <span className='text-muted-foreground block truncate text-xs'>
+                            {option.desc}
+                          </span>
+                        )}
+                      </span>
+                      <GroupRatioBadge
+                        ratio={option.ratio}
+                        isAuto={isAutoOption}
                         shouldReduceMotion={shouldReduceMotion}
                       />
-                    )}
-                    <Check
-                      aria-hidden='true'
-                      className={cn(
-                        'mt-0.5 size-4',
-                        value === option.value ? 'opacity-100' : 'opacity-0'
-                      )}
-                    />
-                    <span className='min-w-0 flex-1'>
-                      <span className='block truncate font-medium'>
-                        {option.label}
-                      </span>
-                      {option.desc && (
-                        <span className='text-muted-foreground block truncate text-xs'>
-                          {option.desc}
-                        </span>
-                      )}
-                    </span>
-                    <GroupRatioBadge
-                      ratio={option.ratio}
-                      isAuto={isAutoOption}
-                      shouldReduceMotion={shouldReduceMotion}
-                    />
-                  </CommandItem>
-                )
-              })}
-            </CommandGroup>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
