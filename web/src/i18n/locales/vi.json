@@ -1072,6 +1072,7 @@
     "Changes which model names inherit this metadata. Prices are not inherited.": "Thay đổi tên mô hình kế thừa siêu dữ liệu này. Giá không được kế thừa.",
     "Changing...": "Đang thay đổi...",
     "Channel": "Kênh",
+    "Channel Status": "Trạng thái kênh",
     "Channel {{name}}": "Kênh {{name}}",
     "Channel {{name}} model {{model}}": "Kênh {{name}} mô hình {{model}}",
     "Channel Affinity": "Ưu tiên kênh",
