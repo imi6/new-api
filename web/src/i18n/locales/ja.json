@@ -1070,6 +1070,7 @@
     "Changes which model names inherit this metadata. Prices are not inherited.": "このメタデータを継承するモデル名を変更します。料金は継承されません。",
     "Changing...": "変更中...",
     "Channel": "チャネル",
+    "Channel Status": "チャネルステータス",
     "Channel {{name}}": "チャネル {{name}}",
     "Channel {{name}} model {{model}}": "チャネル {{name}} モデル {{model}}",
     "Channel Affinity": "チャネルアフィニティ",

@@ -1070,6 +1070,7 @@
     "Changes which model names inherit this metadata. Prices are not inherited.": "Изменяет набор имён моделей, наследующих эти метаданные. Цены не наследуются.",
     "Changing...": "Изменение...",
     "Channel": "Канал",
+    "Channel Status": "Статус каналов",
     "Channel {{name}}": "Канал {{name}}",
     "Channel {{name}} model {{model}}": "Канал {{name}}, модель {{model}}",
     "Channel Affinity": "Привязка к каналу",
