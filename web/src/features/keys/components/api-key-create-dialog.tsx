@@ -17,13 +17,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { ChevronDown, Search, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
+import { MultiSelect } from '@/components/multi-select'
 import { Button } from '@/components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -33,7 +39,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getUserGroups } from '@/lib/api'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { getUserGroups, getUserModels } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { handleServerError } from '@/lib/handle-server-error'
 import {
@@ -87,8 +95,19 @@ export function ApiKeyCreateDialog({
   const [platform, setPlatform] = useState(ALL_PLATFORMS)
   const [search, setSearch] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('default')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [modelLimits, setModelLimits] = useState<string[]>([])
+  const [allowIps, setAllowIps] = useState('')
+  const [allowUserQuotaQuery, setAllowUserQuotaQuery] = useState(true)
   const [preview, setPreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data: modelsData } = useQuery({
+    queryKey: ['user-models'],
+    queryFn: async () => requireServerSuccess(await getUserModels()),
+    enabled: open,
+    staleTime: 0,
+  })
 
   const { data: groupsData, isLoading: groupsLoading } = useQuery({
     queryKey: ['user-groups'],
@@ -161,6 +180,10 @@ export function ApiKeyCreateDialog({
     setPlatform(ALL_PLATFORMS)
     setSearch('')
     setSortOrder('default')
+    setAdvancedOpen(false)
+    setModelLimits([])
+    setAllowIps('')
+    setAllowUserQuotaQuery(true)
     setPreview(null)
   }, [open])
 
@@ -211,6 +234,9 @@ export function ApiKeyCreateDialog({
           unlimited_quota: quotaValue === undefined,
           expired_time: expiredTime,
           group,
+          model_limits: modelLimits,
+          allow_ips: allowIps,
+          allow_user_quota_query: allowUserQuotaQuery,
           auto_groups_mode: 'inherit',
           auto_groups: [],
           cross_group_retry: false,
@@ -446,6 +472,86 @@ export function ApiKeyCreateDialog({
           </div>
         </div>
 
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+          <CollapsibleTrigger
+            render={
+              <button
+                type='button'
+                className='hover:bg-muted/40 flex w-full items-center gap-3 rounded-md py-1.5 text-left'
+              />
+            }
+          >
+            <Settings2 className='text-muted-foreground size-4 shrink-0' />
+            <span className='min-w-0 flex-1'>
+              <span className='block text-sm font-medium'>
+                {t('Advanced Settings')}
+              </span>
+              <span className='text-muted-foreground block text-xs'>
+                {t('Set API key access restrictions')}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                'text-muted-foreground size-4 shrink-0 transition-transform',
+                advancedOpen && 'rotate-180'
+              )}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className='flex flex-col gap-4 pt-3'>
+              <label className='flex flex-col gap-1.5 text-sm'>
+                <span className='font-medium'>{t('Model Limits')}</span>
+                <MultiSelect
+                  options={(modelsData?.data || []).map((model) => ({
+                    label: model,
+                    value: model,
+                  }))}
+                  selected={modelLimits}
+                  onChange={setModelLimits}
+                  placeholder={t('Select models (empty for allow all)')}
+                />
+                <span className='text-muted-foreground text-xs'>
+                  {t('Limit which models can be used with this key')}
+                </span>
+              </label>
+              <label className='flex flex-col gap-1.5 text-sm'>
+                <span className='font-medium'>
+                  {t('IP Whitelist (supports CIDR)')}
+                </span>
+                <Textarea
+                  value={allowIps}
+                  onChange={(event) => setAllowIps(event.target.value)}
+                  className='min-h-20 resize-none'
+                  placeholder={t('One IP per line (empty for no restriction)')}
+                  rows={3}
+                />
+                <span className='text-muted-foreground text-xs'>
+                  {t(
+                    'Do not over-trust this feature. IP may be spoofed. Please use with nginx, CDN and other gateways.'
+                  )}
+                </span>
+              </label>
+              <div className='flex items-center justify-between gap-4'>
+                <div className='min-w-0'>
+                  <p className='text-sm font-medium'>
+                    {t('Allow querying user quota')}
+                  </p>
+                  <p className='text-muted-foreground text-xs'>
+                    {t(
+                      "When enabled, this API key can be used to check your account's remaining and used quota."
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={allowUserQuotaQuery}
+                  onCheckedChange={(checked) =>
+                    setAllowUserQuotaQuery(checked === true)
+                  }
+                />
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </Dialog>
   )
