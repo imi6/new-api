@@ -17,14 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Crown, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -76,12 +75,6 @@ function platformLabel(
   return name === 'Other' ? translate('Other') : name
 }
 
-function isExclusiveGroup(option: ApiKeyGroupOption): boolean {
-  return (
-    option.label.includes('专属') || (option.desc?.includes('专属') ?? false)
-  )
-}
-
 export function ApiKeyCreateDialog({
   open,
   onOpenChange,
@@ -94,8 +87,6 @@ export function ApiKeyCreateDialog({
   const [platform, setPlatform] = useState(ALL_PLATFORMS)
   const [search, setSearch] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('default')
-  const [exclusiveRatio, setExclusiveRatio] = useState(false)
-  const [exclusiveGroup, setExclusiveGroup] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -140,14 +131,6 @@ export function ApiKeyCreateDialog({
     const filtered = groups.filter((group) => {
       const groupPlatform = apiKeyGroupPlatform(group.label)
       if (platform !== ALL_PLATFORMS && groupPlatform !== platform) return false
-      if (exclusiveRatio && ratioNumber(group.ratio) === null) return false
-      if (
-        exclusiveRatio &&
-        ratioNumber(group.ratio) === 1
-      ) {
-        return false
-      }
-      if (exclusiveGroup && !isExclusiveGroup(group)) return false
       if (!query) return true
       return (
         group.label.toLowerCase().includes(query) ||
@@ -168,15 +151,7 @@ export function ApiKeyCreateDialog({
         ? leftRatio - rightRatio
         : rightRatio - leftRatio
     })
-  }, [
-    exclusiveGroup,
-    exclusiveRatio,
-    groups,
-    platform,
-    search,
-    sortOrder,
-    t,
-  ])
+  }, [groups, platform, search, sortOrder, t])
 
   useEffect(() => {
     if (open) return
@@ -186,8 +161,6 @@ export function ApiKeyCreateDialog({
     setPlatform(ALL_PLATFORMS)
     setSearch('')
     setSortOrder('default')
-    setExclusiveRatio(false)
-    setExclusiveGroup(false)
     setPreview(null)
   }, [open])
 
@@ -322,29 +295,6 @@ export function ApiKeyCreateDialog({
                 onClick={() => setPlatform(name)}
               />
             ))}
-            <label className='mt-3 flex items-center gap-2 text-xs'>
-              <Checkbox
-                checked={exclusiveRatio}
-                onCheckedChange={(checked) =>
-                  setExclusiveRatio(checked === true)
-                }
-              />
-              <Crown className='size-3.5' aria-hidden='true' />
-              {t('Exclusive ratios only')}
-            </label>
-            <label className='flex items-center gap-2 text-xs'>
-              <Checkbox
-                checked={exclusiveGroup}
-                onCheckedChange={(checked) =>
-                  setExclusiveGroup(checked === true)
-                }
-              />
-              <Crown className='size-3.5' aria-hidden='true' />
-              {t('Exclusive groups only')}
-            </label>
-            <p className='text-muted-foreground mt-auto pt-3 text-[11px] leading-5'>
-              {t('Only groups available to this account are shown.')}
-            </p>
           </div>
 
           <div className='flex min-h-0 min-w-0 flex-col border-b md:border-r md:border-b-0'>
@@ -354,7 +304,7 @@ export function ApiKeyCreateDialog({
                 {t('{{count}} groups', { count: visibleGroups.length })}
               </span>
             </div>
-            <div className='flex shrink-0 gap-2 p-3'>
+            <div className='bg-background relative z-10 flex shrink-0 gap-2 border-b px-3 py-3'>
               <div className='relative min-w-0 flex-1'>
                 <Search
                   className='text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2'
@@ -403,17 +353,17 @@ export function ApiKeyCreateDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className='min-h-0 flex-1 overflow-y-auto px-3 pb-3'>
+            <div className='min-h-0 flex-1 overflow-y-auto [overflow-anchor:none]'>
               {groupsLoading ? (
-                <p className='text-muted-foreground px-2 py-6 text-sm'>
+                <p className='text-muted-foreground px-3 py-6 text-sm'>
                   {t('Loading...')}
                 </p>
               ) : visibleGroups.length === 0 ? (
-                <p className='text-muted-foreground px-2 py-6 text-sm'>
+                <p className='text-muted-foreground px-3 py-6 text-sm'>
                   {t('No group found.')}
                 </p>
               ) : (
-                <div className='flex flex-col gap-2'>
+                <div className='flex flex-col gap-2 px-3 py-3'>
                   {visibleGroups.map((group) => {
                     const selected = preview === group.value
                     return (
