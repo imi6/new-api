@@ -67,7 +67,10 @@ function useGroupRatios(): Record<string, number | string> {
   return data ?? EMPTY_GROUP_RATIOS
 }
 
-export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
+export function useApiKeysColumns(
+  now: number,
+  onReorderRoutes?: (apiKey: ApiKey, next: string[]) => Promise<void>
+): ColumnDef<ApiKey>[] {
   const { t, i18n } = useTranslation()
   useSystemConfigStore((state) => state.config.currency)
   const { meta: currency } = getCurrencyDisplay()
@@ -159,7 +162,15 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
               group={group}
               ratio={groupRatios[group]}
               crossGroupRetry={apiKey.cross_group_retry}
+              routes={
+                group === 'auto' ? (apiKey.auto_groups ?? []) : undefined
+              }
               shouldReduceMotion={shouldReduceMotion}
+              onReorderRoutes={
+                onReorderRoutes
+                  ? (next) => onReorderRoutes(apiKey, next)
+                  : undefined
+              }
             />
           )
         },
@@ -233,6 +244,15 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
         meta: { pinned: 'right' as const },
       },
     ],
-    [t, quotaUnit, now, groupRatios, shouldReduceMotion, locale, justNowLabel]
+    [
+      t,
+      quotaUnit,
+      now,
+      groupRatios,
+      shouldReduceMotion,
+      locale,
+      justNowLabel,
+      onReorderRoutes,
+    ]
   )
 }
