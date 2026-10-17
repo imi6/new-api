@@ -164,6 +164,34 @@ export function transformFormDataToPayload(
 }
 
 /**
+ * One chosen group stays on that group. Two or more become an ordered Auto
+ * route with cross-group retry. An empty list is not a valid selection.
+ */
+export function routeGroupsToApiKeyFields(groups: string[]): Pick<
+  ApiKeyFormValues,
+  'group' | 'auto_groups_mode' | 'auto_groups' | 'cross_group_retry'
+> {
+  const unique = groups.filter(
+    (group, index) => group !== '' && groups.indexOf(group) === index
+  )
+  if (unique.length <= 1) {
+    return {
+      group: unique[0] ?? '',
+      auto_groups_mode: 'inherit',
+      auto_groups: [],
+      cross_group_retry: false,
+    }
+  }
+
+  return {
+    group: 'auto',
+    auto_groups_mode: 'custom',
+    auto_groups: unique,
+    cross_group_retry: true,
+  }
+}
+
+/**
  * Transform API key data to form defaults
  */
 export function transformApiKeyToFormDefaults(
