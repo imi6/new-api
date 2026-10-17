@@ -16,16 +16,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ArrowDown, ArrowUp } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BadgeCell, TruncatedCell } from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
 import { StatusBadge } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { useMediaQuery } from '@/hooks'
 import { cn } from '@/lib/utils'
 
@@ -35,7 +38,9 @@ type ApiKeyGroupCellProps = {
   crossGroupRetry: boolean
   group: string
   ratio?: GroupRatio
+  routes?: string[]
   shouldReduceMotion: boolean
+  onReorderRoutes?: (next: string[]) => Promise<void>
 }
 
 export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
@@ -66,15 +71,61 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger
+    <AutoRoutePopover
+      isMobile={isMobile}
+      ratio={props.ratio}
+      routes={props.routes ?? []}
+      shouldReduceMotion={props.shouldReduceMotion}
+      onReorderRoutes={props.onReorderRoutes}
+    />
+  )
+}
+
+function AutoRoutePopover(props: {
+  isMobile: boolean
+  ratio?: GroupRatio
+  routes: string[]
+  shouldReduceMotion: boolean
+  onReorderRoutes?: (next: string[]) => Promise<void>
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const closeTimer = useRef<number | null>(null)
+  const canReorder = props.routes.length > 1 && !!props.onReorderRoutes
+
+  const show = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    setOpen(true)
+  }
+  const hide = () => {
+    closeTimer.current = window.setTimeout(() => setOpen(false), 160)
+  }
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction
+    if (!props.onReorderRoutes || target < 0 || target >= props.routes.length) {
+      return
+    }
+    const next = [...props.routes]
+    const [item] = next.splice(index, 1)
+    if (!item) return
+    next.splice(target, 0, item)
+    setSaving(true)
+    void props.onReorderRoutes(next).finally(() => setSaving(false))
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
         render={
           <BadgeCell
             data-api-key-group-cell='auto'
             tabIndex={0}
+            onMouseEnter={show}
+            onMouseLeave={hide}
             className={cn(
               'ml-0 gap-3 overflow-visible text-xs',
-              isMobile ? 'w-full justify-between' : 'max-w-50'
+              props.isMobile ? 'w-full justify-between' : 'max-w-50'
             )}
           />
         }
@@ -90,14 +141,54 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
           isAuto
           shouldReduceMotion={props.shouldReduceMotion}
         />
-      </TooltipTrigger>
-      <TooltipContent>
-        <span className='text-xs'>
-          {t(
-            'Automatically selects the best available group with circuit breaker mechanism'
-          )}
-        </span>
-      </TooltipContent>
-    </Tooltip>
+      </PopoverTrigger>
+      <PopoverContent
+        align='start'
+        className='w-72'
+        onMouseEnter={show}
+        onMouseLeave={hide}
+      >
+        {props.routes.length === 0 ? (
+          <p className='text-xs leading-5'>
+            {t('This key follows the site Auto order.')}
+          </p>
+        ) : (
+          <ol className='flex flex-col gap-1'>
+            {props.routes.map((group, index) => (
+              <li key={group} className='flex items-center gap-2'>
+                <span className='text-muted-foreground w-14 shrink-0 text-xs'>
+                  {t('Route {{index}}', { index: index + 1 })}
+                </span>
+                <span className='min-w-0 flex-1 truncate text-sm'>{group}</span>
+                {canReorder ? (
+                  <span className='flex shrink-0'>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon-sm'
+                      aria-label={t('Move route up')}
+                      disabled={saving || index === 0}
+                      onClick={() => move(index, -1)}
+                    >
+                      <ArrowUp aria-hidden='true' />
+                    </Button>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='icon-sm'
+                      aria-label={t('Move route down')}
+                      disabled={saving || index === props.routes.length - 1}
+                      onClick={() => move(index, 1)}
+                    >
+                      <ArrowDown aria-hidden='true' />
+                    </Button>
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }

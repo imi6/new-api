@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { flexRender, type Table as TanstackTable } from '@tanstack/react-table'
 import { Database } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -44,7 +44,9 @@ import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
-import { getApiKeys, searchApiKeys } from '../api'
+import { handleServerError } from '@/lib/handle-server-error'
+
+import { getApiKey, getApiKeys, searchApiKeys, updateApiKey } from '../api'
 import {
   API_KEY_STATUS,
   API_KEY_STATUS_OPTIONS,
@@ -217,9 +219,43 @@ function ApiKeysMobileList({
 
 export function ApiKeysTable() {
   const { t } = useTranslation()
-  const { refreshTrigger } = useApiKeys()
+  const { refreshTrigger, triggerRefresh } = useApiKeys()
   const [now, setNow] = useState(() => Date.now())
-  const columns = useApiKeysColumns(now)
+  const reorderRoutes = useCallback(
+    async (apiKey: ApiKey, next: string[]) => {
+      try {
+        const loaded = await getApiKey(apiKey.id)
+        if (!loaded.success || !loaded.data) {
+          handleServerError(loaded, t(ERROR_MESSAGES.UPDATE_FAILED))
+          return
+        }
+        const current = loaded.data
+        const result = await updateApiKey({
+          id: current.id,
+          name: current.name,
+          remain_quota: current.remain_quota,
+          expired_time: current.expired_time,
+          unlimited_quota: current.unlimited_quota,
+          model_limits_enabled: current.model_limits_enabled,
+          model_limits: current.model_limits || '',
+          allow_ips: current.allow_ips || '',
+          allow_user_quota_query: !!current.allow_user_quota_query,
+          group: 'auto',
+          auto_groups: next,
+          cross_group_retry: true,
+        })
+        if (!result.success) {
+          handleServerError(result, t(ERROR_MESSAGES.UPDATE_FAILED))
+          return
+        }
+        triggerRefresh()
+      } catch (error) {
+        handleServerError(error, t(ERROR_MESSAGES.UNEXPECTED))
+      }
+    },
+    [t, triggerRefresh]
+  )
+  const columns = useApiKeysColumns(now, reorderRoutes)
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
