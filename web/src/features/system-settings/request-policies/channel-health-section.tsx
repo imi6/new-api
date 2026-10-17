@@ -83,6 +83,11 @@ const createChannelHealthSchema = (
     .object({
       ChannelDisableThreshold: numericString,
       AutomaticDisableChannelEnabled: z.boolean(),
+      AutomaticDisableFailureCount: z.coerce
+        .number()
+        .int(t('Enter an integer from 1 to 20'))
+        .min(1, t('Enter an integer from 1 to 20'))
+        .max(20, t('Enter an integer from 1 to 20')),
       AutomaticEnableChannelEnabled: z.boolean(),
       AutomaticDisableKeywords: z.string(),
       AutomaticDisableStatusCodes: z.string(),
@@ -133,6 +138,7 @@ function normalizeLineEndings(value: string) {
 type NormalizedChannelHealthValues = {
   ChannelDisableThreshold: string
   AutomaticDisableChannelEnabled: boolean
+  AutomaticDisableFailureCount: number
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
   AutomaticDisableStatusCodes: string
@@ -154,6 +160,7 @@ const buildFormDefaults = (
 ): ChannelHealthFormInput => ({
   ChannelDisableThreshold: defaults.ChannelDisableThreshold ?? '',
   AutomaticDisableChannelEnabled: defaults.AutomaticDisableChannelEnabled,
+  AutomaticDisableFailureCount: defaults.AutomaticDisableFailureCount || 1,
   AutomaticEnableChannelEnabled: defaults.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
     defaults.AutomaticDisableKeywords ?? ''
@@ -177,6 +184,7 @@ const normalizeDefaults = (
 ): NormalizedChannelHealthValues => ({
   ChannelDisableThreshold: (defaults.ChannelDisableThreshold ?? '').trim(),
   AutomaticDisableChannelEnabled: defaults.AutomaticDisableChannelEnabled,
+  AutomaticDisableFailureCount: defaults.AutomaticDisableFailureCount || 1,
   AutomaticEnableChannelEnabled: defaults.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
     defaults.AutomaticDisableKeywords ?? ''
@@ -200,6 +208,7 @@ const normalizeFormValues = (
 ): NormalizedChannelHealthValues => ({
   ChannelDisableThreshold: values.ChannelDisableThreshold.trim(),
   AutomaticDisableChannelEnabled: values.AutomaticDisableChannelEnabled,
+  AutomaticDisableFailureCount: values.AutomaticDisableFailureCount,
   AutomaticEnableChannelEnabled: values.AutomaticEnableChannelEnabled,
   AutomaticDisableKeywords: normalizeLineEndings(
     values.AutomaticDisableKeywords
@@ -511,6 +520,33 @@ export function ChannelHealthSection({
                       />
                     </FormControl>
                   </SettingsSwitchItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='AutomaticDisableFailureCount'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('Consecutive failures before disable')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        min={1}
+                        max={20}
+                        step={1}
+                        {...safeNumberFieldProps(field)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Scheduled health checks disable a channel after this many consecutive matches of the status codes or failure keywords. A successful request or health check resets the count. Use 1 to disable on the first check.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
               />
 
