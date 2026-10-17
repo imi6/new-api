@@ -117,7 +117,7 @@ func RecordPolicyFailure(c *gin.Context, channelID int, err *types.NewAPIError, 
 	}
 	state.AddEvent(event)
 	event.Decision, event.Health = decision, "unchanged"
-	if source != "local" && c.GetBool("auto_ban") && ShouldDisableChannel(err) {
+	if source != "local" && c.GetBool("auto_ban") && channelFailureWouldDisable(channelID, common.GetContextKeyString(c, constant.ContextKeyChannelKey), true, err, DisableStreakRequest) {
 		event.Health = "channel_disable_requested"
 		if common.GetContextKeyBool(c, constant.ContextKeyChannelIsMultiKey) {
 			event.Health = "key_disable_requested"
@@ -143,7 +143,7 @@ func MarkRequestPolicySuccess(c *gin.Context, stream *relaycommon.StreamStatus) 
 	}
 	state.AddEvent(PolicyEvent{ChannelID: channelID, Decision: decision})
 	if state.Successful && c != nil {
-		ClearChannelDisableStreak(channelID, common.GetContextKeyString(c, constant.ContextKeyChannelKey))
+		ClearChannelDisableStreak(channelID, common.GetContextKeyString(c, constant.ContextKeyChannelKey), DisableStreakRequest)
 	}
 }
 
