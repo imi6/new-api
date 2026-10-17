@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Search, Settings2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown, Search, Settings2, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { getUserGroups, getUserModels } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
@@ -50,10 +51,11 @@ import {
 } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
-import { createApiKey } from '../api'
+import { createApiKey, getTokenAutoGroups } from '../api'
 import { ERROR_MESSAGES } from '../constants'
 import {
   getApiKeyFormDefaultValues,
+  routeGroupsToApiKeyFields,
   transformFormDataToPayload,
 } from '../lib'
 import {
@@ -69,6 +71,7 @@ type ApiKeyCreateDialogProps = {
 }
 
 type SortOrder = 'default' | 'ratio-asc' | 'ratio-desc' | 'name'
+type ChannelMode = 'primary' | 'smart'
 
 const ALL_PLATFORMS = 'all'
 
@@ -100,11 +103,20 @@ export function ApiKeyCreateDialog({
   const [allowIps, setAllowIps] = useState('')
   const [allowUserQuotaQuery, setAllowUserQuotaQuery] = useState(true)
   const [preview, setPreview] = useState<string | null>(null)
+  const [channelMode, setChannelMode] = useState<ChannelMode>('primary')
+  const [routes, setRoutes] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { data: modelsData } = useQuery({
     queryKey: ['user-models'],
     queryFn: async () => requireServerSuccess(await getUserModels()),
+    enabled: open,
+    staleTime: 0,
+  })
+
+  const { data: autoGroupsData } = useQuery({
+    queryKey: ['token-auto-groups'],
+    queryFn: async () => requireServerSuccess(await getTokenAutoGroups()),
     enabled: open,
     staleTime: 0,
   })
@@ -133,6 +145,12 @@ export function ApiKeyCreateDialog({
     () => new Map(groups.map((group) => [group.value, group])),
     [groups]
   )
+  const canUseAuto = Boolean(groupsData?.data && 'auto' in groupsData.data)
+  const maxRoutes =
+    Number.isInteger(autoGroupsData?.data?.max_count) &&
+    Number(autoGroupsData?.data?.max_count) > 0
+      ? Number(autoGroupsData?.data?.max_count)
+      : 5
   const platforms = useMemo(() => {
     const counts = new Map<string, number>()
     for (const group of groups) {
@@ -185,11 +203,57 @@ export function ApiKeyCreateDialog({
     setAllowIps('')
     setAllowUserQuotaQuery(true)
     setPreview(null)
+    setChannelMode('primary')
+    setRoutes([])
   }, [open])
 
   const previewGroup = preview ? groupsByValue.get(preview) : undefined
   const { meta: currencyMeta } = getCurrencyDisplay()
   const currencyLabel = getCurrencyLabel()
+
+  const addRoute = (group: string) => {
+    if (routes.includes(group)) {
+      toast.error(t('This group is already in the smart routing list'))
+      return
+    }
+    if (routes.length >= 1 && !autoGroupsData) {
+      toast.error(t('Loading...'))
+      return
+    }
+    if (routes.length >= 1 && !canUseAuto) {
+      toast.error(
+        t(
+          'A second route needs the Auto group, which is not available to your account.'
+        )
+      )
+      return
+    }
+    if (routes.length >= 1 && maxRoutes < 2) {
+      toast.error(
+        t(
+          'This site allows only one Auto group per key, so another route cannot be added.'
+        )
+      )
+      return
+    }
+    if (routes.length >= maxRoutes) {
+      toast.error(t('Select at most {{max}} Auto groups', { max: maxRoutes }))
+      return
+    }
+    setRoutes((current) => [...current, group])
+  }
+
+  const moveRoute = (index: number, direction: -1 | 1) => {
+    const target = index + direction
+    if (target < 0 || target >= routes.length) return
+    setRoutes((current) => {
+      const next = [...current]
+      const [item] = next.splice(index, 1)
+      if (!item) return current
+      next.splice(target, 0, item)
+      return next
+    })
+  }
 
   const submit = async (group: string) => {
     const trimmedName = name.trim()
@@ -223,6 +287,13 @@ export function ApiKeyCreateDialog({
         ? undefined
         : new Date(Date.now() + days * 24 * 60 * 60 * 1000)
     const defaults = getApiKeyFormDefaultValues(false)
+    const routeFields = routeGroupsToApiKeyFields(
+      channelMode === 'smart' ? routes : [group]
+    )
+    if (!routeFields.group) {
+      toast.error(t('Select at least one group for smart routing'))
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -233,14 +304,11 @@ export function ApiKeyCreateDialog({
           remain_quota_dollars: quotaValue,
           unlimited_quota: quotaValue === undefined,
           expired_time: expiredTime,
-          group,
           model_limits: modelLimits,
           allow_ips: allowIps,
           allow_user_quota_query: allowUserQuotaQuery,
-          auto_groups_mode: 'inherit',
-          auto_groups: [],
-          cross_group_retry: false,
           tokenCount: 1,
+          ...routeFields,
         })
       )
       if (!result.success) {
@@ -324,8 +392,22 @@ export function ApiKeyCreateDialog({
           </div>
 
           <div className='flex min-h-0 min-w-0 flex-col border-b md:border-r md:border-b-0'>
-            <div className='flex shrink-0 items-center justify-between border-b px-4 py-3'>
-              <span className='text-sm font-medium'>{t('Primary channel')}</span>
+            <div className='flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3'>
+              <Tabs
+                value={channelMode}
+                onValueChange={(value) => {
+                  if (value === 'primary' || value === 'smart') {
+                    setChannelMode(value)
+                  }
+                }}
+              >
+                <TabsList variant='line' className='h-8'>
+                  <TabsTrigger value='primary'>
+                    {t('Primary channel')}
+                  </TabsTrigger>
+                  <TabsTrigger value='smart'>{t('Smart routing')}</TabsTrigger>
+                </TabsList>
+              </Tabs>
               <span className='text-muted-foreground text-xs'>
                 {t('{{count}} groups', { count: visibleGroups.length })}
               </span>
@@ -391,12 +473,19 @@ export function ApiKeyCreateDialog({
               ) : (
                 <div className='flex flex-col gap-2 px-3 py-3'>
                   {visibleGroups.map((group) => {
-                    const selected = preview === group.value
+                    const selected =
+                      channelMode === 'smart'
+                        ? routes.includes(group.value)
+                        : preview === group.value
                     return (
                       <button
                         key={group.value}
                         type='button'
-                        onClick={() => setPreview(group.value)}
+                        onClick={() =>
+                          channelMode === 'smart'
+                            ? addRoute(group.value)
+                            : setPreview(group.value)
+                        }
                         className={cn(
                           'hover:bg-muted/60 flex w-full items-start gap-3 rounded-lg px-3 py-3 text-start',
                           selected &&
@@ -425,7 +514,20 @@ export function ApiKeyCreateDialog({
           </div>
 
           <div className='flex min-h-0 flex-col gap-4 overflow-y-auto p-4'>
-            {previewGroup ? (
+            {channelMode === 'smart' ? (
+              <SmartRouteOrder
+                routes={routes}
+                groupsByValue={groupsByValue}
+                isSubmitting={isSubmitting}
+                onMove={moveRoute}
+                onRemove={(group) =>
+                  setRoutes((current) =>
+                    current.filter((item) => item !== group)
+                  )
+                }
+                onCreate={() => void submit('')}
+              />
+            ) : previewGroup ? (
               <>
                 <div>
                   <p className='text-muted-foreground text-xs'>
@@ -554,6 +656,105 @@ export function ApiKeyCreateDialog({
         </Collapsible>
       </div>
     </Dialog>
+  )
+}
+
+function SmartRouteOrder(props: {
+  routes: string[]
+  groupsByValue: Map<string, ApiKeyGroupOption>
+  isSubmitting: boolean
+  onMove: (index: number, direction: -1 | 1) => void
+  onRemove: (group: string) => void
+  onCreate: () => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className='flex h-full min-h-0 flex-col gap-3'>
+      <div>
+        <h3 className='text-sm font-medium'>{t('Smart routing')}</h3>
+        <p className='text-muted-foreground mt-1 text-xs leading-5'>
+          {t(
+            'Routes are tried from top to bottom. A group with no channel for the model is skipped immediately. If a group has a channel but the request fails, its retries are used up before the next group. Billing uses the group that actually serves the request.'
+          )}
+        </p>
+      </div>
+      {props.routes.length === 0 ? (
+        <p className='text-muted-foreground text-sm'>
+          {t('No routes yet. Choose a group to add it.')}
+        </p>
+      ) : (
+        <ol className='flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto'>
+          {props.routes.map((group, index) => {
+            const option = props.groupsByValue.get(group)
+            return (
+              <li
+                key={group}
+                className='flex items-start gap-2 rounded-lg border px-2 py-2'
+              >
+                <div className='min-w-0 flex-1'>
+                  <p className='text-muted-foreground text-xs'>
+                    {t('Route {{index}}', { index: index + 1 })}
+                  </p>
+                  <p className='truncate text-sm font-medium'>
+                    {option?.label ?? group}
+                  </p>
+                  {option?.desc && option.desc !== option.label ? (
+                    <p className='text-muted-foreground line-clamp-2 text-xs'>
+                      {option.desc}
+                    </p>
+                  ) : null}
+                </div>
+                <span className='shrink-0 text-sm font-medium tabular-nums'>
+                  {option?.ratio !== undefined
+                    ? formatApiKeyGroupRatio(option.ratio)
+                    : ''}
+                </span>
+                <div className='flex shrink-0 flex-col'>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon-sm'
+                    aria-label={t('Move route up')}
+                    disabled={index === 0}
+                    onClick={() => props.onMove(index, -1)}
+                  >
+                    <ArrowUp aria-hidden='true' />
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon-sm'
+                    aria-label={t('Move route down')}
+                    disabled={index === props.routes.length - 1}
+                    onClick={() => props.onMove(index, 1)}
+                  >
+                    <ArrowDown aria-hidden='true' />
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon-sm'
+                    aria-label={t('Remove route {{group}}', { group })}
+                    onClick={() => props.onRemove(group)}
+                  >
+                    <X aria-hidden='true' />
+                  </Button>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+      <Button
+        type='button'
+        className='mt-auto'
+        disabled={props.isSubmitting || props.routes.length === 0}
+        onClick={props.onCreate}
+      >
+        {t('Create')}
+      </Button>
+    </div>
   )
 }
 
