@@ -26,6 +26,7 @@ export type RetrySettings = {
 export type HealthSettings = {
   ChannelDisableThreshold: string
   AutomaticDisableChannelEnabled: boolean
+  AutomaticDisableFailureCount: number
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
   AutomaticDisableStatusCodes: string
@@ -52,6 +53,7 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
     '100-199,300-399,401-407,409-499,500-503,505-523,525-599',
   ChannelDisableThreshold: '',
   AutomaticDisableChannelEnabled: false,
+  AutomaticDisableFailureCount: 1,
   AutomaticEnableChannelEnabled: false,
   AutomaticDisableKeywords: '',
   AutomaticDisableStatusCodes: '401',
