@@ -542,7 +542,7 @@ export function ChannelHealthSection({
                     </FormControl>
                     <FormDescription>
                       {t(
-                        'Scheduled health checks disable a channel after this many consecutive matches of the status codes or failure keywords. A successful request or health check resets the count. Use 1 to disable on the first check.'
+                        'User requests and scheduled health checks each keep their own consecutive count for status codes and failure keywords. A success resets only that path. Use 1 to disable on the first match.'
                       )}
                     </FormDescription>
                     <FormMessage />
