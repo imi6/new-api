@@ -951,13 +951,23 @@ func testChannelForHealthCheck(ctx context.Context, channel *model.Channel, test
 
 	if newAPIError == nil {
 		summary.Succeeded++
+		if result.localErr == nil && result.context != nil {
+			service.ClearChannelDisableStreak(channel.Id, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey))
+		}
 	} else {
 		summary.Failed++
 	}
 
 	if allowDisable && isChannelEnabled && shouldBanChannel && channel.GetAutoBan() {
-		processChannelError(result.context, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError, nil)
-		summary.Disabled++
+		usingKey := ""
+		if result.context != nil {
+			usingKey = common.GetContextKeyString(result.context, constant.ContextKeyChannelKey)
+		}
+		if service.HealthCheckFailureDisables(channel.Id, usingKey, true, newAPIError) {
+			if processChannelError(result.context, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, usingKey, channel.GetAutoBan()), newAPIError, nil) {
+				summary.Disabled++
+			}
+		}
 	}
 
 	if result.localErr == nil && !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status) {
