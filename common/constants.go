@@ -132,6 +132,10 @@ var QuotaForInviter = 0
 var QuotaForInvitee = 0
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
+
+// AutomaticDisableFailureCount is how many consecutive matching failures are
+// required before a channel is automatically disabled. 1 keeps the first match.
+var AutomaticDisableFailureCount = 1
 var AutomaticEnableChannelEnabled = false
 var QuotaRemindEnabled = true
 var QuotaRemindThreshold = 1000
