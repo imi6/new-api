@@ -142,6 +142,9 @@ func MarkRequestPolicySuccess(c *gin.Context, stream *relaycommon.StreamStatus) 
 		channelID = c.GetInt("channel_id")
 	}
 	state.AddEvent(PolicyEvent{ChannelID: channelID, Decision: decision})
+	if state.Successful && c != nil {
+		ClearChannelDisableStreak(channelID, common.GetContextKeyString(c, constant.ContextKeyChannelKey))
+	}
 }
 
 // Rules explicitly inherit the global default or override it. Rules without a
