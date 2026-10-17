@@ -127,7 +127,7 @@ func TestProcessChannelErrorMasksDisableReasonAndNotification(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
 }
 
-func TestHealthCheckRequiresConsecutiveMatchingFailures(t *testing.T) {
+func TestConsecutiveMatchingFailuresApplyToUserRequests(t *testing.T) {
 	previousDB, previousType := model.DB, common.MainDatabaseType()
 	previousCache, previousRedis := common.MemoryCacheEnabled, common.RedisEnabled
 	previousAutoDisable, previousCount := common.AutomaticDisableChannelEnabled, common.AutomaticDisableFailureCount
@@ -156,37 +156,61 @@ func TestHealthCheckRequiresConsecutiveMatchingFailures(t *testing.T) {
 	common.AutomaticDisableFailureCount = 3
 	constant.ErrorLogEnabled = false
 	require.NoError(t, operation_setting.AutomaticDisableStatusCodesFromString("502"))
-	userChannel := &model.Channel{Name: "user-request", Key: "fixture-key", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
-	healthChannel := &model.Channel{Name: "health-check", Key: "fixture-key-2", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
-	require.NoError(t, userChannel.Insert())
-	require.NoError(t, healthChannel.Insert())
+	channel := &model.Channel{Name: "streak", Key: "fixture-key", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
+	timeoutChannel := &model.Channel{Name: "slow", Key: "fixture-key-2", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
+	require.NoError(t, channel.Insert())
+	require.NoError(t, timeoutChannel.Insert())
 	t.Cleanup(func() {
-		ClearChannelDisableStreak(userChannel.Id, "")
-		ClearChannelDisableStreak(healthChannel.Id, "")
+		ClearChannelDisableStreak(channel.Id, "", DisableStreakRequest)
+		ClearChannelDisableStreak(channel.Id, "", DisableStreakHealth)
+		ClearChannelDisableStreak(timeoutChannel.Id, "", DisableStreakRequest)
+		ClearChannelDisableStreak(timeoutChannel.Id, "", DisableStreakHealth)
 	})
 	root := &model.User{Username: "streak-root", Role: common.RoleRootUser, Status: common.UserStatusEnabled}
 	require.NoError(t, database.Create(root).Error)
 	failure := types.NewOpenAIError(errors.New("Upstream service temporarily unavailable"), types.ErrorCodeBadResponseStatusCode, http.StatusBadGateway)
+	channelError := types.ChannelError{ChannelId: channel.Id, ChannelName: channel.Name, AutoBan: true}
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	require.True(t, ProcessChannelError(c, types.ChannelError{ChannelId: userChannel.Id, ChannelName: userChannel.Name, AutoBan: true}, failure, nil))
-	require.Eventually(t, func() bool {
-		loaded, err := model.GetChannelById(userChannel.Id, true)
-		return err == nil && loaded.Status == common.ChannelStatusAutoDisabled
-	}, 2*time.Second, 20*time.Millisecond, "a user request still disables the channel on the first matching failure")
-
-	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
-	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
-	c.Set("channel_id", healthChannel.Id)
-	MarkRequestPolicySuccess(c, nil)
-	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
-	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
-	assert.True(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure), "the third consecutive health check disables the channel")
-	timeout := types.NewOpenAIError(errors.New("response time 130.00s exceeds the threshold of 120.00s"), types.ErrorCodeChannelResponseTimeExceeded, http.StatusRequestTimeout)
-	assert.True(t, HealthCheckFailureDisables(healthChannel.Id, "", true, timeout), "a health check that exceeds the time limit still matches on the first failure")
-	loaded, err := model.GetChannelById(healthChannel.Id, true)
+	assert.False(t, ProcessChannelError(c, channelError, failure, nil), "one user-request failure does not disable the channel")
+	MarkHealthCheckDisableStreak(c)
+	assert.False(t, ProcessChannelError(c, channelError, failure, nil))
+	assert.False(t, ProcessChannelError(c, channelError, failure, nil), "two health-check failures do not combine with the user request")
+	loaded, err := model.GetChannelById(channel.Id, true)
 	require.NoError(t, err)
-	assert.Equal(t, common.ChannelStatusEnabled, loaded.Status, "the health-check counter does not itself change the channel")
+	assert.Equal(t, common.ChannelStatusEnabled, loaded.Status)
+
+	c.Set(disableStreakScopeContextKey, DisableStreakRequest)
+	assert.False(t, ProcessChannelError(c, channelError, failure, nil))
+	require.True(t, ProcessChannelError(c, channelError, failure, nil), "the third consecutive user-request failure disables the channel")
+	require.Eventually(t, func() bool {
+		loaded, err := model.GetChannelById(channel.Id, true)
+		return err == nil && loaded.Status == common.ChannelStatusAutoDisabled
+	}, 2*time.Second, 20*time.Millisecond)
+
+	healthChannel := &model.Channel{Name: "health", Key: "fixture-key-3", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
+	require.NoError(t, healthChannel.Insert())
+	t.Cleanup(func() { ClearChannelDisableStreak(healthChannel.Id, "", DisableStreakHealth) })
+	healthError := types.ChannelError{ChannelId: healthChannel.Id, ChannelName: healthChannel.Name, AutoBan: true}
+	c.Set(disableStreakScopeContextKey, DisableStreakHealth)
+	assert.False(t, ProcessChannelError(c, healthError, failure, nil))
+	assert.False(t, ProcessChannelError(c, healthError, failure, nil))
+	c.Set("channel_id", healthChannel.Id)
+	c.Set(disableStreakScopeContextKey, DisableStreakRequest)
+	MarkRequestPolicySuccess(c, nil)
+	c.Set(disableStreakScopeContextKey, DisableStreakHealth)
+	require.True(t, ProcessChannelError(c, healthError, failure, nil), "a successful user request does not reset the health-check count")
+	require.Eventually(t, func() bool {
+		loaded, err := model.GetChannelById(healthChannel.Id, true)
+		return err == nil && loaded.Status == common.ChannelStatusAutoDisabled
+	}, 2*time.Second, 20*time.Millisecond)
+
+	timeout := types.NewOpenAIError(errors.New("response time 130.00s exceeds the threshold of 120.00s"), types.ErrorCodeChannelResponseTimeExceeded, http.StatusRequestTimeout)
+	require.True(t, ProcessChannelError(c, types.ChannelError{ChannelId: timeoutChannel.Id, ChannelName: timeoutChannel.Name, AutoBan: true}, timeout, nil))
+	require.Eventually(t, func() bool {
+		loaded, err := model.GetChannelById(timeoutChannel.Id, true)
+		return err == nil && loaded.Status == common.ChannelStatusAutoDisabled
+	}, 2*time.Second, 20*time.Millisecond, "a health check past the time limit still disables on the first failure")
 }
 
 // Only addresses the admin configured are masked: a channel on the base URL

@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 )
 
 const channelDisableStreakWindow = 30 * time.Minute
@@ -24,47 +27,84 @@ var (
 	channelDisableStreakMu sync.Mutex
 )
 
-func channelDisableStreakID(channelID int, usingKey string) string {
+const (
+	// DisableStreakRequest counts user-request failures separately from health checks.
+	DisableStreakRequest = "request"
+	// DisableStreakHealth counts scheduled health-check failures separately from user requests.
+	DisableStreakHealth = "health"
+
+	disableStreakScopeContextKey = "channel_disable_streak_scope"
+)
+
+func channelDisableStreakID(channelID int, usingKey string, scope string) string {
+	if scope == "" {
+		scope = DisableStreakRequest
+	}
+	base := strconv.Itoa(channelID) + ":" + scope
 	if usingKey == "" {
-		return strconv.Itoa(channelID)
+		return base
 	}
 	sum := sha256.Sum256([]byte(usingKey))
-	return strconv.Itoa(channelID) + ":" + hex.EncodeToString(sum[:8])
+	return base + ":" + hex.EncodeToString(sum[:8])
 }
 
 func channelDisableStreakRedisKey(id string) string {
 	return "channel:disable_streak:" + id
 }
 
-// HealthCheckFailureDisables reports whether a scheduled health check should disable the channel.
-// User-request failures do not use this counter. Matching status codes and failure keywords must
-// occur AutomaticDisableFailureCount times in a row. A successful request or health check clears it.
-// Channel-local errors, including a health check that exceeds the time limit, still match on the first failure.
-func HealthCheckFailureDisables(channelID int, usingKey string, autoBan bool, err *types.NewAPIError) bool {
-	return channelFailureDisables(channelID, usingKey, autoBan, err)
+// MarkHealthCheckDisableStreak makes later failure accounting on this context
+// count scheduled health checks, not user requests.
+func MarkHealthCheckDisableStreak(c *gin.Context) {
+	if c != nil {
+		c.Set(disableStreakScopeContextKey, DisableStreakHealth)
+	}
 }
 
-func channelFailureDisables(channelID int, usingKey string, autoBan bool, err *types.NewAPIError) bool {
-	if !ShouldDisableChannel(err) || !autoBan {
+func disableStreakScope(c *gin.Context) string {
+	if c != nil {
+		if value, exists := c.Get(disableStreakScopeContextKey); exists {
+			if scope, ok := value.(string); ok && scope != "" {
+				return scope
+			}
+		}
+	}
+	return DisableStreakRequest
+}
+
+// channelFailureDisables reports whether this matching failure should disable the channel.
+// User requests and scheduled health checks keep separate streaks. Matching status codes and
+// failure keywords must occur AutomaticDisableFailureCount times in a row on the same path.
+// A success clears only that path. Channel-local errors, including a health check past the
+// time limit, still match on the first failure.
+func channelFailureDisables(channelID int, usingKey string, autoBan bool, err *types.NewAPIError, scope string) bool {
+	if !matchingFailureUsesStreak(autoBan, err) {
+		return ShouldDisableChannel(err) && autoBan
+	}
+	if advanceChannelDisableStreak(channelID, usingKey, scope) < common.AutomaticDisableFailureCount {
 		return false
 	}
-	needed := common.AutomaticDisableFailureCount
-	if needed < 1 {
-		needed = 1
-	}
-	if types.IsChannelError(err) || needed <= 1 {
-		return true
-	}
-	if advanceChannelDisableStreak(channelID, usingKey) < needed {
-		return false
-	}
-	ClearChannelDisableStreak(channelID, usingKey)
+	ClearChannelDisableStreak(channelID, usingKey, scope)
 	return true
 }
 
-// ClearChannelDisableStreak forgets consecutive matching failures after a successful request or health check.
-func ClearChannelDisableStreak(channelID int, usingKey string) {
-	id := channelDisableStreakID(channelID, usingKey)
+// channelFailureWouldDisable predicts the decision without recording another failure.
+func channelFailureWouldDisable(channelID int, usingKey string, autoBan bool, err *types.NewAPIError, scope string) bool {
+	if !matchingFailureUsesStreak(autoBan, err) {
+		return ShouldDisableChannel(err) && autoBan
+	}
+	return currentChannelDisableStreak(channelID, usingKey, scope)+1 >= common.AutomaticDisableFailureCount
+}
+
+func matchingFailureUsesStreak(autoBan bool, err *types.NewAPIError) bool {
+	if !ShouldDisableChannel(err) || !autoBan || types.IsChannelError(err) {
+		return false
+	}
+	return common.AutomaticDisableFailureCount > 1
+}
+
+// ClearChannelDisableStreak forgets consecutive matching failures for one path after a success on that path.
+func ClearChannelDisableStreak(channelID int, usingKey string, scope string) {
+	id := channelDisableStreakID(channelID, usingKey, scope)
 	if common.RedisEnabled && common.RDB != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
@@ -77,8 +117,34 @@ func ClearChannelDisableStreak(channelID int, usingKey string) {
 	channelDisableStreakMu.Unlock()
 }
 
-func advanceChannelDisableStreak(channelID int, usingKey string) int {
-	id := channelDisableStreakID(channelID, usingKey)
+func currentChannelDisableStreak(channelID int, usingKey string, scope string) int {
+	id := channelDisableStreakID(channelID, usingKey, scope)
+	if common.RedisEnabled && common.RDB != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		value, err := common.RDB.Get(ctx, channelDisableStreakRedisKey(id)).Result()
+		if err == nil {
+			count, convErr := strconv.Atoi(value)
+			if convErr == nil && count > 0 {
+				return count
+			}
+			return 0
+		}
+		if errors.Is(err, redis.Nil) {
+			return 0
+		}
+	}
+	channelDisableStreakMu.Lock()
+	defer channelDisableStreakMu.Unlock()
+	entry, ok := channelDisableStreaks[id]
+	if !ok || !entry.expires.After(time.Now()) {
+		return 0
+	}
+	return entry.count
+}
+
+func advanceChannelDisableStreak(channelID int, usingKey string, scope string) int {
+	id := channelDisableStreakID(channelID, usingKey, scope)
 	if common.RedisEnabled && common.RDB != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
