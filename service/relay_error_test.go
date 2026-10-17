@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	kitdto "github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
@@ -124,6 +125,68 @@ func TestProcessChannelErrorMasksDisableReasonAndNotification(t *testing.T) {
 	assert.NotContains(t, notification.Content, "review-token")
 	assert.NotContains(t, notification.Content, "review-secret")
 	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
+}
+
+func TestHealthCheckRequiresConsecutiveMatchingFailures(t *testing.T) {
+	previousDB, previousType := model.DB, common.MainDatabaseType()
+	previousCache, previousRedis := common.MemoryCacheEnabled, common.RedisEnabled
+	previousAutoDisable, previousCount := common.AutomaticDisableChannelEnabled, common.AutomaticDisableFailureCount
+	previousErrorLog := constant.ErrorLogEnabled
+	previousCodes := operation_setting.AutomaticDisableStatusCodesToString()
+	t.Cleanup(func() {
+		model.DB = previousDB
+		common.SetMainDatabaseType(previousType)
+		common.MemoryCacheEnabled, common.RedisEnabled = previousCache, previousRedis
+		common.AutomaticDisableChannelEnabled = previousAutoDisable
+		common.AutomaticDisableFailureCount = previousCount
+		constant.ErrorLogEnabled = previousErrorLog
+		require.NoError(t, operation_setting.AutomaticDisableStatusCodesFromString(previousCodes))
+	})
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := database.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	require.NoError(t, database.AutoMigrate(&model.Channel{}, &model.Ability{}, &model.User{}))
+	model.DB = database
+	common.SetMainDatabaseType(common.DatabaseTypeSQLite)
+	common.MemoryCacheEnabled, common.RedisEnabled = false, false
+	common.AutomaticDisableChannelEnabled = true
+	common.AutomaticDisableFailureCount = 3
+	constant.ErrorLogEnabled = false
+	require.NoError(t, operation_setting.AutomaticDisableStatusCodesFromString("502"))
+	userChannel := &model.Channel{Name: "user-request", Key: "fixture-key", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
+	healthChannel := &model.Channel{Name: "health-check", Key: "fixture-key-2", Type: 1, Status: common.ChannelStatusEnabled, Group: "default", Models: "claude-sonnet-5-5"}
+	require.NoError(t, userChannel.Insert())
+	require.NoError(t, healthChannel.Insert())
+	t.Cleanup(func() {
+		ClearChannelDisableStreak(userChannel.Id, "")
+		ClearChannelDisableStreak(healthChannel.Id, "")
+	})
+	root := &model.User{Username: "streak-root", Role: common.RoleRootUser, Status: common.UserStatusEnabled}
+	require.NoError(t, database.Create(root).Error)
+	failure := types.NewOpenAIError(errors.New("Upstream service temporarily unavailable"), types.ErrorCodeBadResponseStatusCode, http.StatusBadGateway)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+
+	require.True(t, ProcessChannelError(c, types.ChannelError{ChannelId: userChannel.Id, ChannelName: userChannel.Name, AutoBan: true}, failure, nil))
+	require.Eventually(t, func() bool {
+		loaded, err := model.GetChannelById(userChannel.Id, true)
+		return err == nil && loaded.Status == common.ChannelStatusAutoDisabled
+	}, 2*time.Second, 20*time.Millisecond, "a user request still disables the channel on the first matching failure")
+
+	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
+	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
+	c.Set("channel_id", healthChannel.Id)
+	MarkRequestPolicySuccess(c, nil)
+	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
+	assert.False(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure))
+	assert.True(t, HealthCheckFailureDisables(healthChannel.Id, "", true, failure), "the third consecutive health check disables the channel")
+	timeout := types.NewOpenAIError(errors.New("response time 130.00s exceeds the threshold of 120.00s"), types.ErrorCodeChannelResponseTimeExceeded, http.StatusRequestTimeout)
+	assert.True(t, HealthCheckFailureDisables(healthChannel.Id, "", true, timeout), "a health check that exceeds the time limit still matches on the first failure")
+	loaded, err := model.GetChannelById(healthChannel.Id, true)
+	require.NoError(t, err)
+	assert.Equal(t, common.ChannelStatusEnabled, loaded.Status, "the health-check counter does not itself change the channel")
 }
 
 // Only addresses the admin configured are masked: a channel on the base URL
