@@ -44,6 +44,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { getUserGroups, getUserModels } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
+import { quotaUnitsToEditableAmount } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import {
   requireServerSuccess,
@@ -51,13 +52,15 @@ import {
 } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
-import { createApiKey, getTokenAutoGroups } from '../api'
-import { ERROR_MESSAGES } from '../constants'
+import { createApiKey, getApiKey, getTokenAutoGroups, updateApiKey } from '../api'
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
   getApiKeyFormDefaultValues,
   routeGroupsToApiKeyFields,
+  transformApiKeyToFormDefaults,
   transformFormDataToPayload,
 } from '../lib'
+import type { ApiKey } from '../types'
 import {
   apiKeyGroupPlatform,
   formatApiKeyGroupRatio,
@@ -68,6 +71,7 @@ import { useApiKeys } from './api-keys-provider'
 type ApiKeyCreateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  currentRow?: ApiKey
 }
 
 type SortOrder = 'default' | 'ratio-asc' | 'ratio-desc' | 'name'
@@ -89,12 +93,17 @@ function platformLabel(
 export function ApiKeyCreateDialog({
   open,
   onOpenChange,
+  currentRow,
 }: ApiKeyCreateDialogProps) {
   const { t } = useTranslation()
   const { triggerRefresh } = useApiKeys()
+  const isUpdate = currentRow !== undefined
   const [name, setName] = useState('')
   const [quota, setQuota] = useState('')
   const [validDays, setValidDays] = useState('')
+  const [loadedDays, setLoadedDays] = useState('')
+  const [loadedExpiry, setLoadedExpiry] = useState<Date | undefined>()
+  const [loadedKeyId, setLoadedKeyId] = useState<number | null>(null)
   const [platform, setPlatform] = useState(ALL_PLATFORMS)
   const [search, setSearch] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('default')
@@ -118,6 +127,13 @@ export function ApiKeyCreateDialog({
     queryKey: ['token-auto-groups'],
     queryFn: async () => requireServerSuccess(await getTokenAutoGroups()),
     enabled: open,
+    staleTime: 0,
+  })
+
+  const { data: apiKeyData } = useQuery({
+    queryKey: ['api-key', currentRow?.id],
+    queryFn: async () => requireServerSuccess(await getApiKey(currentRow?.id ?? 0)),
+    enabled: open && isUpdate,
     staleTime: 0,
   })
 
@@ -195,6 +211,9 @@ export function ApiKeyCreateDialog({
     setName('')
     setQuota('')
     setValidDays('')
+    setLoadedDays('')
+    setLoadedExpiry(undefined)
+    setLoadedKeyId(null)
     setPlatform(ALL_PLATFORMS)
     setSearch('')
     setSortOrder('default')
@@ -206,6 +225,69 @@ export function ApiKeyCreateDialog({
     setChannelMode('primary')
     setRoutes([])
   }, [open])
+
+  useEffect(() => {
+    if (!open || !currentRow || loadedKeyId === currentRow.id) return
+    if (!apiKeyData?.success || !apiKeyData.data) return
+    const defaults = transformApiKeyToFormDefaults(
+      apiKeyData.data,
+      groups.map((group) => group.value),
+      maxRoutes
+    )
+    if (!groups.length) return
+    if (
+      defaults.group === 'auto' &&
+      defaults.auto_groups.length === 0 &&
+      !autoGroupsData
+    ) {
+      return
+    }
+    setName(defaults.name)
+    setQuota(
+      defaults.unlimited_quota
+        ? ''
+        : String(
+            quotaUnitsToEditableAmount(
+              apiKeyData.data.unlimited_quota ? 0 : apiKeyData.data.remain_quota
+            )
+          )
+    )
+    if (defaults.expired_time) {
+      const remainingDays = Math.max(
+        1,
+        Math.ceil(
+          (defaults.expired_time.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+        )
+      )
+      setValidDays(String(remainingDays))
+      setLoadedDays(String(remainingDays))
+      setLoadedExpiry(defaults.expired_time)
+    } else {
+      setValidDays('')
+      setLoadedDays('')
+      setLoadedExpiry(undefined)
+    }
+    setModelLimits(defaults.model_limits)
+    setAllowIps(defaults.allow_ips)
+    setAllowUserQuotaQuery(defaults.allow_user_quota_query)
+    if (defaults.group === 'auto' && defaults.auto_groups.length > 0) {
+      setChannelMode('smart')
+      setRoutes(defaults.auto_groups)
+      setPreview(null)
+    } else if (defaults.group === 'auto') {
+      const inherited = (autoGroupsData?.data?.groups || []).filter((group) =>
+        groups.some((item) => item.value === group)
+      )
+      setChannelMode('smart')
+      setRoutes(inherited)
+      setPreview(null)
+    } else if (defaults.group) {
+      setChannelMode('primary')
+      setPreview(defaults.group)
+      setRoutes([])
+    }
+    setLoadedKeyId(currentRow.id)
+  }, [apiKeyData, autoGroupsData, currentRow, groups, loadedKeyId, maxRoutes, open])
 
   const previewGroup = preview ? groupsByValue.get(preview) : undefined
   const { meta: currencyMeta } = getCurrencyDisplay()
@@ -283,9 +365,11 @@ export function ApiKeyCreateDialog({
     }
 
     const expiredTime =
-      days === undefined
-        ? undefined
-        : new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+      isUpdate && daysText === loadedDays
+        ? loadedExpiry
+        : days === undefined
+          ? undefined
+          : new Date(Date.now() + days * 24 * 60 * 60 * 1000)
     const defaults = getApiKeyFormDefaultValues(false)
     const routeFields = routeGroupsToApiKeyFields(
       channelMode === 'smart' ? routes : [group]
@@ -297,25 +381,33 @@ export function ApiKeyCreateDialog({
 
     setIsSubmitting(true)
     try {
-      const result = await createApiKey(
-        transformFormDataToPayload({
-          ...defaults,
-          name: trimmedName,
-          remain_quota_dollars: quotaValue,
-          unlimited_quota: quotaValue === undefined,
-          expired_time: expiredTime,
-          model_limits: modelLimits,
-          allow_ips: allowIps,
-          allow_user_quota_query: allowUserQuotaQuery,
-          tokenCount: 1,
-          ...routeFields,
-        })
-      )
+      const payload = transformFormDataToPayload({
+        ...defaults,
+        name: trimmedName,
+        remain_quota_dollars: quotaValue,
+        unlimited_quota: quotaValue === undefined,
+        expired_time: expiredTime,
+        model_limits: modelLimits,
+        allow_ips: allowIps,
+        allow_user_quota_query: allowUserQuotaQuery,
+        tokenCount: 1,
+        ...routeFields,
+      })
+      const result = currentRow
+        ? await updateApiKey({ ...payload, id: currentRow.id })
+        : await createApiKey(payload)
       if (!result.success) {
-        handleServerError(result, t(ERROR_MESSAGES.CREATE_FAILED))
+        handleServerError(
+          result,
+          t(isUpdate ? ERROR_MESSAGES.UPDATE_FAILED : ERROR_MESSAGES.CREATE_FAILED)
+        )
         return
       }
-      toast.success(t('Successfully created {{count}} API Key(s)', { count: 1 }))
+      toast.success(
+        isUpdate
+          ? t(SUCCESS_MESSAGES.API_KEY_UPDATED)
+          : t('Successfully created {{count}} API Key(s)', { count: 1 })
+      )
       onOpenChange(false)
       triggerRefresh()
     } catch (error) {
@@ -329,7 +421,7 @@ export function ApiKeyCreateDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title={t('Create API Key')}
+      title={isUpdate ? t('Update API Key') : t('Create API Key')}
       contentClassName='sm:max-w-6xl'
       contentHeight='auto'
     >
@@ -526,6 +618,7 @@ export function ApiKeyCreateDialog({
                   )
                 }
                 onCreate={() => void submit('')}
+                actionLabel={isUpdate ? t('Save changes') : t('Create')}
               />
             ) : previewGroup ? (
               <>
@@ -563,7 +656,7 @@ export function ApiKeyCreateDialog({
                   disabled={isSubmitting}
                   onClick={() => void submit(previewGroup.value)}
                 >
-                  {t('Set as primary channel')}
+                  {isUpdate ? t('Save changes') : t('Set as primary channel')}
                 </Button>
               </>
             ) : (
@@ -666,6 +759,7 @@ function SmartRouteOrder(props: {
   onMove: (index: number, direction: -1 | 1) => void
   onRemove: (group: string) => void
   onCreate: () => void
+  actionLabel: string
 }) {
   const { t } = useTranslation()
 
@@ -752,7 +846,7 @@ function SmartRouteOrder(props: {
         disabled={props.isSubmitting || props.routes.length === 0}
         onClick={props.onCreate}
       >
-        {t('Create')}
+        {props.actionLabel}
       </Button>
     </div>
   )
