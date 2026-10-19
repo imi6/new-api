@@ -18,7 +18,6 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { ApiKeyCreateDialog } from './api-key-create-dialog'
 import { ApiKeysDeleteDialog } from './api-keys-delete-dialog'
-import { ApiKeysMutateDrawer } from './api-keys-mutate-drawer'
 import { useApiKeys } from './api-keys-provider'
 import { CCSwitchDialog } from './dialogs/cc-switch-dialog'
 
@@ -28,11 +27,7 @@ export function ApiKeysDialogs() {
   return (
     <>
       <ApiKeyCreateDialog
-        open={open === 'create'}
-        onOpenChange={(isOpen) => !isOpen && setOpen(null)}
-      />
-      <ApiKeysMutateDrawer
-        open={open === 'update'}
+        open={open === 'create' || open === 'update'}
         onOpenChange={(isOpen) => !isOpen && setOpen(null)}
         currentRow={open === 'update' ? currentRow || undefined : undefined}
       />
