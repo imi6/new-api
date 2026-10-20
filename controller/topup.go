@@ -26,10 +26,33 @@ import (
 func GetTopUpInfo(c *gin.Context) {
 	complianceConfirmed := operation_setting.IsPaymentComplianceConfirmed()
 
-	// 获取支付方式
+	// 获取支付方式。未填写站点的易支付方式仍走第一套商户。
 	payMethods := operation_setting.PayMethods
 	if !complianceConfirmed {
 		payMethods = []map[string]string{}
+	} else {
+		visible := make([]map[string]string, 0, len(payMethods))
+		for _, method := range payMethods {
+			switch method["type"] {
+			case model.PaymentMethodStripe, model.PaymentMethodCreem, model.PaymentMethodWaffo, model.PaymentMethodWaffoPancake:
+				visible = append(visible, method)
+			default:
+				if operation_setting.EpayConfigured(operation_setting.PayMethodGateway(method["type"])) {
+					visible = append(visible, method)
+				}
+			}
+		}
+		payMethods = visible
+	}
+
+	epayReady := false
+	for _, method := range payMethods {
+		switch method["type"] {
+		case model.PaymentMethodStripe, model.PaymentMethodCreem, model.PaymentMethodWaffo, model.PaymentMethodWaffoPancake:
+			continue
+		}
+		epayReady = true
+		break
 	}
 
 	// 如果启用了 Stripe 支付，添加到支付方法列表
@@ -98,7 +121,7 @@ func GetTopUpInfo(c *gin.Context) {
 	}
 
 	data := gin.H{
-		"enable_online_topup":              isEpayTopUpEnabled(),
+		"enable_online_topup":              epayReady,
 		"enable_stripe_topup":              isStripeTopUpEnabled(),
 		"enable_creem_topup":               isCreemTopUpEnabled(),
 		"enable_waffo_topup":               enableWaffo,
@@ -131,24 +154,30 @@ type EpayRequest struct {
 }
 
 type AmountRequest struct {
-	Amount int64 `json:"amount"`
+	Amount        int64  `json:"amount"`
+	PaymentMethod string `json:"payment_method"`
 }
 
 func GetEpayClient() *epay.Client {
-	if operation_setting.PayAddress == "" || operation_setting.EpayId == "" || operation_setting.EpayKey == "" {
+	return GetEpayClientFor(operation_setting.EpayGatewayPrimary)
+}
+
+func GetEpayClientFor(gateway string) *epay.Client {
+	address, id, key := operation_setting.EpayCredentials(gateway)
+	if address == "" || id == "" || key == "" {
 		return nil
 	}
 	withUrl, err := epay.NewClient(&epay.Config{
-		PartnerID: operation_setting.EpayId,
-		Key:       operation_setting.EpayKey,
-	}, operation_setting.PayAddress)
+		PartnerID: id,
+		Key:       key,
+	}, address)
 	if err != nil {
 		return nil
 	}
 	return withUrl
 }
 
-func getPayMoney(amount int64, group string) float64 {
+func getPayMoney(amount int64, group string, price float64) float64 {
 	dAmount := decimal.NewFromInt(amount)
 	// 充值金额以“展示类型”为准：
 	// - USD/CNY: 前端传 amount 为金额单位；TOKENS: 前端传 tokens，需要换成 USD 金额
@@ -163,7 +192,10 @@ func getPayMoney(amount int64, group string) float64 {
 	}
 
 	dTopupGroupRatio := decimal.NewFromFloat(topupGroupRatio)
-	dPrice := decimal.NewFromFloat(operation_setting.Price)
+	if price <= 0 {
+		price = operation_setting.Price
+	}
+	dPrice := decimal.NewFromFloat(price)
 	// apply optional preset discount by the original request amount (if configured), default 1.0
 	discount := 1.0
 	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(amount)]; ok {
@@ -296,28 +328,29 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 
-	group, err := model.GetUserGroup(id, true)
-	if err != nil {
-		paymentError(c, common.NewMessage("Failed to get the user group"))
-		return
-	}
-	payMoney := getPayMoney(req.Amount, group)
-	if payMoney < 0.01 {
-		paymentError(c, common.NewMessage("Payment amount is too low"))
-		return
-	}
-
 	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
 		paymentError(c, common.NewMessage("Payment method does not exist"))
 		return
 	}
 
+	group, err := model.GetUserGroup(id, true)
+	if err != nil {
+		paymentError(c, common.NewMessage("Failed to get the user group"))
+		return
+	}
+	gateway := operation_setting.PayMethodGateway(req.PaymentMethod)
+	payMoney := getPayMoney(req.Amount, group, operation_setting.EpayUnitPrice(gateway))
+	if payMoney < 0.01 {
+		paymentError(c, common.NewMessage("Payment amount is too low"))
+		return
+	}
+
 	callBackAddress := service.GetCallbackAddress()
 	returnUrl, _ := url.Parse(paymentReturnPath("/usage-logs"))
-	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
+	notifyUrl, _ := url.Parse(callBackAddress + operation_setting.EpayTopUpNotifyPath(gateway))
 	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
 	tradeNo = fmt.Sprintf("USR%dNO%s", id, tradeNo)
-	client := GetEpayClient()
+	client := GetEpayClientFor(gateway)
 	if client == nil {
 		paymentError(c, common.NewMessage("Payment information has not been configured by administrator"))
 		return
@@ -405,6 +438,14 @@ func UnlockOrder(tradeNo string) {
 }
 
 func EpayNotify(c *gin.Context) {
+	handleEpayNotify(c, operation_setting.EpayGatewayPrimary)
+}
+
+func EpayNotifyByGateway(c *gin.Context) {
+	handleEpayNotify(c, c.Param("id"))
+}
+
+func handleEpayNotify(c *gin.Context, gateway string) {
 	if !isEpayWebhookEnabled() {
 		logger.LogWarn(c.Request.Context(), common.LogText("Epay webhook rejected reason=webhook_disabled path=%q client_ip=%s", c.Request.RequestURI, c.ClientIP()))
 		_, _ = c.Writer.Write([]byte("fail"))
@@ -438,7 +479,7 @@ func EpayNotify(c *gin.Context) {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
 	}
-	client := GetEpayClient()
+	client := GetEpayClientFor(gateway)
 	if client == nil {
 		logger.LogError(c.Request.Context(), common.LogText("Epay client is not initialized path=%q client_ip=%s", c.Request.RequestURI, c.ClientIP()))
 		_, err := c.Writer.Write([]byte("fail"))
@@ -517,7 +558,7 @@ func RequestAmount(c *gin.Context) {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group)
+	payMoney := getPayMoney(req.Amount, group, operation_setting.EpayUnitPrice(operation_setting.PayMethodGateway(req.PaymentMethod)))
 	if payMoney <= 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return

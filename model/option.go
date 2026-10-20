@@ -95,6 +95,7 @@ func InitOptionMap() {
 	common.OptionMap["EpayId"] = ""
 	common.OptionMap["EpayKey"] = ""
 	common.OptionMap["Price"] = strconv.FormatFloat(operation_setting.Price, 'f', -1, 64)
+	common.OptionMap["EpayGateways"] = operation_setting.EpayGateways2JsonString()
 	common.OptionMap["USDExchangeRate"] = strconv.FormatFloat(operation_setting.USDExchangeRate, 'f', -1, 64)
 	common.OptionMap["MinTopUp"] = strconv.Itoa(operation_setting.MinTopUp)
 	common.OptionMap["StripeMinTopUp"] = strconv.Itoa(setting.StripeMinTopUp)
@@ -273,6 +274,9 @@ func validateOptionValue(key string, value string) error {
 	if key == "MaxTokenAutoGroups" {
 		return setting.ValidateMaxTokenAutoGroups(value)
 	}
+	if key == "EpayGateways" {
+		return operation_setting.ValidateEpayGatewaysJSON(value)
+	}
 	return nil
 }
 
@@ -289,6 +293,13 @@ func UpdateOption(key string, value string) error {
 	}
 	if err := validateOptionValue(key, value); err != nil {
 		return err
+	}
+	if key == "EpayGateways" {
+		prepared, err := operation_setting.PrepareEpayGatewaysJSON(value)
+		if err != nil {
+			return err
+		}
+		value = prepared
 	}
 	// Save to database first
 	option := Option{
@@ -319,6 +330,13 @@ func UpdateOptionsBulk(values map[string]string) error {
 			_, err := UpdatePasskeyDomainOptions(values, false, "")
 			return err
 		}
+	}
+	if raw, ok := values["EpayGateways"]; ok {
+		prepared, err := operation_setting.PrepareEpayGatewaysJSON(raw)
+		if err != nil {
+			return err
+		}
+		values["EpayGateways"] = prepared
 	}
 	for key, value := range values {
 		if err := validateOptionValue(key, value); err != nil {
@@ -537,6 +555,8 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.EpayKey = value
 	case "Price":
 		operation_setting.Price, _ = strconv.ParseFloat(value, 64)
+	case "EpayGateways":
+		err = operation_setting.UpdateEpayGatewaysByJsonString(value)
 	case "USDExchangeRate":
 		operation_setting.USDExchangeRate, _ = strconv.ParseFloat(value, 64)
 	case "MinTopUp":

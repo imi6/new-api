@@ -157,16 +157,19 @@ func TestEpayWebhookEnabledRequiresTopUpAndWebhookConfig(t *testing.T) {
 	originalEpayID := operation_setting.EpayId
 	originalEpayKey := operation_setting.EpayKey
 	originalPayMethods := operation_setting.PayMethods
+	originalGateways := operation_setting.EpayGateways
 	t.Cleanup(func() {
 		operation_setting.PayAddress = originalPayAddress
 		operation_setting.EpayId = originalEpayID
 		operation_setting.EpayKey = originalEpayKey
 		operation_setting.PayMethods = originalPayMethods
+		operation_setting.EpayGateways = originalGateways
 	})
 
 	operation_setting.PayAddress = "https://pay.example.com"
 	operation_setting.EpayId = "epay_id"
 	operation_setting.EpayKey = ""
+	operation_setting.EpayGateways = nil
 	operation_setting.PayMethods = []map[string]string{{"type": "alipay"}}
 	require.False(t, isEpayWebhookEnabled())
 
@@ -175,6 +178,15 @@ func TestEpayWebhookEnabledRequiresTopUpAndWebhookConfig(t *testing.T) {
 
 	operation_setting.PayMethods = nil
 	require.False(t, isEpayWebhookEnabled())
+
+	operation_setting.PayAddress = ""
+	operation_setting.EpayId = ""
+	operation_setting.EpayKey = ""
+	operation_setting.EpayGateways = []operation_setting.EpayGateway{{
+		ID: "siteusdt", Name: "USDT", Address: "https://usdt.example.com", EpayID: "usdt_id", EpayKey: "usdt_key", Price: 1,
+	}}
+	operation_setting.PayMethods = []map[string]string{{"type": "usdt", "gateway": "siteusdt"}}
+	require.True(t, isEpayWebhookEnabled())
 }
 
 func TestEpayCallbacksVerifyBeforeSettlement(t *testing.T) {
@@ -282,4 +294,117 @@ func TestEpayCallbacksVerifyBeforeSettlement(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestPayMethodChoosesEpaySiteAndPrice(t *testing.T) {
+	originalMethods := operation_setting.PayMethods
+	originalPrice := operation_setting.Price
+	originalGateways := operation_setting.EpayGateways
+	t.Cleanup(func() {
+		operation_setting.PayMethods = originalMethods
+		operation_setting.Price = originalPrice
+		operation_setting.EpayGateways = originalGateways
+	})
+
+	operation_setting.PayMethods = []map[string]string{
+		{"type": "alipay"},
+		{"type": "wxpay", "gateway": "epay"},
+		{"type": "usdt", "gateway": "siteusdt"},
+		{"type": "trx", "gateway": "sitetrx"},
+		{"type": "custom1", "gateway": "other"},
+	}
+	operation_setting.Price = 7.3
+	operation_setting.EpayGateways = []operation_setting.EpayGateway{
+		{ID: "siteusdt", Name: "USDT", Price: 1},
+		{ID: "sitetrx", Name: "TRX", Price: 2},
+	}
+
+	assert.Equal(t, operation_setting.EpayGatewayPrimary, operation_setting.PayMethodGateway("alipay"))
+	assert.Equal(t, operation_setting.EpayGatewayPrimary, operation_setting.PayMethodGateway("wxpay"))
+	assert.Equal(t, operation_setting.EpayGatewayPrimary, operation_setting.PayMethodGateway("missing"))
+	assert.Equal(t, "siteusdt", operation_setting.PayMethodGateway("usdt"))
+	assert.Equal(t, "sitetrx", operation_setting.PayMethodGateway("trx"))
+	assert.Equal(t, "other", operation_setting.PayMethodGateway("custom1"))
+	assert.Equal(t, 7.3, operation_setting.EpayUnitPrice(operation_setting.EpayGatewayPrimary))
+	assert.Equal(t, 1.0, operation_setting.EpayUnitPrice("siteusdt"))
+	assert.Equal(t, 2.0, operation_setting.EpayUnitPrice("sitetrx"))
+
+	operation_setting.EpayGateways[0].Price = 0
+	assert.Equal(t, 7.3, operation_setting.EpayUnitPrice("siteusdt"))
+}
+
+func TestEpayAddedSiteNotifyUsesItsOwnKey(t *testing.T) {
+	confirmPaymentComplianceForTest(t)
+	originalPayAddress := operation_setting.PayAddress
+	originalEpayID := operation_setting.EpayId
+	originalEpayKey := operation_setting.EpayKey
+	originalGateways := operation_setting.EpayGateways
+	originalPayMethods := operation_setting.PayMethods
+	originalDB := model.DB
+	t.Cleanup(func() {
+		operation_setting.PayAddress = originalPayAddress
+		operation_setting.EpayId = originalEpayID
+		operation_setting.EpayKey = originalEpayKey
+		operation_setting.EpayGateways = originalGateways
+		operation_setting.PayMethods = originalPayMethods
+		model.DB = originalDB
+	})
+
+	operation_setting.PayAddress = "https://pay.example.com"
+	operation_setting.EpayId = "epay_id"
+	operation_setting.EpayKey = "primary-key"
+	operation_setting.EpayGateways = []operation_setting.EpayGateway{
+		{ID: "siteusdt", Name: "USDT", Address: "https://usdt.example.com", EpayID: "usdt_id", EpayKey: "usdt-key", Price: 1},
+		{ID: "sitetrx", Name: "TRX", Address: "https://trx.example.com", EpayID: "trx_id", EpayKey: "trx-key", Price: 1},
+	}
+	operation_setting.PayMethods = []map[string]string{{"type": "usdt", "gateway": "siteusdt"}}
+	model.DB = nil
+
+	signWith := func(pid string, key string) url.Values {
+		params := url.Values{
+			"pid": {pid}, "type": {"usdt"}, "money": {"1.00"},
+			"name": {"item"}, "out_trade_no": {"order"},
+			"trade_status": {"WAIT_BUYER_PAY"}, "sign_type": {"MD5"},
+		}
+		params.Set("sign", epay.MD5String("money=1.00&name=item&out_trade_no=order&pid="+pid+"&trade_status=WAIT_BUYER_PAY&type=usdt", key))
+		return params
+	}
+	router := gin.New()
+	router.POST("/api/user/epay/gateway/:id/notify", EpayNotifyByGateway)
+	for _, tc := range []struct {
+		name string
+		pid  string
+		key  string
+		body string
+	}{
+		{"primary key", "usdt_id", "primary-key", "fail"},
+		{"other site key", "usdt_id", "trx-key", "fail"},
+		{"matching key", "usdt_id", "usdt-key", "success"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			params := signWith(tc.pid, tc.key)
+			request := httptest.NewRequest(http.MethodPost, "/api/user/epay/gateway/siteusdt/notify", strings.NewReader(params.Encode()))
+			request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			recorder := httptest.NewRecorder()
+			require.NotPanics(t, func() { router.ServeHTTP(recorder, request) })
+			assert.Equal(t, http.StatusOK, recorder.Code)
+			assert.Equal(t, tc.body, recorder.Body.String())
+		})
+	}
+}
+
+func TestPrepareEpayGatewaysKeepsExistingKeyAndRejectsBadID(t *testing.T) {
+	originalGateways := operation_setting.EpayGateways
+	t.Cleanup(func() {
+		operation_setting.EpayGateways = originalGateways
+	})
+	operation_setting.EpayGateways = []operation_setting.EpayGateway{{
+		ID: "siteusdt", EpayKey: "kept-secret",
+	}}
+
+	prepared, err := operation_setting.PrepareEpayGatewaysJSON(`[{"id":"siteusdt","name":"USDT","address":"https://usdt.example.com","epay_id":"100","epay_key":"","price":1},{"id":"sitetrx","name":"TRX","address":"https://trx.example.com","epay_id":"200","epay_key":"trx-secret","price":1}]`)
+	require.NoError(t, err)
+	assert.Contains(t, prepared, `"epay_key":"kept-secret"`)
+	assert.Contains(t, prepared, `"epay_key":"trx-secret"`)
+	require.Error(t, operation_setting.ValidateEpayGatewaysJSON(`[{"id":"epay","name":"bad","address":"","epay_id":"","epay_key":"","price":1}]`))
 }

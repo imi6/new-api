@@ -88,6 +88,8 @@ func SetApiRouter(router *gin.Engine) {
 			//userRoute.POST("/tokenlog", middleware.CriticalRateLimit(), controller.TokenLog)
 			userRoute.POST("/epay/notify", anonymousRequestBodyLimit, controller.EpayNotify)
 			userRoute.GET("/epay/notify", controller.EpayNotify)
+			userRoute.POST("/epay/gateway/:id/notify", anonymousRequestBodyLimit, controller.EpayNotifyByGateway)
+			userRoute.GET("/epay/gateway/:id/notify", controller.EpayNotifyByGateway)
 			userRoute.GET("/groups", controller.GetUserGroups)
 
 			selfRoute := userRoute.Group("/")
@@ -209,6 +211,10 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)
 		apiRouter.GET("/subscription/epay/return", controller.SubscriptionEpayReturn)
 		apiRouter.POST("/subscription/epay/return", anonymousRequestBodyLimit, controller.SubscriptionEpayReturn)
+		apiRouter.POST("/subscription/epay/gateway/:id/notify", anonymousRequestBodyLimit, controller.SubscriptionEpayNotifyByGateway)
+		apiRouter.GET("/subscription/epay/gateway/:id/notify", controller.SubscriptionEpayNotifyByGateway)
+		apiRouter.GET("/subscription/epay/gateway/:id/return", controller.SubscriptionEpayReturnByGateway)
+		apiRouter.POST("/subscription/epay/gateway/:id/return", anonymousRequestBodyLimit, controller.SubscriptionEpayReturnByGateway)
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{

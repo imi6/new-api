@@ -310,6 +310,7 @@ export type BillingSettings = {
   EpayId: string
   EpayKey: string
   Price: number
+  EpayGateways: string
   MinTopUp: number
   CustomCallbackAddress: string
   PayMethods: string

@@ -73,7 +73,11 @@ export async function requestPaymentAmount(
     calculator = calculators.waffoPancake
   }
 
-  const response = await calculator({ amount: topupAmount })
+  const response = await calculator(
+    calculator === calculators.regular
+      ? { amount: topupAmount, payment_method: paymentType }
+      : { amount: topupAmount }
+  )
   if (!isApiSuccess(response) || !response.data) {
     return 0
   }

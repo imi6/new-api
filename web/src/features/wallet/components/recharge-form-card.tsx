@@ -372,6 +372,13 @@ export function RechargeFormCard({
                             <span className='max-w-full truncate'>
                               {method.name}
                             </span>
+                            {method.bonus_percent && method.bonus_percent > 0 ? (
+                              <span className='text-muted-foreground max-w-full truncate text-[11px] leading-4 font-normal'>
+                                {t('Gift {{percent}}%', {
+                                  percent: method.bonus_percent,
+                                })}
+                              </span>
+                            ) : null}
                             {disabledLabel && (
                               <span className='text-muted-foreground max-w-full truncate text-[11px] leading-4 font-normal'>
                                 {disabledLabel}
