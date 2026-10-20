@@ -357,6 +357,9 @@ func TestRepeatedEpayTypeUsesTheSelectedSite(t *testing.T) {
 	_, ok = operation_setting.FindPayMethod("alipay", "missing")
 	assert.False(t, ok)
 	assert.Equal(t, operation_setting.EpayGatewayPrimary, operation_setting.PayMethodGateway("alipay"))
+	assert.False(t, operation_setting.PayMethodHidden(map[string]string{"type": "alipay"}))
+	assert.True(t, operation_setting.PayMethodHidden(map[string]string{"hidden": "true"}))
+	assert.True(t, operation_setting.PayMethodHidden(map[string]string{"hidden": "1"}))
 }
 
 func TestEpayAddedSiteNotifyUsesItsOwnKey(t *testing.T) {

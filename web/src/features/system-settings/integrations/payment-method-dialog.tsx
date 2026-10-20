@@ -68,6 +68,7 @@ export type PaymentMethodData = {
   color?: string
   gateway?: string
   bonus_percent?: string
+  hidden?: string
 }
 
 type PaymentMethodDialogProps = {
@@ -213,6 +214,9 @@ export function PaymentMethodDialog({
     }
     if (editData?.color) {
       data.color = editData.color
+    }
+    if (editData?.hidden === 'true') {
+      data.hidden = 'true'
     }
     onSave(data)
     form.reset()
