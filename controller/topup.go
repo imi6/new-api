@@ -38,7 +38,7 @@ func GetTopUpInfo(c *gin.Context) {
 			case model.PaymentMethodStripe, model.PaymentMethodCreem, model.PaymentMethodWaffo, model.PaymentMethodWaffoPancake:
 				visible = append(visible, method)
 			default:
-				if operation_setting.EpayConfigured(operation_setting.PayMethodGateway(method["type"])) {
+				if operation_setting.EpayConfigured(operation_setting.NormalizeEpayGateway(method["gateway"])) {
 					visible = append(visible, method)
 				}
 			}
@@ -152,11 +152,13 @@ func GetTopUpInfo(c *gin.Context) {
 type EpayRequest struct {
 	Amount        int64  `json:"amount"`
 	PaymentMethod string `json:"payment_method"`
+	Gateway       string `json:"gateway"`
 }
 
 type AmountRequest struct {
 	Amount        int64  `json:"amount"`
 	PaymentMethod string `json:"payment_method"`
+	Gateway       string `json:"gateway"`
 }
 
 func GetEpayClient() *epay.Client {
@@ -348,17 +350,18 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 
-	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
+	payMethod, ok := operation_setting.FindPayMethod(req.PaymentMethod, req.Gateway)
+	if !ok {
 		paymentError(c, common.NewMessage("Payment method does not exist"))
 		return
 	}
-
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
 	}
-	gateway := operation_setting.PayMethodGateway(req.PaymentMethod)
+	gateway := operation_setting.NormalizeEpayGateway(payMethod["gateway"])
+	epayType := payMethod["type"]
 	payMoney := getPayMoney(req.Amount, group, operation_setting.EpayUnitPrice(gateway))
 	if payMoney < 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
@@ -376,7 +379,7 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 	uri, params, err := client.Purchase(&epay.PurchaseArgs{
-		Type:           req.PaymentMethod,
+		Type:           epayType,
 		ServiceTradeNo: tradeNo,
 		Name:           fmt.Sprintf("TUC%d", req.Amount),
 		Money:          strconv.FormatFloat(payMoney, 'f', 2, 64),
@@ -400,8 +403,9 @@ func RequestEpay(c *gin.Context) {
 		Amount:          amount,
 		Money:           payMoney,
 		TradeNo:         tradeNo,
-		PaymentMethod:   req.PaymentMethod,
+		PaymentMethod:   epayType,
 		PaymentProvider: model.PaymentProviderEpay,
+		Gateway:         gateway,
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
@@ -587,7 +591,12 @@ func RequestAmount(c *gin.Context) {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
 	}
-	payMoney := getPayMoney(req.Amount, group, operation_setting.EpayUnitPrice(operation_setting.PayMethodGateway(req.PaymentMethod)))
+	payMethod, ok := operation_setting.FindPayMethod(req.PaymentMethod, req.Gateway)
+	if !ok {
+		paymentError(c, common.NewMessage("Payment method does not exist"))
+		return
+	}
+	payMoney := getPayMoney(req.Amount, group, operation_setting.EpayUnitPrice(operation_setting.NormalizeEpayGateway(payMethod["gateway"])))
 	if payMoney <= 0.01 {
 		paymentError(c, common.NewMessage("Payment amount is too low"))
 		return

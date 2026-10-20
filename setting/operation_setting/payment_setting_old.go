@@ -73,49 +73,80 @@ func PayMethods2JsonString() string {
 	return string(jsonBytes)
 }
 
-func ContainsPayMethod(method string) bool {
-	for _, payMethod := range PayMethods {
-		if payMethod["type"] == method {
-			return true
+// NormalizeEpayGateway maps an empty gateway to the original Epay site.
+func NormalizeEpayGateway(gateway string) string {
+	gateway = strings.TrimSpace(gateway)
+	if gateway == "" || gateway == EpayGatewayPrimary {
+		return EpayGatewayPrimary
+	}
+	return gateway
+}
+
+func payMethodSite(method map[string]string) string {
+	return NormalizeEpayGateway(method["gateway"])
+}
+
+// FindPayMethod returns the configured method for this Epay type and site.
+// An empty gateway keeps the first method of that type.
+func FindPayMethod(typ, gateway string) (map[string]string, bool) {
+	typ = strings.TrimSpace(typ)
+	if typ == "" {
+		return nil, false
+	}
+	var first map[string]string
+	for _, method := range PayMethods {
+		if strings.TrimSpace(method["type"]) != typ {
+			continue
+		}
+		if first == nil {
+			first = method
+		}
+		if strings.TrimSpace(gateway) != "" && payMethodSite(method) == NormalizeEpayGateway(gateway) {
+			return method, true
 		}
 	}
-	return false
+	if strings.TrimSpace(gateway) == "" && first != nil {
+		return first, true
+	}
+	return nil, false
+}
+
+func ContainsPayMethod(method string) bool {
+	_, ok := FindPayMethod(method, "")
+	return ok
+}
+
+func payMethodBonusPercent(method map[string]string) float64 {
+	raw := strings.TrimSpace(method["bonus_percent"])
+	if raw == "" {
+		return 0
+	}
+	percent, err := strconv.ParseFloat(raw, 64)
+	if err != nil || percent <= 0 || percent > 100 {
+		return 0
+	}
+	return percent
 }
 
 // PayMethodBonusPercent is the extra quota percent for one payment method.
 // 1 means a successful top-up grants 1% more balance. Missing and invalid values grant nothing.
-func PayMethodBonusPercent(method string) float64 {
-	for _, payMethod := range PayMethods {
-		if payMethod["type"] != method {
-			continue
-		}
-		raw := strings.TrimSpace(payMethod["bonus_percent"])
-		if raw == "" {
-			return 0
-		}
-		percent, err := strconv.ParseFloat(raw, 64)
-		if err != nil || percent <= 0 || percent > 100 {
-			return 0
-		}
-		return percent
+// An empty gateway uses the first method of that type.
+func PayMethodBonusPercent(method, gateway string) float64 {
+	payMethod, ok := FindPayMethod(method, gateway)
+	if !ok {
+		return 0
 	}
-	return 0
+	return payMethodBonusPercent(payMethod)
 }
 
-// PayMethodGateway reports which Epay site handles this payment method.
+// PayMethodGateway reports which Epay site handles the first method of this type.
 // A missing value stays on the original site.
 func PayMethodGateway(method string) string {
-	for _, payMethod := range PayMethods {
-		if payMethod["type"] != method {
-			continue
-		}
-		gateway := strings.TrimSpace(payMethod["gateway"])
-		if gateway == "" || gateway == EpayGatewayPrimary {
-			return EpayGatewayPrimary
-		}
-		return gateway
+	payMethod, ok := FindPayMethod(method, "")
+	if !ok {
+		return EpayGatewayPrimary
 	}
-	return EpayGatewayPrimary
+	return payMethodSite(payMethod)
 }
 
 // EpayUnitPrice is the currency charged per USD of balance for one Epay site.
