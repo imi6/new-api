@@ -22,9 +22,12 @@ type TopUp struct {
 	TradeNo         string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
 	PaymentMethod   string  `json:"payment_method" gorm:"type:varchar(50)"`
 	PaymentProvider string  `json:"payment_provider" gorm:"type:varchar(50);default:''"`
-	CreateTime      int64   `json:"create_time"`
-	CompleteTime    int64   `json:"complete_time"`
-	Status          string  `json:"status"`
+	// Gateway is the Epay site used when the order was created. Empty orders
+	// keep the older lookup by payment method type.
+	Gateway      string `json:"gateway" gorm:"type:varchar(64)"`
+	CreateTime   int64  `json:"create_time"`
+	CompleteTime int64  `json:"complete_time"`
+	Status       string `json:"status"`
 }
 
 const (
@@ -55,17 +58,23 @@ var (
 	ErrWalletQuotaLimitExceeded error = common.NewMessage("Wallet quota limit exceeded")
 )
 
-func creditedTopUpQuota(usd decimal.Decimal, paymentMethod string) (int, error) {
+func creditedTopUpQuota(usd decimal.Decimal, paymentMethod, gateway string) (int, error) {
 	quota := usd.Mul(decimal.NewFromFloat(common.QuotaPerUnit))
-	percent := operation_setting.PayMethodBonusPercent(paymentMethod)
+	percent := operation_setting.PayMethodBonusPercent(paymentMethod, gateway)
 	if percent > 0 {
 		quota = quota.Mul(decimal.NewFromInt(100).Add(decimal.NewFromFloat(percent))).Div(decimal.NewFromInt(100))
 	}
 	return common.WalletQuotaFromDecimalStrict(quota)
 }
 
-func epayCallbackMatches(orderMoney float64, orderMethod string, paidMoney string, callbackGateway string) bool {
-	if strings.TrimSpace(callbackGateway) == "" || operation_setting.PayMethodGateway(orderMethod) != callbackGateway {
+func epayCallbackMatches(orderMoney float64, orderMethod, paidMoney, callbackGateway, orderGateway string) bool {
+	expectedGateway := strings.TrimSpace(orderGateway)
+	if expectedGateway == "" {
+		expectedGateway = operation_setting.PayMethodGateway(orderMethod)
+	} else {
+		expectedGateway = operation_setting.NormalizeEpayGateway(expectedGateway)
+	}
+	if strings.TrimSpace(callbackGateway) == "" || expectedGateway != callbackGateway {
 		return false
 	}
 	paid, err := decimal.NewFromString(strings.TrimSpace(paidMoney))
@@ -224,7 +233,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, paidMoney string, 
 		if topUp.Status != common.TopUpStatusPending {
 			return ErrTopUpStatusInvalid
 		}
-		if !epayCallbackMatches(topUp.Money, topUp.PaymentMethod, paidMoney, callbackGateway) {
+		if !epayCallbackMatches(topUp.Money, topUp.PaymentMethod, paidMoney, callbackGateway, topUp.Gateway) {
 			return ErrEpayCallbackMismatch
 		}
 		orderPaymentMethod := topUp.PaymentMethod
@@ -232,7 +241,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, paidMoney string, 
 			topUp.PaymentMethod = actualPaymentMethod
 		}
 		var quotaErr error
-		quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), orderPaymentMethod)
+		quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), orderPaymentMethod, topUp.Gateway)
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
@@ -293,7 +302,7 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 			return err
 		}
 
-		quota, err = creditedTopUpQuota(decimal.NewFromFloat(topUp.Money), topUp.PaymentMethod)
+		quota, err = creditedTopUpQuota(decimal.NewFromFloat(topUp.Money), topUp.PaymentMethod, topUp.Gateway)
 		if err != nil || quota <= 0 {
 			return ErrInvalidTopUpQuota
 		}
@@ -507,9 +516,9 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
 		var quotaErr error
 		if topUp.PaymentProvider == PaymentProviderStripe {
-			quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromFloat(topUp.Money), topUp.PaymentMethod)
+			quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromFloat(topUp.Money), topUp.PaymentMethod, topUp.Gateway)
 		} else {
-			quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod)
+			quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod, topUp.Gateway)
 		}
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
@@ -645,7 +654,7 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 			return errors.New("invalid top-up order status")
 		}
 
-		quotaToAdd, err = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod)
+		quotaToAdd, err = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod, topUp.Gateway)
 		if err != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
@@ -703,7 +712,7 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return errors.New("invalid top-up order status")
 		}
 
-		quotaToAdd, err = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod)
+		quotaToAdd, err = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod, topUp.Gateway)
 		if err != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
