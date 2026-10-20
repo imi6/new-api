@@ -35,3 +35,20 @@ func TestUSDTTopUpBonusAddsOnePercentQuota(t *testing.T) {
 	assert.Equal(t, 50500000, usdt)
 	assert.Equal(t, 50000000, broken)
 }
+
+func TestEpayCallbackMustMatchMoneyAndGateway(t *testing.T) {
+	originalMethods := operation_setting.PayMethods
+	t.Cleanup(func() { operation_setting.PayMethods = originalMethods })
+	operation_setting.PayMethods = []map[string]string{
+		{"type": "alipay"},
+		{"type": "usdt", "gateway": "siteusdt"},
+	}
+
+	assert.True(t, epayCallbackMatches(10, "alipay", "10.00", "epay"))
+	assert.True(t, epayCallbackMatches(10, "alipay", "10", "epay"))
+	assert.False(t, epayCallbackMatches(10, "alipay", "0.01", "epay"))
+	assert.False(t, epayCallbackMatches(10, "alipay", "10.00", "siteusdt"))
+	assert.False(t, epayCallbackMatches(10, "usdt", "10.00", "epay"))
+	assert.True(t, epayCallbackMatches(10, "usdt", "10.00", "siteusdt"))
+	assert.False(t, epayCallbackMatches(10, "alipay", "", "epay"))
+}
