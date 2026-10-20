@@ -16,7 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Gift, ExternalLink, Loader2, Receipt, WalletCards } from 'lucide-react'
+import {
+  Gift,
+  ExternalLink,
+  Loader2,
+  Receipt,
+  Ticket,
+  WalletCards,
+} from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
@@ -523,6 +530,39 @@ export function RechargeFormCard({
       {/* Redemption Code Section */}
       {redemptionEnabled ? (
         <div className='space-y-2.5 border-t pt-4 sm:space-y-3 sm:pt-6'>
+          {topupLink && (
+            <div className='flex flex-col gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-teal-900 dark:bg-teal-950/40'>
+              <div className='flex min-w-0 items-start gap-3'>
+                <span className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-teal-600 shadow-sm dark:bg-teal-900/70 dark:text-teal-200'>
+                  <Ticket className='size-4' aria-hidden='true' />
+                </span>
+                <div className='min-w-0 space-y-0.5'>
+                  <p className='text-sm font-medium text-teal-950 dark:text-teal-50'>
+                    {t('Buy a redemption code')}
+                  </p>
+                  <p className='text-xs leading-5 text-teal-800/80 dark:text-teal-100/70'>
+                    {t(
+                      'Buy a top-up card from the store, then paste the code below.'
+                    )}
+                  </p>
+                </div>
+              </div>
+              <Button
+                size='lg'
+                className='w-full !bg-teal-600 px-4 text-white hover:!bg-teal-700 sm:w-auto dark:hover:!bg-teal-500'
+                render={
+                  <a
+                    href={topupLink}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  />
+                }
+              >
+                {t('Go to the card store')}
+                <ExternalLink aria-hidden='true' />
+              </Button>
+            </div>
+          )}
           <div className='flex items-center gap-2'>
             <IconBadge tone='warning' size='xs'>
               <Gift />
@@ -552,20 +592,6 @@ export function RechargeFormCard({
               {t('Redeem')}
             </Button>
           </div>
-          {topupLink && (
-            <p className='text-muted-foreground text-xs'>
-              {t('Need a redemption code?')}{' '}
-              <a
-                href={topupLink}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='inline-flex items-center gap-1 underline-offset-4 hover:underline'
-              >
-                {t('Get one here')}
-                <ExternalLink className='h-3 w-3' />
-              </a>
-            </p>
-          )}
         </div>
       ) : (
         <Alert className='border-t'>
