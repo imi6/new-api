@@ -65,12 +65,13 @@ func SubscriptionRequestEpay(c *gin.Context) {
 	}
 
 	callBackAddress := service.GetCallbackAddress()
-	returnUrl, err := url.Parse(callBackAddress + "/api/subscription/epay/return")
+	gateway := operation_setting.PayMethodGateway(req.PaymentMethod)
+	returnUrl, err := url.Parse(callBackAddress + operation_setting.EpaySubscriptionReturnPath(gateway))
 	if err != nil {
 		common.ApiErrorT(c, "Callback URL configuration error")
 		return
 	}
-	notifyUrl, err := url.Parse(callBackAddress + "/api/subscription/epay/notify")
+	notifyUrl, err := url.Parse(callBackAddress + operation_setting.EpaySubscriptionNotifyPath(gateway))
 	if err != nil {
 		common.ApiErrorT(c, "Callback URL configuration error")
 		return
@@ -79,7 +80,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
 	tradeNo = fmt.Sprintf("SUBUSR%dNO%s", userId, tradeNo)
 
-	client := GetEpayClient()
+	client := GetEpayClientFor(gateway)
 	if client == nil {
 		common.ApiErrorT(c, "Payment information has not been configured by administrator")
 		return
@@ -117,6 +118,14 @@ func SubscriptionRequestEpay(c *gin.Context) {
 }
 
 func SubscriptionEpayNotify(c *gin.Context) {
+	handleSubscriptionEpayNotify(c, operation_setting.EpayGatewayPrimary)
+}
+
+func SubscriptionEpayNotifyByGateway(c *gin.Context) {
+	handleSubscriptionEpayNotify(c, c.Param("id"))
+}
+
+func handleSubscriptionEpayNotify(c *gin.Context, gateway string) {
 	var params map[string]string
 
 	if c.Request.Method == "POST" {
@@ -142,7 +151,7 @@ func SubscriptionEpayNotify(c *gin.Context) {
 		return
 	}
 
-	client := GetEpayClient()
+	client := GetEpayClientFor(gateway)
 	if client == nil {
 		_, _ = c.Writer.Write([]byte("fail"))
 		return
@@ -177,6 +186,14 @@ func SubscriptionEpayNotify(c *gin.Context) {
 // SubscriptionEpayReturn handles browser return after payment.
 // It verifies the payload and completes the order, then redirects to console.
 func SubscriptionEpayReturn(c *gin.Context) {
+	handleSubscriptionEpayReturn(c, operation_setting.EpayGatewayPrimary)
+}
+
+func SubscriptionEpayReturnByGateway(c *gin.Context) {
+	handleSubscriptionEpayReturn(c, c.Param("id"))
+}
+
+func handleSubscriptionEpayReturn(c *gin.Context, gateway string) {
 	var params map[string]string
 
 	if c.Request.Method == "POST" {
@@ -202,7 +219,7 @@ func SubscriptionEpayReturn(c *gin.Context) {
 		return
 	}
 
-	client := GetEpayClient()
+	client := GetEpayClientFor(gateway)
 	if client == nil {
 		c.Redirect(http.StatusFound, paymentReturnPath("/wallet?pay=fail"))
 		return
