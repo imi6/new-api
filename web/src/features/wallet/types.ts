@@ -92,8 +92,10 @@ export interface CreemPaymentRequest {
 export interface PaymentMethod {
   /** Display name of payment method */
   name: string
-  /** Payment method type identifier */
+  /** Payment method type identifier. This is the value sent to Epay. */
   type: string
+  /** Epay site selected for this method. Empty means the original site. */
+  gateway?: string
   /** Legacy optional color for UI display */
   color?: string
   /** Minimum topup amount for this payment method */
@@ -186,6 +188,8 @@ export interface PaymentRequest {
   amount: number
   /** Payment method identifier */
   payment_method: string
+  /** Epay site for this method. Empty means the original site. */
+  gateway?: string
 }
 
 /**
@@ -214,6 +218,8 @@ export interface AmountRequest {
   amount: number
   /** Epay method used to pick the site price. Other calculators ignore it. */
   payment_method?: string
+  /** Epay site for this method. Empty means the original site. */
+  gateway?: string
 }
 
 /**
