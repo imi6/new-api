@@ -24,11 +24,11 @@ func TestUSDTTopUpBonusAddsOnePercentQuota(t *testing.T) {
 		{"type": "broken", "bonus_percent": "150"},
 	}
 
-	alipay, err := creditedTopUpQuota(decimal.NewFromInt(100), "alipay")
+	alipay, err := creditedTopUpQuota(decimal.NewFromInt(100), "alipay", "")
 	require.NoError(t, err)
-	usdt, err := creditedTopUpQuota(decimal.NewFromInt(100), "usdt")
+	usdt, err := creditedTopUpQuota(decimal.NewFromInt(100), "usdt", "")
 	require.NoError(t, err)
-	broken, err := creditedTopUpQuota(decimal.NewFromInt(100), "broken")
+	broken, err := creditedTopUpQuota(decimal.NewFromInt(100), "broken", "")
 	require.NoError(t, err)
 
 	assert.Equal(t, 50000000, alipay)
@@ -44,11 +44,13 @@ func TestEpayCallbackMustMatchMoneyAndGateway(t *testing.T) {
 		{"type": "usdt", "gateway": "siteusdt"},
 	}
 
-	assert.True(t, epayCallbackMatches(10, "alipay", "10.00", "epay"))
-	assert.True(t, epayCallbackMatches(10, "alipay", "10", "epay"))
-	assert.False(t, epayCallbackMatches(10, "alipay", "0.01", "epay"))
-	assert.False(t, epayCallbackMatches(10, "alipay", "10.00", "siteusdt"))
-	assert.False(t, epayCallbackMatches(10, "usdt", "10.00", "epay"))
-	assert.True(t, epayCallbackMatches(10, "usdt", "10.00", "siteusdt"))
-	assert.False(t, epayCallbackMatches(10, "alipay", "", "epay"))
+	assert.True(t, epayCallbackMatches(10, "alipay", "10.00", "epay", ""))
+	assert.True(t, epayCallbackMatches(10, "alipay", "10", "epay", ""))
+	assert.False(t, epayCallbackMatches(10, "alipay", "0.01", "epay", ""))
+	assert.False(t, epayCallbackMatches(10, "alipay", "10.00", "siteusdt", ""))
+	assert.False(t, epayCallbackMatches(10, "usdt", "10.00", "epay", ""))
+	assert.True(t, epayCallbackMatches(10, "usdt", "10.00", "siteusdt", ""))
+	assert.False(t, epayCallbackMatches(10, "alipay", "", "epay", ""))
+	assert.True(t, epayCallbackMatches(10, "alipay", "10.00", "epay2", "epay2"))
+	assert.False(t, epayCallbackMatches(10, "alipay", "10.00", "epay", "epay2"))
 }

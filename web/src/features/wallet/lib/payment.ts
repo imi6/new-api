@@ -87,6 +87,13 @@ export function submitPaymentForm(
 }
 
 /**
+ * Epay site configured on a payment method. Empty stays on the original site.
+ */
+export function paymentMethodGateway(method: { gateway?: string }): string {
+  return method.gateway?.trim() || 'epay'
+}
+
+/**
  * Check if payment method is Stripe
  */
 export function isStripePayment(paymentType: string): boolean {
@@ -112,7 +119,11 @@ export function isWaffoPancakePayment(paymentType: string): boolean {
 }
 
 export interface PaymentProcessors {
-  regular: (topupAmount: number, paymentType: string) => Promise<boolean>
+  regular: (
+    topupAmount: number,
+    paymentType: string,
+    gateway?: string
+  ) => Promise<boolean>
   waffo: (topupAmount: number, payMethodIndex: number) => Promise<boolean>
   waffoPancake: (topupAmount: number) => Promise<boolean>
 }
@@ -134,7 +145,11 @@ export async function dispatchSelectedPayment(
     return processors.waffoPancake(topupAmount)
   }
 
-  return processors.regular(topupAmount, paymentMethod.type)
+  return processors.regular(
+    topupAmount,
+    paymentMethod.type,
+    paymentMethodGateway(paymentMethod)
+  )
 }
 
 /**
