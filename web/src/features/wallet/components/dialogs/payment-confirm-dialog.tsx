@@ -65,6 +65,15 @@ export function PaymentConfirmDialog({
   const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
   const discountAmount = hasDiscount ? originalAmount - paymentAmount : 0
+  const bonusPercent = paymentMethod?.bonus_percent ?? 0
+  const hasBonus = bonusPercent > 0 && topupAmount > 0
+  const bonusAmount = hasBonus ? (topupAmount * bonusPercent) / 100 : 0
+  const creditedAmount = topupAmount + bonusAmount
+  const moneyFormat = {
+    digitsLarge: 2,
+    digitsSmall: 2,
+    abbreviate: false,
+  } as const
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -84,13 +93,39 @@ export function PaymentConfirmDialog({
               {t('Topup Amount')}
             </span>
             <span className='text-lg font-semibold'>
-              {formatLocalCurrencyAmount(topupAmount * usdExchangeRate, {
-                digitsLarge: 2,
-                digitsSmall: 2,
-                abbreviate: false,
-              })}
+              {formatLocalCurrencyAmount(
+                topupAmount * usdExchangeRate,
+                moneyFormat
+              )}
             </span>
           </div>
+
+          {hasBonus && (
+            <div className='bg-muted/50 space-y-2 rounded-lg p-3'>
+              <div className='flex items-center justify-between text-sm'>
+                <span className='text-muted-foreground'>
+                  {t('Gift {{percent}}%', { percent: bonusPercent })}
+                </span>
+                <span className='font-semibold text-green-600'>
+                  {`+${formatLocalCurrencyAmount(
+                    bonusAmount * usdExchangeRate,
+                    moneyFormat
+                  )}`}
+                </span>
+              </div>
+              <div className='flex items-center justify-between text-sm'>
+                <span className='text-muted-foreground'>
+                  {t('Balance to receive (including gift)')}
+                </span>
+                <span className='font-semibold'>
+                  {formatLocalCurrencyAmount(
+                    creditedAmount * usdExchangeRate,
+                    moneyFormat
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className='flex items-center justify-between'>
             <span className='text-muted-foreground text-sm'>
