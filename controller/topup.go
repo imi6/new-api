@@ -45,16 +45,6 @@ func GetTopUpInfo(c *gin.Context) {
 		payMethods = visible
 	}
 
-	epayReady := false
-	for _, method := range payMethods {
-		switch method["type"] {
-		case model.PaymentMethodStripe, model.PaymentMethodCreem, model.PaymentMethodWaffo, model.PaymentMethodWaffoPancake:
-			continue
-		}
-		epayReady = true
-		break
-	}
-
 	// 如果启用了 Stripe 支付，添加到支付方法列表
 	if isStripeTopUpEnabled() {
 		// 检查是否已经包含 Stripe
@@ -118,6 +108,24 @@ func GetTopUpInfo(c *gin.Context) {
 			}
 			payMethods = append(payMethods, waffoMethod)
 		}
+	}
+
+	shown := make([]map[string]string, 0, len(payMethods))
+	for _, method := range payMethods {
+		if operation_setting.PayMethodHidden(method) {
+			continue
+		}
+		shown = append(shown, method)
+	}
+	payMethods = shown
+	epayReady := false
+	for _, method := range payMethods {
+		switch method["type"] {
+		case model.PaymentMethodStripe, model.PaymentMethodCreem, model.PaymentMethodWaffo, model.PaymentMethodWaffoPancake:
+			continue
+		}
+		epayReady = true
+		break
 	}
 
 	data := gin.H{
@@ -333,6 +341,10 @@ func RequestEpay(c *gin.Context) {
 	payMethod, ok := operation_setting.FindPayMethod(req.PaymentMethod, req.Gateway)
 	if !ok {
 		paymentError(c, common.NewMessage("Payment method does not exist"))
+		return
+	}
+	if operation_setting.PayMethodHidden(payMethod) {
+		paymentError(c, common.NewMessage("This payment method is hidden"))
 		return
 	}
 	group, err := model.GetUserGroup(id, true)
@@ -567,6 +579,10 @@ func RequestAmount(c *gin.Context) {
 	payMethod, ok := operation_setting.FindPayMethod(req.PaymentMethod, req.Gateway)
 	if !ok {
 		paymentError(c, common.NewMessage("Payment method does not exist"))
+		return
+	}
+	if operation_setting.PayMethodHidden(payMethod) {
+		paymentError(c, common.NewMessage("This payment method is hidden"))
 		return
 	}
 	payMoney := getPayMoney(req.Amount, group, operation_setting.EpayUnitPrice(operation_setting.NormalizeEpayGateway(payMethod["gateway"])))
