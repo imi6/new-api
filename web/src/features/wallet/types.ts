@@ -100,6 +100,8 @@ export interface PaymentMethod {
   min_topup?: number
   /** Optional react-icons component name or safe icon URL */
   icon?: string
+  /** Extra quota percent granted after a successful payment. 1 means 1%. */
+  bonus_percent?: number
 }
 
 /**
@@ -210,6 +212,8 @@ export interface WaffoPancakePaymentRequest {
 export interface AmountRequest {
   /** Topup amount to calculate */
   amount: number
+  /** Epay method used to pick the site price. Other calculators ignore it. */
+  payment_method?: string
 }
 
 /**
