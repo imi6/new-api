@@ -92,6 +92,7 @@ export interface PlanPayload {
 export interface SubscriptionPayRequest {
   plan_id: number
   payment_method?: string
+  gateway?: string
 }
 
 export interface SubscriptionPayResponse {
