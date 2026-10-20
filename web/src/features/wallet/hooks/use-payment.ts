@@ -62,6 +62,7 @@ const defaultPaymentAmountCalculators: PaymentAmountCalculators = {
 export async function requestPaymentAmount(
   topupAmount: number,
   paymentType: string,
+  gateway = 'epay',
   calculators: PaymentAmountCalculators = defaultPaymentAmountCalculators
 ): Promise<number> {
   let calculator = calculators.regular
@@ -75,7 +76,7 @@ export async function requestPaymentAmount(
 
   const response = await calculator(
     calculator === calculators.regular
-      ? { amount: topupAmount, payment_method: paymentType }
+      ? { amount: topupAmount, payment_method: paymentType, gateway }
       : { amount: topupAmount }
   )
   if (!isApiSuccess(response) || !response.data) {
@@ -92,12 +93,13 @@ export function usePayment() {
 
   // Calculate payment amount
   const calculatePaymentAmount = useCallback(
-    async (topupAmount: number, paymentType: string) => {
+    async (topupAmount: number, paymentType: string, gateway = 'epay') => {
       try {
         setCalculating(true)
         const calculatedAmount = await requestPaymentAmount(
           topupAmount,
-          paymentType
+          paymentType,
+          gateway
         )
         setAmount(calculatedAmount)
         return calculatedAmount
@@ -113,7 +115,7 @@ export function usePayment() {
 
   // Process payment
   const processPayment = useCallback(
-    async (topupAmount: number, paymentType: string) => {
+    async (topupAmount: number, paymentType: string, gateway = 'epay') => {
       try {
         setProcessing(true)
 
@@ -128,6 +130,7 @@ export function usePayment() {
           : await requestPayment({
               amount,
               payment_method: paymentType,
+              gateway,
             })
 
         if (!isApiSuccess(response)) {
