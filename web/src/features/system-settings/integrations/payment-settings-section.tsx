@@ -72,6 +72,7 @@ import { safeNumberFieldProps } from '../utils/numeric-field'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
+import { EpayGatewaysEditor, parseEpayGateways } from './epay-gateways-editor'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
   formatJsonForEditor,
@@ -117,6 +118,15 @@ const paymentSchema = z.object({
   EpayMerchantPrivateKey: z.string(),
   EpayPlatformPublicKey: z.string(),
   Price: z.coerce.number().min(0),
+  EpayGateways: z.string().superRefine((value, ctx) => {
+    const error = getJsonError(value, (parsed) => Array.isArray(parsed))
+    if (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: error,
+      })
+    }
+  }),
   MinTopUp: z.coerce.number().min(0),
   CustomCallbackAddress: z
     .string()
@@ -367,6 +377,7 @@ export function PaymentSettingsSection({
     defaultValues: {
       ...initialFormValues,
       PayMethods: formatJsonForEditor(initialFormValues.PayMethods),
+      EpayGateways: formatJsonForEditor(initialFormValues.EpayGateways),
       AmountOptions: formatJsonForEditor(initialFormValues.AmountOptions),
       AmountDiscount: formatJsonForEditor(initialFormValues.AmountDiscount),
       CreemProducts: formatJsonForEditor(initialFormValues.CreemProducts),
@@ -424,6 +435,7 @@ export function PaymentSettingsSection({
     form.reset({
       ...parsedDefaults,
       PayMethods: formatJsonForEditor(parsedDefaults.PayMethods),
+      EpayGateways: formatJsonForEditor(parsedDefaults.EpayGateways),
       AmountOptions: formatJsonForEditor(parsedDefaults.AmountOptions),
       AmountDiscount: formatJsonForEditor(parsedDefaults.AmountDiscount),
       CreemProducts: formatJsonForEditor(parsedDefaults.CreemProducts),
@@ -439,6 +451,7 @@ export function PaymentSettingsSection({
       EpayMerchantPrivateKey: values.EpayMerchantPrivateKey.trim(),
       EpayPlatformPublicKey: values.EpayPlatformPublicKey.trim(),
       Price: values.Price,
+      EpayGateways: values.EpayGateways.trim(),
       MinTopUp: values.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
       PayMethods: values.PayMethods.trim(),
@@ -484,6 +497,7 @@ export function PaymentSettingsSection({
       EpayMerchantPrivateKey: initialRef.current.EpayMerchantPrivateKey.trim(),
       EpayPlatformPublicKey: initialRef.current.EpayPlatformPublicKey.trim(),
       Price: initialRef.current.Price,
+      EpayGateways: initialRef.current.EpayGateways.trim(),
       MinTopUp: initialRef.current.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(
         initialRef.current.CustomCallbackAddress
@@ -567,6 +581,13 @@ export function PaymentSettingsSection({
 
     if (sanitized.Price !== initial.Price) {
       updates.push({ key: 'Price', value: sanitized.Price })
+    }
+
+    if (
+      normalizeJsonForComparison(sanitized.EpayGateways) !==
+      normalizeJsonForComparison(initial.EpayGateways)
+    ) {
+      updates.push({ key: 'EpayGateways', value: sanitized.EpayGateways })
     }
 
     if (sanitized.MinTopUp !== initial.MinTopUp) {
@@ -1030,6 +1051,12 @@ export function PaymentSettingsSection({
                           <PaymentMethodsVisualEditor
                             value={field.value}
                             onChange={field.onChange}
+                            epaySites={parseEpayGateways(
+                              form.watch('EpayGateways')
+                            ).map((site) => ({
+                              id: site.id,
+                              name: site.name,
+                            }))}
                           />
                         ) : (
                           <JsonCodeEditor
@@ -1187,7 +1214,9 @@ export function PaymentSettingsSection({
                 <div>
                   <h3 className='text-lg font-medium'>{t('Epay Gateway')}</h3>
                   <p className='text-muted-foreground text-sm'>
-                    {t('Configuration for Epay payment integration')}
+                    {t(
+                      'Original Epay merchant. Payment methods use this site unless they choose an added site.'
+                    )}
                   </p>
                 </div>
 
@@ -1385,6 +1414,27 @@ export function PaymentSettingsSection({
                     />
                   </div>
                 )}
+                <div className='space-y-4 border-t pt-6'>
+                  <div>
+                    <h3 className='text-lg font-medium'>
+                      {t('Additional Epay sites')}
+                    </h3>
+                    <p className='text-muted-foreground text-sm'>
+                      {t(
+                        'Add as many Epay merchants as you need. Each site has its own price and callback address. The original site above stays unchanged.'
+                      )}
+                    </p>
+                  </div>
+                  <EpayGatewaysEditor
+                    value={form.watch('EpayGateways')}
+                    onChange={(value) =>
+                      form.setValue('EpayGateways', value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                  />
+                </div>
               </div>
             </TabsContent>
 
