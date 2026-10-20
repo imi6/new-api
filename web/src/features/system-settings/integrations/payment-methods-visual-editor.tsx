@@ -41,6 +41,7 @@ import {
 type PaymentMethodsVisualEditorProps = {
   value: string
   onChange: (value: string) => void
+  epaySites?: Array<{ id: string; name: string }>
 }
 
 const PAYMENT_TYPE_ICON_NAMES: Record<string, string> = {
@@ -58,9 +59,30 @@ function getEffectiveIconName(method: PaymentMethodData) {
   return method.icon || getDefaultIconName(method.type)
 }
 
+function epaySiteLabel(
+  gateway: string | undefined,
+  sites: Array<{ id: string; name: string }>,
+  originalLabel: string
+) {
+  if (!gateway || gateway === 'epay') return originalLabel
+  const site = sites.find((item) => item.id === gateway)
+  if (site?.name.trim()) return site.name.trim()
+  return gateway
+}
+
+function skipsEpaySite(type: string) {
+  return (
+    type === 'stripe' ||
+    type === 'waffo_pancake' ||
+    type === 'waffo' ||
+    type === 'creem'
+  )
+}
+
 export function PaymentMethodsVisualEditor({
   value,
   onChange,
+  epaySites = [],
 }: PaymentMethodsVisualEditorProps) {
   const { t } = useTranslation()
   const paymentTemplates = [
@@ -129,7 +151,9 @@ export function PaymentMethodsVisualEditor({
         typeof item.type === 'string' &&
         (!('icon' in item) || typeof item.icon === 'string') &&
         (!('min_topup' in item) || typeof item.min_topup === 'string') &&
-        (!('color' in item) || typeof item.color === 'string')
+        (!('color' in item) || typeof item.color === 'string') &&
+        (!('gateway' in item) || typeof item.gateway === 'string') &&
+        (!('bonus_percent' in item) || typeof item.bonus_percent === 'string')
     )
   }, [value])
 
@@ -348,6 +372,34 @@ export function PaymentMethodsVisualEditor({
                 },
               },
               {
+                id: 'epay-site',
+                header: t('Epay site'),
+                cell: (method) =>
+                  skipsEpaySite(method.type) ? (
+                    <span className='text-muted-foreground text-sm'>—</span>
+                  ) : (
+                    <span className='text-sm'>
+                      {epaySiteLabel(
+                        method.gateway,
+                        epaySites,
+                        t('Original Epay site')
+                      )}
+                    </span>
+                  ),
+              },
+              {
+                id: 'bonus',
+                header: t('Bonus percent'),
+                cell: (method) =>
+                  method.bonus_percent && Number(method.bonus_percent) > 0 ? (
+                    <span className='font-mono text-sm'>
+                      {method.bonus_percent}%
+                    </span>
+                  ) : (
+                    <span className='text-muted-foreground text-sm'>—</span>
+                  ),
+              },
+              {
                 id: 'min-top-up',
                 header: t('Min Top-up'),
                 cell: (method) =>
@@ -387,6 +439,8 @@ export function PaymentMethodsVisualEditor({
                 method.icon,
                 method.min_topup,
                 method.color,
+                method.gateway,
+                method.bonus_percent,
               ]
                 .filter(Boolean)
                 .join('-')
@@ -447,6 +501,20 @@ export function PaymentMethodsVisualEditor({
                         <span className='text-muted-foreground text-xs'>—</span>
                       )}
                     </div>
+                    {skipsEpaySite(method.type) ? null : (
+                      <div className='flex items-center gap-2'>
+                        <span className='text-muted-foreground min-w-20'>
+                          {t('Epay site')}
+                        </span>
+                        <span>
+                          {epaySiteLabel(
+                            method.gateway,
+                            epaySites,
+                            t('Original Epay site')
+                          )}
+                        </span>
+                      </div>
+                    )}
                     {method.min_topup && (
                       <div className='flex items-center gap-2'>
                         <span className='text-muted-foreground min-w-20'>
@@ -468,6 +536,7 @@ export function PaymentMethodsVisualEditor({
         onOpenChange={setDialogOpen}
         onSave={handleSave}
         editData={editData}
+        epaySites={epaySites}
       />
     </div>
   )
