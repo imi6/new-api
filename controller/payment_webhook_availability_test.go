@@ -333,6 +333,32 @@ func TestPayMethodChoosesEpaySiteAndPrice(t *testing.T) {
 	assert.Equal(t, 7.3, operation_setting.EpayUnitPrice("siteusdt"))
 }
 
+func TestRepeatedEpayTypeUsesTheSelectedSite(t *testing.T) {
+	originalMethods := operation_setting.PayMethods
+	t.Cleanup(func() {
+		operation_setting.PayMethods = originalMethods
+	})
+
+	operation_setting.PayMethods = []map[string]string{
+		{"name": "支付宝【3%】", "type": "alipay"},
+		{"name": "USDT", "type": "usdt.binance", "gateway": "usdt"},
+		{"name": "支付宝【4%】", "type": "alipay", "gateway": "epay2"},
+	}
+
+	first, ok := operation_setting.FindPayMethod("alipay", "epay")
+	require.True(t, ok)
+	assert.Equal(t, operation_setting.EpayGatewayPrimary, operation_setting.NormalizeEpayGateway(first["gateway"]))
+
+	second, ok := operation_setting.FindPayMethod("alipay", "epay2")
+	require.True(t, ok)
+	assert.Equal(t, "epay2", second["gateway"])
+	assert.Equal(t, "alipay", second["type"])
+
+	_, ok = operation_setting.FindPayMethod("alipay", "missing")
+	assert.False(t, ok)
+	assert.Equal(t, operation_setting.EpayGatewayPrimary, operation_setting.PayMethodGateway("alipay"))
+}
+
 func TestEpayAddedSiteNotifyUsesItsOwnKey(t *testing.T) {
 	confirmPaymentComplianceForTest(t)
 	originalPayAddress := operation_setting.PayAddress
