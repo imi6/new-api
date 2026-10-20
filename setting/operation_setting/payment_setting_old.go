@@ -111,6 +111,16 @@ func FindPayMethod(typ, gateway string) (map[string]string, bool) {
 	return nil, false
 }
 
+// PayMethodHidden reports whether this method stays in settings but is not offered at checkout.
+func PayMethodHidden(method map[string]string) bool {
+	switch strings.ToLower(strings.TrimSpace(method["hidden"])) {
+	case "1", "true", "yes":
+		return true
+	default:
+		return false
+	}
+}
+
 func ContainsPayMethod(method string) bool {
 	_, ok := FindPayMethod(method, "")
 	return ok

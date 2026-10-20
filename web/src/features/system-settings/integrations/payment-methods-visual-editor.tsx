@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Lightbulb, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Lightbulb, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,6 +25,7 @@ import { StaticRowActions } from '@/components/data-table/static/static-row-acti
 import { ReactIconByName } from '@/components/react-icon-by-name'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Popover,
   PopoverContent,
@@ -153,7 +154,8 @@ export function PaymentMethodsVisualEditor({
         (!('min_topup' in item) || typeof item.min_topup === 'string') &&
         (!('color' in item) || typeof item.color === 'string') &&
         (!('gateway' in item) || typeof item.gateway === 'string') &&
-        (!('bonus_percent' in item) || typeof item.bonus_percent === 'string')
+        (!('bonus_percent' in item) || typeof item.bonus_percent === 'string') &&
+        (!('hidden' in item) || typeof item.hidden === 'string')
     )
   }, [value])
 
@@ -255,6 +257,36 @@ export function PaymentMethodsVisualEditor({
     }
   }
 
+  const writeMethods = (methods: PaymentMethodData[]) => {
+    onChange(JSON.stringify(methods, null, 2))
+  }
+
+  const moveMethod = (method: PaymentMethodData, direction: -1 | 1) => {
+    const index = paymentMethods.indexOf(method)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= paymentMethods.length) return
+    const next = [...paymentMethods]
+    const [item] = next.splice(index, 1)
+    next.splice(target, 0, item)
+    writeMethods(next)
+  }
+
+  const setMethodHidden = (method: PaymentMethodData, hidden: boolean) => {
+    const next = paymentMethods.map((item) => {
+      if (item !== method) return item
+      const updated = { ...item }
+      if (hidden) {
+        updated.hidden = 'true'
+      } else {
+        delete updated.hidden
+      }
+      return updated
+    })
+    writeMethods(next)
+  }
+
+  const methodHidden = (method: PaymentMethodData) => method.hidden === 'true'
+
   return (
     <div className='space-y-4'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
@@ -338,7 +370,15 @@ export function PaymentMethodsVisualEditor({
                 id: 'name',
                 header: t('Name'),
                 cellClassName: 'font-medium',
-                cell: (method) => method.name,
+                cell: (method) => (
+                  <span
+                    className={
+                      methodHidden(method) ? 'text-muted-foreground' : undefined
+                    }
+                  >
+                    {method.name}
+                  </span>
+                ),
               },
               {
                 id: 'type',
@@ -412,19 +452,67 @@ export function PaymentMethodsVisualEditor({
                   ),
               },
               {
+                id: 'visible',
+                header: t('Visible'),
+                cell: (method) => (
+                  <Switch
+                    checked={!methodHidden(method)}
+                    onCheckedChange={(checked) =>
+                      setMethodHidden(method, !checked)
+                    }
+                    aria-label={t('Visible')}
+                  />
+                ),
+              },
+              {
                 id: 'actions',
                 header: t('Actions'),
                 className: 'text-right',
                 cellClassName: 'text-right',
-                cell: (method) => (
-                  <StaticRowActions
-                    editLabel={t('Edit')}
-                    deleteLabel={t('Delete')}
-                    menuLabel={t('Open menu')}
-                    onEdit={() => handleEdit(method)}
-                    onDelete={() => handleDelete(method)}
-                  />
-                ),
+                cell: (method) => {
+                  const index = paymentMethods.indexOf(method)
+                  return (
+                    <div className='flex items-center justify-end gap-1'>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon-sm'
+                        disabled={index <= 0}
+                        aria-label={t('Move up')}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          moveMethod(method, -1)
+                        }}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon-sm'
+                        disabled={
+                          index < 0 || index >= paymentMethods.length - 1
+                        }
+                        aria-label={t('Move down')}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          moveMethod(method, 1)
+                        }}
+                      >
+                        <ArrowDown />
+                      </Button>
+                      <StaticRowActions
+                        editLabel={t('Edit')}
+                        deleteLabel={t('Delete')}
+                        menuLabel={t('Open menu')}
+                        onEdit={() => handleEdit(method)}
+                        onDelete={() => handleDelete(method)}
+                      />
+                    </div>
+                  )
+                },
               },
             ]}
           />
@@ -433,6 +521,7 @@ export function PaymentMethodsVisualEditor({
           <div className='divide-y md:hidden'>
             {filteredMethods.map((method) => {
               const iconName = getEffectiveIconName(method)
+              const index = paymentMethods.indexOf(method)
               const methodKey = [
                 method.type,
                 method.name,
@@ -441,20 +530,63 @@ export function PaymentMethodsVisualEditor({
                 method.color,
                 method.gateway,
                 method.bonus_percent,
+                method.hidden,
+                index,
               ]
-                .filter(Boolean)
+                .filter((part) => part !== undefined && part !== '')
                 .join('-')
 
               return (
                 <div key={methodKey} className='p-4'>
-                  <div className='mb-3 flex items-start justify-between'>
-                    <div className='flex-1'>
-                      <div className='mb-1 font-medium'>{method.name}</div>
+                  <div className='mb-3 flex items-start justify-between gap-2'>
+                    <div className='min-w-0 flex-1'>
+                      <div
+                        className={`mb-1 font-medium ${methodHidden(method) ? 'text-muted-foreground' : ''}`}
+                      >
+                        {method.name}
+                      </div>
                       <code className='bg-muted rounded px-1.5 py-0.5 text-xs'>
                         {method.type}
                       </code>
                     </div>
-                    <div className='flex gap-1'>
+                    <div className='flex items-center gap-1'>
+                      <Switch
+                        checked={!methodHidden(method)}
+                        onCheckedChange={(checked) =>
+                          setMethodHidden(method, !checked)
+                        }
+                        aria-label={t('Visible')}
+                      />
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon-sm'
+                        disabled={index <= 0}
+                        aria-label={t('Move up')}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          moveMethod(method, -1)
+                        }}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon-sm'
+                        disabled={
+                          index < 0 || index >= paymentMethods.length - 1
+                        }
+                        aria-label={t('Move down')}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          moveMethod(method, 1)
+                        }}
+                      >
+                        <ArrowDown />
+                      </Button>
                       <Button
                         type='button'
                         variant='ghost'

@@ -51,6 +51,10 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		common.ApiErrorT(c, "Payment method does not exist")
 		return
 	}
+	if operation_setting.PayMethodHidden(payMethod) {
+		common.ApiErrorT(c, "This payment method is hidden")
+		return
+	}
 
 	userId := c.GetInt("id")
 	if plan.MaxPurchasePerUser > 0 {
