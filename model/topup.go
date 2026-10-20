@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -47,6 +48,7 @@ var (
 	ErrPaymentMethodMismatch = errors.New("payment method mismatch")
 	ErrTopUpNotFound         = errors.New("topup not found")
 	ErrTopUpStatusInvalid    = errors.New("topup status invalid")
+	ErrEpayCallbackMismatch  = errors.New("epay callback does not match the order")
 	// The quota errors reach the web console, so they carry message keys.
 	ErrInvalidTopUpQuota        error = common.NewMessage("Invalid top-up quota")
 	ErrTopUpQuotaLimitExceeded  error = common.NewMessage("Top-up quota limit exceeded")
@@ -60,6 +62,18 @@ func creditedTopUpQuota(usd decimal.Decimal, paymentMethod string) (int, error) 
 		quota = quota.Mul(decimal.NewFromInt(100).Add(decimal.NewFromFloat(percent))).Div(decimal.NewFromInt(100))
 	}
 	return common.WalletQuotaFromDecimalStrict(quota)
+}
+
+func epayCallbackMatches(orderMoney float64, orderMethod string, paidMoney string, callbackGateway string) bool {
+	if strings.TrimSpace(callbackGateway) == "" || operation_setting.PayMethodGateway(orderMethod) != callbackGateway {
+		return false
+	}
+	paid, err := decimal.NewFromString(strings.TrimSpace(paidMoney))
+	if err != nil {
+		return false
+	}
+	expected := decimal.NewFromFloat(orderMoney).Round(2)
+	return paid.Round(2).Equal(expected)
 }
 
 func (topUp *TopUp) Insert() error {
@@ -184,7 +198,7 @@ func UpdatePendingTopUpStatus(tradeNo string, expectedPaymentProvider string, ta
 // 在同一个事务内完成，因此同一订单的并发/重复回调（包括多实例部署下）最多充值一次。
 // alreadyDone=true 表示订单此前已完成，本次为幂等重复回调。
 // 进程内的 LockOrder 只是优化，正确性由本函数的数据库行锁保证。
-func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (alreadyDone bool, err error) {
+func RechargeEpay(tradeNo string, actualPaymentMethod string, paidMoney string, callbackGateway string, callerIp string) (alreadyDone bool, err error) {
 	if tradeNo == "" {
 		return false, errors.New("payment order number not provided")
 	}
@@ -210,11 +224,15 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 		if topUp.Status != common.TopUpStatusPending {
 			return ErrTopUpStatusInvalid
 		}
+		if !epayCallbackMatches(topUp.Money, topUp.PaymentMethod, paidMoney, callbackGateway) {
+			return ErrEpayCallbackMismatch
+		}
+		orderPaymentMethod := topUp.PaymentMethod
 		if actualPaymentMethod != "" && topUp.PaymentMethod != actualPaymentMethod {
 			topUp.PaymentMethod = actualPaymentMethod
 		}
 		var quotaErr error
-		quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod)
+		quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), orderPaymentMethod)
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
@@ -226,7 +244,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil)
 	})
 	if err != nil {
-		if !errors.Is(err, ErrTopUpNotFound) && !errors.Is(err, ErrPaymentMethodMismatch) && !errors.Is(err, ErrTopUpStatusInvalid) {
+		if !errors.Is(err, ErrTopUpNotFound) && !errors.Is(err, ErrPaymentMethodMismatch) && !errors.Is(err, ErrTopUpStatusInvalid) && !errors.Is(err, ErrEpayCallbackMismatch) {
 			common.SysError(common.LogText("epay topup failed: %s", err.Error()))
 		}
 		return false, err
