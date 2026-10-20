@@ -20,6 +20,7 @@ import (
 type SubscriptionEpayPayRequest struct {
 	PlanId        int    `json:"plan_id"`
 	PaymentMethod string `json:"payment_method"`
+	Gateway       string `json:"gateway"`
 }
 
 func SubscriptionRequestEpay(c *gin.Context) {
@@ -46,7 +47,8 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		common.ApiErrorT(c, "Plan amount is too low")
 		return
 	}
-	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
+	payMethod, ok := operation_setting.FindPayMethod(req.PaymentMethod, req.Gateway)
+	if !ok {
 		common.ApiErrorT(c, "Payment method does not exist")
 		return
 	}
@@ -65,7 +67,8 @@ func SubscriptionRequestEpay(c *gin.Context) {
 	}
 
 	callBackAddress := service.GetCallbackAddress()
-	gateway := operation_setting.PayMethodGateway(req.PaymentMethod)
+	gateway := operation_setting.NormalizeEpayGateway(payMethod["gateway"])
+	epayType := payMethod["type"]
 	returnUrl, err := url.Parse(callBackAddress + operation_setting.EpaySubscriptionReturnPath(gateway))
 	if err != nil {
 		common.ApiErrorT(c, "Callback URL configuration error")
@@ -91,8 +94,9 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		PlanId:          plan.Id,
 		Money:           plan.PriceAmount,
 		TradeNo:         tradeNo,
-		PaymentMethod:   req.PaymentMethod,
+		PaymentMethod:   epayType,
 		PaymentProvider: model.PaymentProviderEpay,
+		Gateway:         gateway,
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
@@ -101,7 +105,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 		return
 	}
 	uri, params, err := client.Purchase(&epay.PurchaseArgs{
-		Type:           req.PaymentMethod,
+		Type:           epayType,
 		ServiceTradeNo: tradeNo,
 		Name:           fmt.Sprintf("SUB:%s", plan.Title),
 		Money:          strconv.FormatFloat(plan.PriceAmount, 'f', 2, 64),
