@@ -143,6 +143,7 @@ const BILLING_SECTIONS = [
           EpayPlatformPublicKey:
             settings['payment_setting.epay_platform_public_key'],
           Price: settings.Price,
+          EpayGateways: settings.EpayGateways,
           MinTopUp: settings.MinTopUp,
           CustomCallbackAddress: settings.CustomCallbackAddress,
           PayMethods: settings.PayMethods,
