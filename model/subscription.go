@@ -220,6 +220,7 @@ type SubscriptionOrder struct {
 	TradeNo         string `json:"trade_no" gorm:"unique;type:varchar(255);index"`
 	PaymentMethod   string `json:"payment_method" gorm:"type:varchar(50)"`
 	PaymentProvider string `json:"payment_provider" gorm:"type:varchar(50);default:''"`
+	Gateway         string `json:"gateway" gorm:"type:varchar(64)"`
 	Status          string `json:"status"`
 	CreateTime      int64  `json:"create_time"`
 	CompleteTime    int64  `json:"complete_time"`
@@ -601,7 +602,7 @@ func finishSubscriptionOrder(tradeNo string, providerPayload string, expectedPay
 		if order.Status != common.TopUpStatusPending {
 			return ErrSubscriptionOrderStatusInvalid
 		}
-		if expectedPaymentProvider == PaymentProviderEpay && !epayCallbackMatches(order.Money, order.PaymentMethod, paidMoney, callbackGateway) {
+		if expectedPaymentProvider == PaymentProviderEpay && !epayCallbackMatches(order.Money, order.PaymentMethod, paidMoney, callbackGateway, order.Gateway) {
 			return ErrEpayCallbackMismatch
 		}
 		plan, err := GetSubscriptionPlanById(order.PlanId)

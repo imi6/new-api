@@ -46,6 +46,7 @@ import {
   getDefaultPaymentType,
   getMinTopupAmount,
   dispatchSelectedPayment,
+  paymentMethodGateway,
 } from './lib'
 import type {
   UserWalletData,
@@ -144,36 +145,55 @@ export function Wallet(props: WalletProps) {
       const minTopup = getMinTopupAmount(topupInfo)
       setTopupAmount(minTopup)
 
-      // Calculate initial payment amount with default payment type
-      const defaultPaymentType = getDefaultPaymentType(topupInfo)
-      calculatePaymentAmount(minTopup, defaultPaymentType)
+      const method = topupInfo.pay_methods?.[0]
+      const defaultPaymentType = method?.type || getDefaultPaymentType(topupInfo)
+      calculatePaymentAmount(
+        minTopup,
+        defaultPaymentType,
+        method ? paymentMethodGateway(method) : 'epay'
+      )
     }
   }, [topupInfo, calculatePaymentAmount])
 
   // Get current payment type (selected or default)
-  const getCurrentPaymentType = useCallback(() => {
-    return selectedPaymentMethod?.type || getDefaultPaymentType(topupInfo)
+  const getCurrentPaymentSelection = useCallback(() => {
+    if (selectedPaymentMethod) {
+      return {
+        type: selectedPaymentMethod.type,
+        gateway: paymentMethodGateway(selectedPaymentMethod),
+      }
+    }
+    const type = getDefaultPaymentType(topupInfo)
+    const method = topupInfo?.pay_methods?.find((item) => item.type === type)
+    return {
+      type,
+      gateway: method ? paymentMethodGateway(method) : 'epay',
+    }
   }, [selectedPaymentMethod, topupInfo])
 
   // Handle preset selection
   const handleSelectPreset = (preset: PresetAmount) => {
     setTopupAmount(preset.value)
     setSelectedPreset(preset.value)
-    calculatePaymentAmount(preset.value, getCurrentPaymentType())
+    const selection = getCurrentPaymentSelection()
+    calculatePaymentAmount(preset.value, selection.type, selection.gateway)
   }
 
   // Handle topup amount change
   const handleTopupAmountChange = (amount: number) => {
     setTopupAmount(amount)
     setSelectedPreset(null)
-    calculatePaymentAmount(amount, getCurrentPaymentType())
+    const selection = getCurrentPaymentSelection()
+    calculatePaymentAmount(amount, selection.type, selection.gateway)
   }
 
   // Handle payment method selection
   const handlePaymentMethodSelect = async (method: PaymentMethod) => {
     setSelectedPaymentMethod(method)
     setSelectedWaffoMethodIndex(null)
-    setPaymentLoading(method.type)
+    setPaymentLoading(
+      `${method.type}:${paymentMethodGateway(method)}:${method.name}`
+    )
 
     try {
       // Validate minimum topup
@@ -183,7 +203,11 @@ export function Wallet(props: WalletProps) {
       }
 
       // Calculate payment amount and show confirmation dialog
-      await calculatePaymentAmount(topupAmount, method.type)
+      await calculatePaymentAmount(
+        topupAmount,
+        method.type,
+        paymentMethodGateway(method)
+      )
       setConfirmDialogOpen(true)
     } finally {
       setPaymentLoading(null)
