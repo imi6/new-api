@@ -69,11 +69,16 @@ function parsePaymentMethods(
       const normalizedMinTopup = Number.isFinite(rawMinTopup) ? rawMinTopup : 0
       const type = typeof item.type === 'string' ? item.type : ''
 
+      const rawBonus = Number(item.bonus_percent)
+      const bonusPercent =
+        Number.isFinite(rawBonus) && rawBonus > 0 ? rawBonus : undefined
+
       return {
         name: typeof item.name === 'string' ? item.name : '',
         type,
         color: typeof item.color === 'string' ? item.color : undefined,
         icon: typeof item.icon === 'string' ? item.icon : undefined,
+        bonus_percent: bonusPercent,
         min_topup:
           type === 'stripe' && normalizedMinTopup <= 0
             ? stripeMinTopup
