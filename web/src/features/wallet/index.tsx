@@ -24,6 +24,7 @@ import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
 
+import { AffiliateRebatePage } from './components/affiliate-rebate-page'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
@@ -58,6 +59,7 @@ import type {
 
 interface WalletProps {
   initialShowHistory?: boolean
+  initialPanel?: 'referral'
 }
 
 export function Wallet(props: WalletProps) {
@@ -309,8 +311,13 @@ export function Wallet(props: WalletProps) {
   return (
     <>
       <SectionPageLayout>
-        <SectionPageLayout.Title>{t('Wallet')}</SectionPageLayout.Title>
+        <SectionPageLayout.Title>
+          {props.initialPanel === 'referral' ? t('Referral rebate') : t('Wallet')}
+        </SectionPageLayout.Title>
         <SectionPageLayout.Content>
+          {props.initialPanel === 'referral' ? (
+            <AffiliateRebatePage onClaimed={fetchUser} />
+          ) : (
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
             <WalletStatsCard user={user} loading={userLoading} />
 
@@ -373,6 +380,7 @@ export function Wallet(props: WalletProps) {
               loading={affiliateLoading}
             />
           </div>
+          )}
         </SectionPageLayout.Content>
       </SectionPageLayout>
 

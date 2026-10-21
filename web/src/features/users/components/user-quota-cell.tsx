@@ -27,6 +27,11 @@ import { useSystemConfigStore } from '@/stores/system-config-store'
 type UserQuotaCellProps = {
   remaining: number
   used: number
+  title?: string
+  remainingLabel?: string
+  usedLabel?: string
+  popoverUsedLabel?: string
+  emptyLabel?: string
 }
 
 export function UserQuotaCell(props: UserQuotaCellProps) {
@@ -35,6 +40,11 @@ export function UserQuotaCell(props: UserQuotaCellProps) {
 
   const { meta: currency } = getCurrencyDisplay()
   const quotaUnit = currency.kind === 'tokens' ? t('Tokens') : currency.symbol
+  const title = props.title ?? t('Quota')
+  const remainingLabel = props.remainingLabel ?? t('Available Balance')
+  const usedLabel = props.usedLabel ?? t('Used amount')
+  const popoverUsedLabel = props.popoverUsedLabel ?? t('Total Used')
+  const emptyLabel = props.emptyLabel ?? t('No Quota')
   const hasQuota = props.remaining !== 0 || props.used !== 0
   const formattedRemaining = formatQuotaWithCurrency(props.remaining, {
     showSymbol: false,
@@ -45,15 +55,15 @@ export function UserQuotaCell(props: UserQuotaCellProps) {
 
   return (
     <QuotaDetailsPopover
-      title={`${t('Quota')} (${quotaUnit})`}
+      title={`${title} (${quotaUnit})`}
       triggerLabel={
         hasQuota
-          ? `${t('Available Balance')} ${formattedRemaining}; ${t('Used amount')} ${formattedUsed}`
-          : t('No Quota')
+          ? `${remainingLabel} ${formattedRemaining}; ${usedLabel} ${formattedUsed}`
+          : emptyLabel
       }
       details={[
-        { label: t('Available Balance'), value: formattedRemaining },
-        { label: t('Total Used'), value: formattedUsed },
+        { label: remainingLabel, value: formattedRemaining },
+        { label: popoverUsedLabel, value: formattedUsed },
       ]}
     >
       {hasQuota ? (
@@ -70,13 +80,13 @@ export function UserQuotaCell(props: UserQuotaCellProps) {
             data-table-text='secondary'
             className='text-muted-foreground flex items-baseline gap-1 text-xs font-normal'
           >
-            <span>{t('Used amount')}</span>
+            <span>{usedLabel}</span>
             <span>{formattedUsed}</span>
           </span>
         </span>
       ) : (
         <StatusBadge
-          label={t('No Quota')}
+          label={emptyLabel}
           variant='neutral'
           copyable={false}
           className='-ml-1.5 font-normal'

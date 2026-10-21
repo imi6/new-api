@@ -77,41 +77,46 @@ func resolveUserSortOptions(sortOptions []UserSortOptions) UserSortOptions {
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
 // Otherwise, the sensitive information will be saved on local storage in plain text!
 type User struct {
-	Id                   int                        `json:"id"`
-	Username             string                     `json:"username" gorm:"unique;index" validate:"max=20"`
-	Password             string                     `json:"password" gorm:"not null;" validate:"min=8,max=128"`
-	HasPassword          bool                       `json:"-" gorm:"-:all"`
-	OriginalPassword     string                     `json:"original_password" gorm:"-:all"` // this field is only for Password change verification, don't save it to database!
-	DisplayName          string                     `json:"display_name" gorm:"index" validate:"max=20"`
-	Role                 int                        `json:"role" gorm:"type:int;default:1"`   // admin, common
-	Status               int                        `json:"status" gorm:"type:int;default:1"` // enabled, disabled
-	Email                string                     `json:"email" gorm:"index" validate:"max=50"`
-	GitHubId             string                     `json:"github_id" gorm:"column:github_id;index"`
-	DiscordId            string                     `json:"discord_id" gorm:"column:discord_id;index"`
-	OidcId               string                     `json:"oidc_id" gorm:"column:oidc_id;index"`
-	WeChatId             string                     `json:"wechat_id" gorm:"column:wechat_id;index"`
-	TelegramId           string                     `json:"telegram_id" gorm:"column:telegram_id;index"`
-	VerificationCode     string                     `json:"verification_code" gorm:"-:all"`                         // this field is only for Email verification, don't save it to database!
-	AccessToken          *string                    `json:"-" gorm:"type:char(32);column:access_token;uniqueIndex"` // Deprecated: 旧版面板访问令牌，仅在升级后的过渡期内使用；删除 users.access_token 列时一并移除。
-	AccessTokenCreatedAt *int64                     `json:"-" gorm:"type:bigint;column:access_token_created_at"`    // Deprecated: 旧版面板访问令牌，仅在升级后的过渡期内使用；删除 users.access_token 列时一并移除。
-	Quota                int                        `json:"quota" gorm:"type:int;default:0"`
-	UsedQuota            int                        `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
-	RequestCount         int                        `json:"request_count" gorm:"type:int;default:0;"`               // request number
-	Group                string                     `json:"group" gorm:"type:varchar(64);default:'default'"`
-	AffCode              string                     `json:"aff_code" gorm:"type:varchar(32);column:aff_code;uniqueIndex"`
-	AffCount             int                        `json:"aff_count" gorm:"type:int;default:0;column:aff_count"`
-	AffQuota             int                        `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
-	AffHistoryQuota      int                        `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
-	InviterId            int                        `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
-	DeletedAt            gorm.DeletedAt             `gorm:"index"`
-	LinuxDOId            string                     `json:"linux_do_id" gorm:"column:linux_do_id;index"`
-	Setting              string                     `json:"setting" gorm:"type:text;column:setting"`
-	Remark               string                     `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
-	StripeCustomer       string                     `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
-	CreatedAt            int64                      `json:"created_at" gorm:"autoCreateTime;column:created_at"`
-	LastLoginAt          int64                      `json:"last_login_at" gorm:"default:0;column:last_login_at"`
-	AuthVersion          int64                      `json:"-" gorm:"type:bigint;not null;default:1;column:auth_version"`
-	AdminPermissions     map[string]map[string]bool `json:"admin_permissions,omitempty" gorm:"-:all"`
+	Id                     int                        `json:"id"`
+	Username               string                     `json:"username" gorm:"unique;index" validate:"max=20"`
+	Password               string                     `json:"password" gorm:"not null;" validate:"min=8,max=128"`
+	HasPassword            bool                       `json:"-" gorm:"-:all"`
+	OriginalPassword       string                     `json:"original_password" gorm:"-:all"` // this field is only for Password change verification, don't save it to database!
+	DisplayName            string                     `json:"display_name" gorm:"index" validate:"max=20"`
+	Role                   int                        `json:"role" gorm:"type:int;default:1"`   // admin, common
+	Status                 int                        `json:"status" gorm:"type:int;default:1"` // enabled, disabled
+	Email                  string                     `json:"email" gorm:"index" validate:"max=50"`
+	GitHubId               string                     `json:"github_id" gorm:"column:github_id;index"`
+	DiscordId              string                     `json:"discord_id" gorm:"column:discord_id;index"`
+	OidcId                 string                     `json:"oidc_id" gorm:"column:oidc_id;index"`
+	WeChatId               string                     `json:"wechat_id" gorm:"column:wechat_id;index"`
+	TelegramId             string                     `json:"telegram_id" gorm:"column:telegram_id;index"`
+	VerificationCode       string                     `json:"verification_code" gorm:"-:all"`                         // this field is only for Email verification, don't save it to database!
+	AccessToken            *string                    `json:"-" gorm:"type:char(32);column:access_token;uniqueIndex"` // Deprecated: 旧版面板访问令牌，仅在升级后的过渡期内使用；删除 users.access_token 列时一并移除。
+	AccessTokenCreatedAt   *int64                     `json:"-" gorm:"type:bigint;column:access_token_created_at"`    // Deprecated: 旧版面板访问令牌，仅在升级后的过渡期内使用；删除 users.access_token 列时一并移除。
+	Quota                  int                        `json:"quota" gorm:"type:int;default:0"`
+	UsedQuota              int                        `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
+	RequestCount           int                        `json:"request_count" gorm:"type:int;default:0;"`               // request number
+	Group                  string                     `json:"group" gorm:"type:varchar(64);default:'default'"`
+	AffCode                string                     `json:"aff_code" gorm:"type:varchar(32);column:aff_code;uniqueIndex"`
+	AffCount               int                        `json:"aff_count" gorm:"type:int;default:0;column:aff_count"`
+	AffQuota               int                        `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
+	AffHistoryQuota        int                        `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
+	UnpaidQuotaBalance     int                        `json:"-" gorm:"type:int;default:0;column:unpaid_quota_balance"`        // 尚未消耗的赠送额度
+	PaidQuotaConsumed      int                        `json:"-" gorm:"type:int;default:0;column:paid_quota_consumed"`         // 已消耗的充值额度
+	AffiliateRebateClaimed int                        `json:"-" gorm:"type:int;default:0;column:affiliate_rebate_claimed"`    // 已提取的消费返利
+	InviterId              int                        `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
+	DeletedAt              gorm.DeletedAt             `gorm:"index"`
+	LinuxDOId              string                     `json:"linux_do_id" gorm:"column:linux_do_id;index"`
+	Setting                string                     `json:"setting" gorm:"type:text;column:setting"`
+	Remark                 string                     `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
+	StripeCustomer         string                     `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
+	CreatedAt              int64                      `json:"created_at" gorm:"autoCreateTime;column:created_at"`
+	LastLoginAt            int64                      `json:"last_login_at" gorm:"default:0;column:last_login_at"`
+	AuthVersion            int64                      `json:"-" gorm:"type:bigint;not null;default:1;column:auth_version"`
+	AdminPermissions       map[string]map[string]bool `json:"admin_permissions,omitempty" gorm:"-:all"`
+	AffiliateRebateUnused  int                        `json:"affiliate_rebate_unused,omitempty" gorm:"-"`
+	AffiliateRebateTotal   int                        `json:"affiliate_rebate_total,omitempty" gorm:"-"`
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -431,6 +436,9 @@ func GetAllUsers(pageInfo *common.PageInfo, sortOptions ...UserSortOptions) (use
 	if err = tx.Commit().Error; err != nil {
 		return nil, 0, err
 	}
+	if err = AttachAffiliateRebateTotals(users); err != nil {
+		return nil, 0, err
+	}
 
 	return users, total, nil
 }
@@ -498,6 +506,9 @@ func SearchUsers(keyword string, group string, role *int, status *int, startIdx 
 
 	// 提交事务
 	if err = tx.Commit().Error; err != nil {
+		return nil, 0, err
+	}
+	if err = AttachAffiliateRebateTotals(users); err != nil {
 		return nil, 0, err
 	}
 
@@ -611,6 +622,7 @@ func (user *User) TransferAffQuotaToQuota(quota int) error {
 	// 更新用户额度
 	user.AffQuota -= quota
 	user.Quota += quota
+	user.UnpaidQuotaBalance += quota
 
 	// 保存用户状态
 	if err := tx.Save(user).Error; err != nil {
@@ -679,6 +691,7 @@ func (user *User) Insert(inviterId int) error {
 				return err
 			}
 			user.Quota = common.QuotaForNewUser
+			user.UnpaidQuotaBalance = common.QuotaForNewUser
 			user.AffCode = common.GetRandomString(4)
 
 			// 初始化用户设置，包括默认的边栏配置
@@ -720,6 +733,7 @@ func (user *User) finishInsert(inviterId int) {
 	if inviterId != 0 && operation_setting.IsPaymentComplianceConfirmed() {
 		if common.QuotaForInvitee > 0 {
 			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
+			_ = AddUnpaidQuota(user.Id, common.QuotaForInvitee)
 			RecordLog(user.Id, LogTypeSystem, common.NewMessage("Invitation code bonus {{quota}}", map[string]any{"quota": logger.FormatQuota(common.QuotaForInvitee)}))
 		}
 		if common.QuotaForInviter > 0 {
@@ -743,6 +757,7 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 			return err
 		}
 		user.Quota = common.QuotaForNewUser
+		user.UnpaidQuotaBalance = common.QuotaForNewUser
 		user.AffCode = common.GetRandomString(4)
 
 		// 初始化用户设置
@@ -777,6 +792,7 @@ func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 	if inviterId != 0 && operation_setting.IsPaymentComplianceConfirmed() {
 		if common.QuotaForInvitee > 0 {
 			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
+			_ = AddUnpaidQuota(user.Id, common.QuotaForInvitee)
 			RecordLog(user.Id, LogTypeSystem, common.NewMessage("Invitation code bonus {{quota}}", map[string]any{"quota": logger.FormatQuota(common.QuotaForInvitee)}))
 		}
 		if common.QuotaForInviter > 0 {
@@ -1432,55 +1448,56 @@ func UpdateUserLastLoginAt(id int) {
 }
 
 func UpdateUserUsedQuotaAndRequestCount(id int, quota int) {
-	if common.BatchUpdateEnabled {
-		addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
-		addNewRecord(BatchUpdateTypeRequestCount, id, 1)
-		return
-	}
-	updateUserUsedQuotaAndRequestCount(id, quota, 1)
+	recordUserUsedQuota(id, quota, 1, true)
+}
+
+// RecordUserUsedQuotaAndRequestCount updates usage statistics.
+// walletFunded usage consumes gift quota before it counts as paid consumption.
+func RecordUserUsedQuotaAndRequestCount(id int, quota int, walletFunded bool) {
+	recordUserUsedQuota(id, quota, 1, walletFunded)
 }
 
 // UpdateUserUsedQuota adjusts accumulated usage without changing request count.
 func UpdateUserUsedQuota(id int, quota int) {
-	if common.BatchUpdateEnabled {
-		addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
-		return
-	}
-	if err := DB.Model(&User{}).Where("id = ?", id).Update("used_quota", gorm.Expr("used_quota + ?", quota)).Error; err != nil {
-		common.SysLog(common.LogText("failed to update user used quota: %s", err.Error()))
-	}
+	recordUserUsedQuota(id, quota, 0, true)
 }
 
-func updateUserUsedQuotaAndRequestCount(id int, quota int, count int) {
-	err := DB.Model(&User{}).Where("id = ?", id).Updates(
-		map[string]any{
-			"used_quota":    gorm.Expr("used_quota + ?", quota),
-			"request_count": gorm.Expr("request_count + ?", count),
-		},
-	).Error
-	if err != nil {
-		common.SysLog(common.LogText("failed to update user used quota and request count: %s", err.Error()))
+// RecordUserUsedQuota adjusts accumulated usage without changing request count.
+// Subscription usage passes walletFunded false so it does not consume gift quota.
+func RecordUserUsedQuota(id int, quota int, walletFunded bool) {
+	recordUserUsedQuota(id, quota, 0, walletFunded)
+}
+
+func recordUserUsedQuota(id int, quota int, requestDelta int, walletFunded bool) {
+	if quota == 0 && requestDelta == 0 {
 		return
 	}
-
-	//// 更新缓存
-	//if err := invalidateUserCache(id); err != nil {
-	//	common.SysError("failed to invalidate user cache: " + err.Error())
-	//}
+	if common.BatchUpdateEnabled {
+		if quota != 0 {
+			addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
+		}
+		if requestDelta != 0 {
+			addNewRecord(BatchUpdateTypeRequestCount, id, requestDelta)
+		}
+		if walletFunded && quota != 0 {
+			if err := applyAttributedPaidConsumption(DB, id, quota); err != nil {
+				common.SysLog(common.LogText("failed to update paid quota consumption: %s", err.Error()))
+			}
+		}
+		return
+	}
+	if err := applyAttributedUsage(DB, id, quota, 0, requestDelta, walletFunded); err != nil {
+		common.SysLog(common.LogText("failed to update user used quota: %s", err.Error()))
+	}
 }
 
 func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, requestCount int) {
 	if quota == 0 && usedQuota == 0 && requestCount == 0 {
 		return
 	}
-
-	err := DB.Model(&User{}).Where("id = ?", id).Updates(
-		map[string]any{
-			"quota":         gorm.Expr("quota + ?", quota),
-			"used_quota":    gorm.Expr("used_quota + ?", usedQuota),
-			"request_count": gorm.Expr("request_count + ?", requestCount),
-		},
-	).Error
+	// Paid consumption is recorded when the delta is queued, so the flush only
+	// writes the accumulated statistics.
+	err := applyUserQuotaUsage(DB, id, usedQuota, quota, requestCount, false)
 	if err != nil {
 		common.SysLog(common.LogText("failed to batch update user quota, used quota and request count: %s", err.Error()))
 	}
