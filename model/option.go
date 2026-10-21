@@ -149,6 +149,9 @@ func InitOptionMap() {
 	common.OptionMap["QuotaForNewUser"] = strconv.Itoa(common.QuotaForNewUser)
 	common.OptionMap["QuotaForInviter"] = strconv.Itoa(common.QuotaForInviter)
 	common.OptionMap["QuotaForInvitee"] = strconv.Itoa(common.QuotaForInvitee)
+	common.OptionMap["AffiliateRebatePercent"] = strconv.FormatFloat(common.AffiliateRebatePercent, 'f', -1, 64)
+	common.OptionMap["AffiliateRebateDownstreamQuota"] = strconv.Itoa(common.AffiliateRebateDownstreamQuota)
+	common.OptionMap["AffiliateRebateUpstreamQuota"] = strconv.Itoa(common.AffiliateRebateUpstreamQuota)
 	common.OptionMap["QuotaRemindEnabled"] = strconv.FormatBool(common.QuotaRemindEnabled)
 	common.OptionMap["QuotaRemindThreshold"] = strconv.Itoa(common.QuotaRemindThreshold)
 	common.OptionMap["PreConsumedQuota"] = strconv.Itoa(common.PreConsumedQuota)
@@ -663,6 +666,12 @@ func updateOptionMap(key string, value string) (err error) {
 		common.QuotaForInviter, _ = strconv.Atoi(value)
 	case "QuotaForInvitee":
 		common.QuotaForInvitee, _ = strconv.Atoi(value)
+	case "AffiliateRebatePercent":
+		common.AffiliateRebatePercent, _ = strconv.ParseFloat(value, 64)
+	case "AffiliateRebateDownstreamQuota":
+		common.AffiliateRebateDownstreamQuota, _ = strconv.Atoi(value)
+	case "AffiliateRebateUpstreamQuota":
+		common.AffiliateRebateUpstreamQuota, _ = strconv.Atoi(value)
 	case "QuotaRemindThreshold":
 		common.QuotaRemindThreshold, _ = strconv.Atoi(value)
 	case "PreConsumedQuota":
