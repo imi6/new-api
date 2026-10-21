@@ -100,8 +100,10 @@ func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) 
 		}
 
 		// 步骤2: 在事务中增加用户额度
-		if err := tx.Model(&User{}).Where("id = ?", userId).
-			Update("quota", gorm.Expr("quota + ?", quotaAwarded)).Error; err != nil {
+		if err := tx.Model(&User{}).Where("id = ?", userId).Updates(map[string]any{
+			"quota":                gorm.Expr("quota + ?", quotaAwarded),
+			"unpaid_quota_balance": gorm.Expr("unpaid_quota_balance + ?", quotaAwarded),
+		}).Error; err != nil {
 			return common.NewMessage("Check-in failed: quota update error")
 		}
 
@@ -133,6 +135,9 @@ func userCheckinWithoutTransaction(checkin *Checkin, userId int, quotaAwarded in
 	if err := IncreaseUserQuota(userId, quotaAwarded, true); err != nil {
 		// 如果增加额度失败，需要回滚签到记录
 		DB.Delete(checkin)
+		return nil, common.NewMessage("Check-in failed: quota update error")
+	}
+	if err := AddUnpaidQuota(userId, quotaAwarded); err != nil {
 		return nil, common.NewMessage("Check-in failed: quota update error")
 	}
 
