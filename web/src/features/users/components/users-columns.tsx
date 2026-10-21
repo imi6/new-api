@@ -195,6 +195,29 @@ export function useUsersColumns(): ColumnDef<User>[] {
         meta: { mobileOrder: 40 },
       },
       {
+        id: 'affiliate_rebate',
+        accessorKey: 'affiliate_rebate_unused',
+        header: `${t('Rebate balance')} (${quotaUnit})`,
+        cell: ({ row }) => {
+          const user = row.original
+          return (
+            <UserQuotaCell
+              remaining={user.affiliate_rebate_unused ?? 0}
+              used={user.affiliate_rebate_total ?? 0}
+              title={t('Rebate balance')}
+              remainingLabel={t('Unused rebate')}
+              usedLabel={t('Claimed and unclaimed total')}
+              popoverUsedLabel={t('Claimed and unclaimed total')}
+              emptyLabel={t('No rebate')}
+            />
+          )
+        },
+        enableSorting: false,
+        size: 180,
+        minSize: 160,
+        meta: { mobileOrder: 38 },
+      },
+      {
         accessorKey: 'group',
         header: t('User Group'),
         cell: ({ row }) => {
