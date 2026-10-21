@@ -376,6 +376,7 @@ func migrateDB() error {
 		&CasbinRule{},
 		&AuthzRole{},
 		&UserAccessToken{},
+		&UserPaidConsumptionLog{},
 	)
 	if err != nil {
 		return err
@@ -387,6 +388,9 @@ func migrateDB() error {
 		return fmt.Errorf("initialize legacy access token deadline: %w", err)
 	}
 	if err := InitializeExternalIdentityClaims(); err != nil {
+		return err
+	}
+	if err := backfillUnpaidQuotaFromCurrentBalance(); err != nil {
 		return err
 	}
 	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
