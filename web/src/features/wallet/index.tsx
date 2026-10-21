@@ -400,6 +400,11 @@ export function Wallet(props: WalletProps) {
       <BillingHistoryDialog
         open={billingDialogOpen}
         onOpenChange={setBillingDialogOpen}
+        paymentMethods={
+          topupInfo?.pay_methods
+            ?.map((method) => method.type)
+            .filter((type) => type.length > 0) ?? []
+        }
       />
 
       <CreemConfirmDialog

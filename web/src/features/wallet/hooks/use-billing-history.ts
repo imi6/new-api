@@ -41,10 +41,12 @@ interface UseBillingHistoryOptions {
   initialPage?: number
   /** Initial page size */
   initialPageSize?: number
+  /** Fetch only while the history dialog is open */
+  enabled?: boolean
 }
 
 export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
-  const { initialPage = 1, initialPageSize = 10 } = options
+  const { initialPage = 1, initialPageSize = 10, enabled = true } = options
   const isAdmin = useIsAdmin()
 
   const [records, setRecords] = useState<TopupRecord[]>([])
@@ -52,32 +54,92 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
   const [page, setPage] = useState(initialPage)
   const [pageSize, setPageSize] = useState(initialPageSize)
   const [keyword, setKeyword] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('all')
+  const [knownMethods, setKnownMethods] = useState<string[]>([])
   const debouncedKeyword = useDebounce(keyword)
   const requestIdRef = useRef(0)
+  const scannedRecordsRef = useRef<{ key: string; items: TopupRecord[] } | null>(
+    null
+  )
   const [loading, setLoading] = useState(false)
   const [completing, setCompleting] = useState(false)
 
+  const rememberMethods = useCallback((items: TopupRecord[]) => {
+    setKnownMethods((current) => {
+      const next = new Set(current)
+      let changed = false
+      for (const item of items) {
+        if (!item.payment_method || next.has(item.payment_method)) continue
+        next.add(item.payment_method)
+        changed = true
+      }
+      return changed ? [...next] : current
+    })
+  }, [])
+
+  const fetchPage = useCallback(
+    async (pageNum: number, size: number, search: string) => {
+      const response = isAdmin
+        ? await getAllBillingHistory(pageNum, size, search)
+        : await getUserBillingHistory(pageNum, size, search)
+      if (!isApiSuccess(response) || !response.data) {
+        throw response
+      }
+      return {
+        items: response.data.items || [],
+        total: response.data.total || 0,
+      }
+    },
+    [isAdmin]
+  )
+
   /**
-   * Fetch billing history
+   * Fetch billing history. Payment-method filtering stays in the browser:
+   * the existing list API has no method parameter, so a selected method
+   * loads the keyword's pages and filters them here.
    */
   const fetchBillingHistory = useCallback(async () => {
     const requestId = ++requestIdRef.current
     setLoading(true)
     try {
-      const response = isAdmin
-        ? await getAllBillingHistory(page, pageSize, debouncedKeyword)
-        : await getUserBillingHistory(page, pageSize, debouncedKeyword)
-
-      if (requestId !== requestIdRef.current) return
-
-      if (isApiSuccess(response) && response.data) {
-        setRecords(response.data.items || [])
-        setTotal(response.data.total || 0)
-      } else {
-        handleServerError(response, i18next.t('Failed to load billing history'))
-        setRecords([])
-        setTotal(0)
+      if (paymentMethod === 'all') {
+        const pageResult = await fetchPage(page, pageSize, debouncedKeyword)
+        if (requestId !== requestIdRef.current) return
+        rememberMethods(pageResult.items)
+        setRecords(pageResult.items)
+        setTotal(pageResult.total)
+        return
       }
+
+      const scanKey = `${isAdmin}:${debouncedKeyword}`
+      let scanned = scannedRecordsRef.current
+      if (scanned?.key !== scanKey) {
+        const collected: TopupRecord[] = []
+        let reportedTotal = 0
+        for (let pageNum = 1; pageNum <= 100; pageNum++) {
+          const pageResult = await fetchPage(pageNum, 100, debouncedKeyword)
+          if (requestId !== requestIdRef.current) return
+          collected.push(...pageResult.items)
+          reportedTotal = pageResult.total
+          if (
+            pageResult.items.length === 0 ||
+            collected.length >= reportedTotal
+          ) {
+            break
+          }
+        }
+        scanned = { key: scanKey, items: collected }
+        scannedRecordsRef.current = scanned
+      }
+
+      if (requestId !== requestIdRef.current || !scanned) return
+      rememberMethods(scanned.items)
+      const filtered = scanned.items.filter(
+        (item) => item.payment_method === paymentMethod
+      )
+      const start = (page - 1) * pageSize
+      setRecords(filtered.slice(start, start + pageSize))
+      setTotal(filtered.length)
     } catch (error) {
       if (requestId !== requestIdRef.current) return
       handleServerError(error, i18next.t('Failed to load billing history'))
@@ -88,7 +150,15 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
         setLoading(false)
       }
     }
-  }, [debouncedKeyword, isAdmin, page, pageSize])
+  }, [
+    debouncedKeyword,
+    fetchPage,
+    isAdmin,
+    page,
+    pageSize,
+    paymentMethod,
+    rememberMethods,
+  ])
 
   /**
    * Complete a pending order (admin only)
@@ -105,7 +175,7 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
         const response = await completeOrder({ trade_no: tradeNo })
         if (isApiSuccess(response)) {
           toast.success(i18next.t('Order completed successfully'))
-          // Refresh the list
+          scannedRecordsRef.current = null
           await fetchBillingHistory()
           return true
         } else {
@@ -143,15 +213,22 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
   const handleSearch = useCallback((newKeyword: string) => {
     requestIdRef.current += 1
     setKeyword(newKeyword)
-    setPage(1) // Reset to first page when searching
+    setPage(1)
+  }, [])
+
+  const handlePaymentMethodChange = useCallback((method: string) => {
+    requestIdRef.current += 1
+    setPaymentMethod(method)
+    setPage(1)
   }, [])
 
   // Fetch data after the search draft has settled.
   useEffect(() => {
+    if (!enabled) return
     if (keyword !== debouncedKeyword) return
 
     fetchBillingHistory()
-  }, [debouncedKeyword, fetchBillingHistory, keyword])
+  }, [debouncedKeyword, enabled, fetchBillingHistory, keyword])
 
   return {
     records,
@@ -159,12 +236,15 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
     page,
     pageSize,
     keyword,
+    paymentMethod,
+    knownMethods,
     loading,
     completing,
     isAdmin,
     handlePageChange,
     handlePageSizeChange,
     handleSearch,
+    handlePaymentMethodChange,
     handleCompleteOrder,
     refresh: fetchBillingHistory,
   }

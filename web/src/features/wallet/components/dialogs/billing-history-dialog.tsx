@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Search, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
@@ -58,11 +58,14 @@ import {
 interface BillingHistoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Configured payment method types, used as filter choices before history pages are loaded. */
+  paymentMethods?: string[]
 }
 
 export function BillingHistoryDialog({
   open,
   onOpenChange,
+  paymentMethods = [],
 }: BillingHistoryDialogProps) {
   const { t } = useTranslation()
   const {
@@ -71,19 +74,41 @@ export function BillingHistoryDialog({
     page,
     pageSize,
     keyword,
+    paymentMethod,
+    knownMethods,
     loading,
     completing,
     isAdmin,
     handlePageChange,
     handlePageSizeChange,
     handleSearch,
+    handlePaymentMethodChange,
     handleCompleteOrder,
-  } = useBillingHistory()
+  } = useBillingHistory({ enabled: open })
 
   const [confirmTradeNo, setConfirmTradeNo] = useState<string | null>(null)
   const { copyToClipboard, copiedText } = useCopyToClipboard({ notify: false })
 
   const totalPages = Math.ceil(total / pageSize)
+  const methodOptions = useMemo(() => {
+    const methods = new Set<string>()
+    for (const method of paymentMethods) {
+      if (method) methods.add(method)
+    }
+    for (const method of knownMethods) {
+      if (method) methods.add(method)
+    }
+    return [...methods].sort((left, right) =>
+      getPaymentMethodName(left, t).localeCompare(getPaymentMethodName(right, t))
+    )
+  }, [knownMethods, paymentMethods, t])
+  const methodSelectItems = [
+    { value: 'all', label: t('All payment methods') },
+    ...methodOptions.map((method) => ({
+      value: method,
+      label: getPaymentMethodName(method, t),
+    })),
+  ]
 
   const handleConfirmComplete = async () => {
     if (confirmTradeNo) {
@@ -109,7 +134,7 @@ export function BillingHistoryDialog({
       >
         <div className='min-h-0 space-y-3'>
           {/* Search and Filter Bar */}
-          <div className='flex items-center gap-2'>
+          <div className='flex flex-col gap-2 sm:flex-row sm:items-center'>
             <div className='relative flex-1'>
               <Search className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
               <Input
@@ -119,6 +144,29 @@ export function BillingHistoryDialog({
                 className='h-9 pl-10'
               />
             </div>
+            <Select
+              items={methodSelectItems}
+              value={paymentMethod}
+              onValueChange={(value) =>
+                value !== null && handlePaymentMethodChange(value)
+              }
+            >
+              <SelectTrigger
+                className='h-9 w-full sm:w-44'
+                aria-label={t('Payment Method')}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                <SelectGroup>
+                  {methodSelectItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
             <Select
               items={[
                 { value: '10', label: t('10 / page') },
@@ -178,7 +226,7 @@ export function BillingHistoryDialog({
                   {t('No billing records found')}
                 </p>
                 <p className='mt-1 text-xs'>
-                  {keyword
+                  {keyword || paymentMethod !== 'all'
                     ? t('Try adjusting your search')
                     : t('Your transaction history will appear here')}
                 </p>
