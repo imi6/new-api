@@ -246,3 +246,38 @@ export async function completeOrder(
   const res = await api.post('/api/user/topup/complete', request)
   return res.data
 }
+
+export interface AffiliateInviteeRebate {
+  user_id: number
+  username: string
+  paid_consumed: number
+  rebate: number
+  threshold_met: boolean
+}
+
+export interface AffiliateRebateSummary {
+  percent: number
+  downstream_threshold: number
+  upstream_minimum: number
+  paid_consumed: number
+  week_paid_consumed: number
+  can_claim: boolean
+  accrued: number
+  claimed: number
+  claimable: number
+  invitees: AffiliateInviteeRebate[]
+}
+
+export async function getAffiliateRebate(): Promise<
+  ApiResponse<AffiliateRebateSummary>
+> {
+  const res = await api.get('/api/user/affiliate_rebate')
+  return res.data
+}
+
+export async function claimAffiliateRebate(
+  quota: number
+): Promise<ApiResponse> {
+  const res = await api.post('/api/user/affiliate_rebate/claim', { quota })
+  return res.data
+}
