@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Link } from '@tanstack/react-router'
 import { Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -122,6 +123,14 @@ export function AffiliateRewardsCard({
               {t('Transfer to Balance')}
             </Button>
           )}
+          <Button
+            variant='outline'
+            className='h-9 shrink-0 px-3'
+            size='sm'
+            render={<Link to='/wallet' search={{ panel: 'referral' }} />}
+          >
+            {t('Referral rebate')}
+          </Button>
         </div>
         {!complianceConfirmed ? (
           <p className='text-muted-foreground text-xs lg:col-span-3'>

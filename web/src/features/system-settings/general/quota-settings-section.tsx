@@ -55,6 +55,9 @@ const quotaSchema = z.object({
   QuotaForNewUser: z.coerce.number().min(0),
   QuotaForInviter: z.coerce.number().min(0),
   QuotaForInvitee: z.coerce.number().min(0),
+  AffiliateRebatePercent: z.coerce.number().min(0).max(100),
+  AffiliateRebateDownstreamQuota: z.coerce.number().min(0),
+  AffiliateRebateUpstreamQuota: z.coerce.number().min(0),
   TopUpLink: z.string(),
   quota_setting: z.object({
     enable_free_model_pre_consume: z.boolean(),
@@ -273,6 +276,94 @@ export function QuotaSettingsSection({
                     {t('Quota given to invited users ({{formattedQuota}})', {
                       formattedQuota: formatQuotaInputValue(field.value),
                     })}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='AffiliateRebatePercent'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Rebate percent')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      step='0.01'
+                      min={0}
+                      max={100}
+                      value={field.value ?? ''}
+                      onChange={handleNumberChange(field.onChange)}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      "Percent of an invitee's paid consumption returned to the inviter. 10 means 10%."
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='AffiliateRebateDownstreamQuota'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Downstream paid consumption required')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      value={field.value ?? ''}
+                      onChange={handleNumberChange(field.onChange)}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Invitee paid consumption required before rebate starts ({{formattedQuota}}). Gifts do not count.',
+                      { formattedQuota: formatQuotaInputValue(field.value) }
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='AffiliateRebateUpstreamQuota'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Inviter paid consumption required to claim')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      value={field.value ?? ''}
+                      onChange={handleNumberChange(field.onChange)}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'The inviter must consume this much paid quota before claiming rebate ({{formattedQuota}}).',
+                      { formattedQuota: formatQuotaInputValue(field.value) }
+                    )}
+                  </FormDescription>
+                  <FormDescription>
+                    {t(
+                      'Claiming rebate requires enough inviter paid consumption in the last 7 days to cover that claim. Claiming 10 at 10% requires at least 100.'
+                    )}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

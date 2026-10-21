@@ -66,6 +66,19 @@ func AdjustUserQuota(userID, operatorRole int, mode string, value int) (*UserQuo
 			if result.RowsAffected != 1 {
 				return gorm.ErrRecordNotFound
 			}
+			deltaQuota := after - user.Quota
+			if deltaQuota > 0 {
+				if err := tx.Model(&User{}).Where("id = ?", userID).
+					Update("unpaid_quota_balance", gorm.Expr("unpaid_quota_balance + ?", deltaQuota)).Error; err != nil {
+					return err
+				}
+			} else if deltaQuota < 0 {
+				reduce := -deltaQuota
+				if err := tx.Model(&User{}).Where("id = ?", userID).
+					Update("unpaid_quota_balance", gorm.Expr("CASE WHEN unpaid_quota_balance >= ? THEN unpaid_quota_balance - ? ELSE 0 END", reduce, reduce)).Error; err != nil {
+					return err
+				}
+			}
 		}
 		adjustment = UserQuotaAdjustment{UserID: user.Id, Username: user.Username, Before: user.Quota, After: after}
 		return nil
