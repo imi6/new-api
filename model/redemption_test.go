@@ -135,6 +135,7 @@ func TestRedeemCreditsQuotaExactlyOnce(t *testing.T) {
 	var user User
 	require.NoError(t, DB.First(&user, "id = ?", userId).Error)
 	assert.Equal(t, 500, user.Quota)
+	assert.Equal(t, 0, user.UnpaidQuotaBalance)
 
 	var redemption Redemption
 	require.NoError(t, DB.First(&redemption, "name = ?", "redeem-test").Error)
