@@ -35,7 +35,13 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { formatQuota } from '@/lib/format'
+import {
+  formatQuota,
+  getEditableQuotaStep,
+  parseQuotaFromDollars,
+  quotaUnitsToEditableAmount,
+} from '@/lib/format'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { FormDirtyIndicator } from '../components/form-dirty-indicator'
 import { FormNavigationGuard } from '../components/form-navigation-guard'
@@ -82,6 +88,11 @@ function formatQuotaInputValue(value: QuotaInputValue): string {
   return formatQuota(value === '' ? 0 : value)
 }
 
+function dollarInputValue(value: QuotaInputValue): number | '' {
+  if (value === '') return ''
+  return quotaUnitsToEditableAmount(value)
+}
+
 type QuotaSettingsSectionProps = {
   defaultValues: QuotaFormValues
   complianceConfirmed?: boolean
@@ -93,11 +104,19 @@ export function QuotaSettingsSection({
 }: QuotaSettingsSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
+  useSystemConfigStore((state) => state.config.currency)
+  const dollarStep = getEditableQuotaStep()
   const handleNumberChange =
     (onChange: (value: QuotaInputValue) => void) =>
     (event: ChangeEvent<HTMLInputElement>) => {
       const value = event.currentTarget.valueAsNumber
       onChange(Number.isNaN(value) ? '' : value)
+    }
+  const handleDollarChange =
+    (onChange: (value: QuotaInputValue) => void) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.currentTarget.valueAsNumber
+      onChange(Number.isNaN(value) ? '' : parseQuotaFromDollars(value))
     }
 
   const { form, handleSubmit, isDirty, isSubmitting } =
@@ -320,8 +339,10 @@ export function QuotaSettingsSection({
                   <FormControl>
                     <Input
                       type='number'
-                      value={field.value ?? ''}
-                      onChange={handleNumberChange(field.onChange)}
+                      min={0}
+                      step={dollarStep}
+                      value={dollarInputValue(field.value)}
+                      onChange={handleDollarChange(field.onChange)}
                       name={field.name}
                       onBlur={field.onBlur}
                       ref={field.ref}
@@ -347,8 +368,10 @@ export function QuotaSettingsSection({
                   <FormControl>
                     <Input
                       type='number'
-                      value={field.value ?? ''}
-                      onChange={handleNumberChange(field.onChange)}
+                      min={0}
+                      step={dollarStep}
+                      value={dollarInputValue(field.value)}
+                      onChange={handleDollarChange(field.onChange)}
                       name={field.name}
                       onBlur={field.onBlur}
                       ref={field.ref}
