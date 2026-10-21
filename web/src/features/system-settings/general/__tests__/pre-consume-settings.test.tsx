@@ -44,6 +44,9 @@ function Fixture() {
             QuotaForNewUser: 0,
             QuotaForInviter: 0,
             QuotaForInvitee: 0,
+            AffiliateRebatePercent: 0,
+            AffiliateRebateDownstreamQuota: 0,
+            AffiliateRebateUpstreamQuota: 0,
             TopUpLink: '',
             quota_setting: {
               enable_free_model_pre_consume: true,
