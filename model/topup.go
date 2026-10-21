@@ -67,6 +67,13 @@ func creditedTopUpQuota(usd decimal.Decimal, paymentMethod, gateway string) (int
 	return common.WalletQuotaFromDecimalStrict(quota)
 }
 
+func paidQuotaForUSD(usd decimal.Decimal) (int, error) {
+	if !usd.IsPositive() {
+		return 0, ErrInvalidTopUpQuota
+	}
+	return common.WalletQuotaFromDecimalStrict(usd.Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
+}
+
 func epayCallbackMatches(orderMoney float64, orderMethod, paidMoney, callbackGateway, orderGateway string) bool {
 	expectedGateway := strings.TrimSpace(orderGateway)
 	if expectedGateway == "" {
@@ -120,15 +127,22 @@ func ValidateTopUpQuotaCapacity(userId int, creditedQuota int) error {
 // creditTopUpQuota atomically enforces the wallet ceiling while adding quota.
 // Keeping the predicate and increment in one UPDATE prevents two
 // concurrent callbacks from both passing a separate read/check.
-func creditTopUpQuota(tx *gorm.DB, userId int, creditedQuota int, updates map[string]any) error {
+func creditTopUpQuota(tx *gorm.DB, userId int, creditedQuota int, paidQuota int, updates map[string]any) error {
 	maxCurrentQuota, err := topUpQuotaMaxCurrent(creditedQuota)
 	if err != nil {
 		return err
 	}
+	if paidQuota < 0 || paidQuota > creditedQuota {
+		return ErrInvalidTopUpQuota
+	}
 
-	updateFields := make(map[string]any, len(updates)+1)
+	updateFields := make(map[string]any, len(updates)+2)
 	maps.Copy(updateFields, updates)
 	updateFields["quota"] = gorm.Expr("quota + ?", creditedQuota)
+	unpaidQuota := creditedQuota - paidQuota
+	if unpaidQuota > 0 {
+		updateFields["unpaid_quota_balance"] = gorm.Expr("unpaid_quota_balance + ?", unpaidQuota)
+	}
 
 	result := tx.Model(&User{}).
 		Where("id = ? AND quota <= ?", userId, maxCurrentQuota).
@@ -245,12 +259,16 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, paidMoney string, 
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
+		paidQuota, paidErr := paidQuotaForUSD(decimal.NewFromInt(topUp.Amount))
+		if paidErr != nil {
+			return paidErr
+		}
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
 		if err := tx.Save(topUp).Error; err != nil {
 			return err
 		}
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil)
+		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil)
 	})
 	if err != nil {
 		if !errors.Is(err, ErrTopUpNotFound) && !errors.Is(err, ErrPaymentMethodMismatch) && !errors.Is(err, ErrTopUpStatusInvalid) && !errors.Is(err, ErrEpayCallbackMismatch) {
@@ -306,7 +324,11 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		if err != nil || quota <= 0 {
 			return ErrInvalidTopUpQuota
 		}
-		return creditTopUpQuota(tx, topUp.UserId, quota, map[string]any{
+		paidQuota, err := paidQuotaForUSD(decimal.NewFromFloat(topUp.Money))
+		if err != nil {
+			return err
+		}
+		return creditTopUpQuota(tx, topUp.UserId, quota, paidQuota, map[string]any{
 			"stripe_customer": customerId,
 		})
 	})
@@ -515,12 +537,19 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// - Stripe 订单：Money 代表经分组倍率换算后的美元数量，直接 * QuotaPerUnit
 		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
 		var quotaErr error
+		var paidQuota int
+		var paidErr error
 		if topUp.PaymentProvider == PaymentProviderStripe {
 			quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromFloat(topUp.Money), topUp.PaymentMethod, topUp.Gateway)
+			paidQuota, paidErr = paidQuotaForUSD(decimal.NewFromFloat(topUp.Money))
 		} else {
 			quotaToAdd, quotaErr = creditedTopUpQuota(decimal.NewFromInt(topUp.Amount), topUp.PaymentMethod, topUp.Gateway)
+			paidQuota, paidErr = paidQuotaForUSD(decimal.NewFromInt(topUp.Amount))
 		}
-		if quotaErr != nil || quotaToAdd <= 0 {
+		if quotaErr != nil || paidErr != nil || quotaToAdd <= 0 {
+			if paidErr != nil {
+				return paidErr
+			}
 			return ErrInvalidTopUpQuota
 		}
 
@@ -532,7 +561,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		}
 
 		// 增加用户额度（立即写库，保持一致性）
-		if err := creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil); err != nil {
+		if err := creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil); err != nil {
 			return err
 		}
 
@@ -609,7 +638,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 			}
 		}
 
-		return creditTopUpQuota(tx, topUp.UserId, quota, updateFields)
+		return creditTopUpQuota(tx, topUp.UserId, quota, quota, updateFields)
 	})
 
 	if err != nil {
@@ -658,6 +687,10 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 		if err != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
+		paidQuota, paidErr := paidQuotaForUSD(decimal.NewFromInt(topUp.Amount))
+		if paidErr != nil {
+			return paidErr
+		}
 
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
@@ -665,7 +698,7 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 			return err
 		}
 
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil)
+		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil)
 	})
 
 	if err != nil {
@@ -716,6 +749,10 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 		if err != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
+		paidQuota, paidErr := paidQuotaForUSD(decimal.NewFromInt(topUp.Amount))
+		if paidErr != nil {
+			return paidErr
+		}
 
 		topUp.CompleteTime = common.GetTimestamp()
 		topUp.Status = common.TopUpStatusSuccess
@@ -723,7 +760,7 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return err
 		}
 
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil)
+		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil)
 	})
 
 	if err != nil {
