@@ -134,6 +134,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo-pancake/amount", controller.RequestWaffoPancakeAmount)
 				selfRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPancakePay)
 				selfRoute.POST("/aff_transfer", middleware.UserCriticalRateLimit("aff-transfer"), controller.TransferAffQuota)
+				selfRoute.GET("/affiliate_rebate", controller.GetAffiliateRebate)
+				selfRoute.POST("/affiliate_rebate/claim", middleware.UserCriticalRateLimit("aff-transfer"), controller.ClaimAffiliateRebate)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
 				// 2FA routes
