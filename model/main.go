@@ -376,7 +376,8 @@ func migrateDB() error {
 		&CasbinRule{},
 		&AuthzRole{},
 		&UserAccessToken{},
-		&UserPaidConsumptionLog{},
+		&UserPaidConsumptionDay{},
+		&AffiliateRebateClaim{},
 	)
 	if err != nil {
 		return err
@@ -391,6 +392,9 @@ func migrateDB() error {
 		return err
 	}
 	if err := backfillUnpaidQuotaFromCurrentBalance(); err != nil {
+		return err
+	}
+	if err := backfillAffiliateRebateLedger(); err != nil {
 		return err
 	}
 	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
