@@ -105,6 +105,8 @@ type User struct {
 	UnpaidQuotaBalance     int                        `json:"-" gorm:"type:int;default:0;column:unpaid_quota_balance"`        // 尚未消耗的赠送额度
 	PaidQuotaConsumed      int                        `json:"-" gorm:"type:int;default:0;column:paid_quota_consumed"`         // 已消耗的充值额度
 	AffiliateRebateClaimed int                        `json:"-" gorm:"type:int;default:0;column:affiliate_rebate_claimed"`    // 已提取的消费返利
+	AffiliateRebateCovered int                        `json:"-" gorm:"type:int;default:0;column:affiliate_rebate_covered"`    // 作为受邀人已结算过返利的充值消费
+	AffiliateRebateEarned  int                        `json:"-" gorm:"type:int;default:0;column:affiliate_rebate_earned"`     // 作为受邀人为邀请人产生的返利
 	InviterId              int                        `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
 	DeletedAt              gorm.DeletedAt             `gorm:"index"`
 	LinuxDOId              string                     `json:"linux_do_id" gorm:"column:linux_do_id;index"`
@@ -1472,32 +1474,32 @@ func recordUserUsedQuota(id int, quota int, requestDelta int, walletFunded bool)
 	if quota == 0 && requestDelta == 0 {
 		return
 	}
+	walletDelta := 0
+	if walletFunded {
+		walletDelta = quota
+	}
 	if common.BatchUpdateEnabled {
 		if quota != 0 {
 			addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
 		}
+		if walletDelta != 0 {
+			addNewRecord(BatchUpdateTypeWalletUsedQuota, id, walletDelta)
+		}
 		if requestDelta != 0 {
 			addNewRecord(BatchUpdateTypeRequestCount, id, requestDelta)
 		}
-		if walletFunded && quota != 0 {
-			if err := applyAttributedPaidConsumption(DB, id, quota); err != nil {
-				common.SysLog(common.LogText("failed to update paid quota consumption: %s", err.Error()))
-			}
-		}
 		return
 	}
-	if err := applyAttributedUsage(DB, id, quota, 0, requestDelta, walletFunded); err != nil {
+	if err := applyAttributedUsage(DB, id, quota, walletDelta, 0, requestDelta); err != nil {
 		common.SysLog(common.LogText("failed to update user used quota: %s", err.Error()))
 	}
 }
 
-func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, requestCount int) {
-	if quota == 0 && usedQuota == 0 && requestCount == 0 {
+func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, walletUsedQuota int, requestCount int) {
+	if quota == 0 && usedQuota == 0 && walletUsedQuota == 0 && requestCount == 0 {
 		return
 	}
-	// Paid consumption is recorded when the delta is queued, so the flush only
-	// writes the accumulated statistics.
-	err := applyUserQuotaUsage(DB, id, usedQuota, quota, requestCount, false)
+	err := applyAttributedUsage(DB, id, usedQuota, walletUsedQuota, quota, requestCount)
 	if err != nil {
 		common.SysLog(common.LogText("failed to batch update user quota, used quota and request count: %s", err.Error()))
 	}
