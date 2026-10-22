@@ -78,9 +78,10 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
   const fullAmount = quotaUnitsToDollars(claimable)
   const claimQuota = amount === fullAmount ? claimable : parseQuotaFromDollars(amount)
   const percent = summary?.percent ?? 0
+  const weekClaimed = summary?.week_claimed ?? 0
   const requiredConsumption =
     percent > 0 && claimQuota > 0
-      ? Math.ceil((claimQuota * 100) / percent)
+      ? Math.ceil(((weekClaimed + claimQuota) * 100) / percent)
       : 0
   const canSubmit =
     !claiming &&
@@ -147,9 +148,12 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
         {t('Your last 7 days paid consumption')}:{' '}
         {formatQuota(summary?.week_paid_consumed ?? 0)}
       </p>
+      <p className='text-sm'>
+        {t('Claimed in the last 7 days')}: {formatQuota(weekClaimed)}
+      </p>
       <p className='text-muted-foreground text-sm'>
         {t(
-          'To claim {{amount}}, your paid consumption in the last 7 days must be at least {{required}}.',
+          'Claims in the last 7 days are added together. To claim {{amount}} now, your paid consumption in the last 7 days must be at least {{required}}.',
           {
             amount: formatQuota(claimQuota),
             required: formatQuota(requiredConsumption),

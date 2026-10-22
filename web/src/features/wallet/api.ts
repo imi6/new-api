@@ -261,6 +261,7 @@ export interface AffiliateRebateSummary {
   upstream_minimum: number
   paid_consumed: number
   week_paid_consumed: number
+  week_claimed: number
   can_claim: boolean
   accrued: number
   claimed: number
