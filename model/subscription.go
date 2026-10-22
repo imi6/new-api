@@ -805,8 +805,14 @@ func PurchaseSubscriptionWithBalance(userId int, planId int) error {
 			return common.NewMessage("Insufficient balance")
 		}
 		if requiredQuota > 0 {
-			if err := tx.Model(&User{}).Where("id = ?", userId).
-				Update("quota", gorm.Expr("quota - ?", requiredQuota)).Error; err != nil {
+			// Balance spent on a plan uses gift quota first, matching usage.
+			if err := tx.Model(&User{}).Where("id = ?", userId).Updates(map[string]any{
+				"quota": gorm.Expr("quota - ?", requiredQuota),
+				"unpaid_quota_balance": gorm.Expr(
+					"CASE WHEN unpaid_quota_balance >= ? THEN unpaid_quota_balance - ? ELSE 0 END",
+					requiredQuota, requiredQuota,
+				),
+			}).Error; err != nil {
 				return err
 			}
 		}
