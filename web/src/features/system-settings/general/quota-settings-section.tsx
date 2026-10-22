@@ -325,6 +325,11 @@ export function QuotaSettingsSection({
                       "Percent of an invitee's paid consumption returned to the inviter. 10 means 10%."
                     )}
                   </FormDescription>
+                  <FormDescription>
+                    {t(
+                      'Changing the percent or the downstream requirement only affects consumption after the change. Rebate already earned stays the same.'
+                    )}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -385,7 +390,7 @@ export function QuotaSettingsSection({
                   </FormDescription>
                   <FormDescription>
                     {t(
-                      'Claiming rebate requires enough inviter paid consumption in the last 7 days to cover that claim. Claiming 10 at 10% requires at least 100.'
+                      'Claims in the last 7 days are added together and must be covered by the inviter paid consumption in those 7 days. Claiming 10 in total at 10% requires at least 100.'
                     )}
                   </FormDescription>
                   <FormMessage />
