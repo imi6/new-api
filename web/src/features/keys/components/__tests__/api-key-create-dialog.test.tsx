@@ -102,8 +102,14 @@ afterEach(() => {
 })
 
 describe('API key create dialog cross-group retry', () => {
-  test('shows the cross-group retry switch, on by default, after the valid days field', () => {
+  test('hides the switch for a single group and shows it, on by default, after valid days for smart routing', () => {
     renderCreateDialog([])
+
+    expect(
+      screen.queryByRole('switch', { name: 'Cross-group retry' })
+    ).toBeNull()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Smart routing' }))
 
     const validDaysLabel = screen.getByText('Valid days')
     const retrySwitch = screen.getByRole('switch', {
@@ -124,8 +130,8 @@ describe('API key create dialog cross-group retry', () => {
     fireEvent.input(screen.getByPlaceholderText('For example: My app'), {
       target: { value: 'no-retry' },
     })
-    fireEvent.click(screen.getByRole('switch', { name: 'Cross-group retry' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Smart routing' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Cross-group retry' }))
     clickGroup('Priority access')
     clickGroup('Standard access')
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
