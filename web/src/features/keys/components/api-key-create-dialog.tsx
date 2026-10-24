@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, ChevronDown, Search, Settings2, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -114,7 +114,10 @@ export function ApiKeyCreateDialog({
   const [preview, setPreview] = useState<string | null>(null)
   const [channelMode, setChannelMode] = useState<ChannelMode>('primary')
   const [routes, setRoutes] = useState<string[]>([])
+  const [crossGroupRetry, setCrossGroupRetry] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const crossGroupRetryLabelId = useId()
+  const crossGroupRetryDescriptionId = useId()
 
   const { data: modelsData } = useQuery({
     queryKey: ['user-models'],
@@ -224,6 +227,7 @@ export function ApiKeyCreateDialog({
     setPreview(null)
     setChannelMode('primary')
     setRoutes([])
+    setCrossGroupRetry(true)
   }, [open])
 
   useEffect(() => {
@@ -270,6 +274,11 @@ export function ApiKeyCreateDialog({
     setModelLimits(defaults.model_limits)
     setAllowIps(defaults.allow_ips)
     setAllowUserQuotaQuery(defaults.allow_user_quota_query)
+    // A non-Auto key has no stored retry choice; keep the default for when it
+    // is switched to smart routing.
+    setCrossGroupRetry(
+      defaults.group === 'auto' ? defaults.cross_group_retry === true : true
+    )
     if (defaults.group === 'auto' && defaults.auto_groups.length > 0) {
       setChannelMode('smart')
       setRoutes(defaults.auto_groups)
@@ -392,6 +401,9 @@ export function ApiKeyCreateDialog({
         allow_user_quota_query: allowUserQuotaQuery,
         tokenCount: 1,
         ...routeFields,
+        // Only an Auto route keeps this; transformFormDataToPayload clears it
+        // for a single group.
+        cross_group_retry: crossGroupRetry,
       })
       const result = currentRow
         ? await updateApiKey({ ...payload, id: currentRow.id })
@@ -426,7 +438,7 @@ export function ApiKeyCreateDialog({
       contentHeight='auto'
     >
       <div className='flex flex-col gap-4'>
-        <div className='grid gap-3 md:grid-cols-3'>
+        <div className='grid gap-3 md:grid-cols-4'>
           <label className='flex flex-col gap-1.5 text-sm'>
             <span className='font-medium'>{t('Name')}</span>
             <Input
@@ -457,6 +469,29 @@ export function ApiKeyCreateDialog({
               placeholder={t('Permanent')}
             />
           </label>
+          <div className='flex flex-col gap-1.5 text-sm'>
+            <span id={crossGroupRetryLabelId} className='font-medium'>
+              {t('Cross-group retry')}
+            </span>
+            <div className='flex min-h-9 items-center justify-between gap-3'>
+              <span
+                id={crossGroupRetryDescriptionId}
+                className='text-muted-foreground line-clamp-2 text-xs'
+              >
+                {t(
+                  'When enabled, if channels in the current group fail, it will try channels in the next group in order.'
+                )}
+              </span>
+              <Switch
+                aria-labelledby={crossGroupRetryLabelId}
+                aria-describedby={crossGroupRetryDescriptionId}
+                checked={crossGroupRetry}
+                onCheckedChange={(checked) =>
+                  setCrossGroupRetry(checked === true)
+                }
+              />
+            </div>
+          </div>
         </div>
         <p className='text-muted-foreground text-xs'>
           {t(
