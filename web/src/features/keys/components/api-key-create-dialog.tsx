@@ -438,7 +438,12 @@ export function ApiKeyCreateDialog({
       contentHeight='auto'
     >
       <div className='flex flex-col gap-4'>
-        <div className='grid gap-3 md:grid-cols-4'>
+        <div
+          className={cn(
+            'grid gap-3',
+            channelMode === 'smart' ? 'md:grid-cols-4' : 'md:grid-cols-3'
+          )}
+        >
           <label className='flex flex-col gap-1.5 text-sm'>
             <span className='font-medium'>{t('Name')}</span>
             <Input
@@ -469,29 +474,32 @@ export function ApiKeyCreateDialog({
               placeholder={t('Permanent')}
             />
           </label>
-          <div className='flex flex-col gap-1.5 text-sm'>
-            <span id={crossGroupRetryLabelId} className='font-medium'>
-              {t('Cross-group retry')}
-            </span>
-            <div className='flex min-h-9 items-center justify-between gap-3'>
-              <span
-                id={crossGroupRetryDescriptionId}
-                className='text-muted-foreground line-clamp-2 text-xs'
-              >
-                {t(
-                  'When enabled, if channels in the current group fail, it will try channels in the next group in order.'
-                )}
+          {/* Retry across groups only applies to an Auto (smart) route. */}
+          {channelMode === 'smart' && (
+            <div className='flex flex-col gap-1.5 text-sm'>
+              <span id={crossGroupRetryLabelId} className='font-medium'>
+                {t('Cross-group retry')}
               </span>
-              <Switch
-                aria-labelledby={crossGroupRetryLabelId}
-                aria-describedby={crossGroupRetryDescriptionId}
-                checked={crossGroupRetry}
-                onCheckedChange={(checked) =>
-                  setCrossGroupRetry(checked === true)
-                }
-              />
+              <div className='flex min-h-9 items-center justify-between gap-3'>
+                <span
+                  id={crossGroupRetryDescriptionId}
+                  className='text-muted-foreground line-clamp-2 text-xs'
+                >
+                  {t(
+                    'When enabled, if channels in the current group fail, it will try channels in the next group in order.'
+                  )}
+                </span>
+                <Switch
+                  aria-labelledby={crossGroupRetryLabelId}
+                  aria-describedby={crossGroupRetryDescriptionId}
+                  checked={crossGroupRetry}
+                  onCheckedChange={(checked) =>
+                    setCrossGroupRetry(checked === true)
+                  }
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <p className='text-muted-foreground text-xs'>
           {t(
