@@ -361,6 +361,47 @@ export function ReferralPage() {
                       </div>
                     </div>
 
+                    {/* Rebate rules and weekly stats */}
+                    {!summaryLoading && summary != null && (
+                      <div className='border-t pt-3 flex flex-col gap-1.5 text-xs'>
+                        <p className='text-muted-foreground'>
+                          {t(
+                            'Rebate is {{percent}}% of paid consumption after an invitee spends {{downstream}}. You can claim it after your own paid consumption reaches {{upstream}}.',
+                            {
+                              percent: summary.percent,
+                              downstream: formatQuota(summary.downstream_threshold),
+                              upstream: formatQuota(summary.upstream_minimum),
+                            }
+                          )}
+                        </p>
+                        <div className='flex justify-between'>
+                          <span className='text-muted-foreground'>{t('Your paid consumption')}</span>
+                          <span className='tabular-nums'>{formatQuota(summary.paid_consumed)}</span>
+                        </div>
+                        <div className='flex justify-between'>
+                          <span className='text-muted-foreground'>{t('Your last 7 days paid consumption')}</span>
+                          <span className='tabular-nums'>{formatQuota(summary.week_paid_consumed)}</span>
+                        </div>
+                        <div className='flex justify-between'>
+                          <span className='text-muted-foreground'>{t('Claimed in the last 7 days')}</span>
+                          <span className='tabular-nums'>{formatQuota(summary.week_claimed)}</span>
+                        </div>
+                        <p className='text-muted-foreground'>
+                          {t(
+                            'Claims in the last 7 days are added together. To claim {{amount}} now, your paid consumption in the last 7 days must be at least {{required}}.',
+                            {
+                              amount: formatQuota(claimable),
+                              required: formatQuota(
+                                summary.percent > 0 && claimable > 0
+                                  ? Math.ceil(((summary.week_claimed + claimable) * 100) / summary.percent)
+                                  : 0
+                              ),
+                            }
+                          )}
+                        </p>
+                      </div>
+                    )}
+
                     {claimError && (
                       <p className='text-destructive text-xs'>{claimError}</p>
                     )}
