@@ -23,6 +23,7 @@ import {
   CreditCard,
   FileText,
   FlaskConical,
+  Gift,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -115,6 +116,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Wallet'),
             url: '/wallet',
             icon: Wallet,
+          },
+          {
+            title: t('Referral rebate'),
+            url: '/referral',
+            icon: Gift,
           },
           {
             title: t('Profile'),
