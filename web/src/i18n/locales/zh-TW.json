@@ -2851,6 +2851,7 @@
     "Filter by token name": "按 Token 名稱篩選",
     "Filter by username": "按用戶名篩選",
     "Filter by username, name or email...": "按用戶名、姓名或電郵篩選...",
+    "Filter by username, name, email or API key...": "按用戶名、姓名、郵箱或 API 金鑰篩選...",
     "Filter Dashboard Models": "篩選儀表板模型",
     "Filter mappings": "篩選映射",
     "Filter models by provider, group, type, endpoint, and tags.": "按供應商、分組、類型、端點和標籤篩選模型。",

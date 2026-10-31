@@ -368,7 +368,25 @@ func SearchUsers(c *gin.Context) {
 	}
 	pageInfo := common.GetPageQuery(c)
 	sortOptions := model.NewUserSortOptions(c.Query("sort_by"), c.Query("sort_order"))
-	users, total, err := model.SearchUsers(keyword, group, role, status, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sortOptions)
+
+	var users []*model.User
+	var total int64
+	var err error
+
+	// When the keyword looks like an API key, find the owning user directly
+	// instead of running a name/email LIKE search.
+	if strings.HasPrefix(keyword, "sk-") {
+		token, tokenErr := model.GetTokenByKey(keyword, true)
+		if tokenErr == nil {
+			users, total, err = model.SearchUsersByIds([]int{token.UserId}, group, role, status, 0, pageInfo.GetPageSize(), sortOptions)
+		} else {
+			// Key not found — return an empty page rather than an error.
+			users, total = []*model.User{}, 0
+		}
+	} else {
+		users, total, err = model.SearchUsers(keyword, group, role, status, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sortOptions)
+	}
+
 	if err != nil {
 		common.ApiError(c, err)
 		return

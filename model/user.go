@@ -517,6 +517,65 @@ func SearchUsers(keyword string, group string, role *int, status *int, startIdx 
 	return users, total, nil
 }
 
+// SearchUsersByIds returns users whose IDs are in the given list, filtered by
+// the same group/role/status constraints used in SearchUsers. It is used when
+// a search keyword resolves directly to a set of user IDs (e.g. via an API
+// key lookup) so the caller can still apply the sidebar filters consistently.
+func SearchUsersByIds(ids []int, group string, role *int, status *int, startIdx int, num int, sortOptions ...UserSortOptions) ([]*User, int64, error) {
+	if len(ids) == 0 {
+		return []*User{}, 0, nil
+	}
+
+	var users []*User
+	var total int64
+
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return nil, 0, tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	query := tx.Unscoped().Model(&User{}).Where("id IN ?", ids)
+
+	if group != "" {
+		query = query.Where(commonGroupCol+" = ?", group)
+	}
+	if role != nil {
+		query = query.Where("role = ?", *role)
+	}
+	if status != nil {
+		if *status == -1 {
+			query = query.Where("deleted_at IS NOT NULL")
+		} else {
+			query = query.Where("deleted_at IS NULL").Where("status = ?", *status)
+		}
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	order := resolveUserSortOptions(sortOptions)
+	if err := order.Apply(query.Omit("password", "access_token")).Limit(num).Offset(startIdx).Find(&users).Error; err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, 0, err
+	}
+	if err := AttachAffiliateRebateTotals(users); err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
+}
+
 func GetUserById(id int, selectAll bool) (*User, error) {
 	if id == 0 {
 		return nil, common.NewMessage("ID is empty!")
