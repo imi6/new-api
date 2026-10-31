@@ -37,8 +37,6 @@ import {
   type AffiliateRebateSummary,
 } from '@/features/wallet/api'
 import { generateAffiliateLink } from '@/features/wallet/lib'
-import { TransferDialog } from '@/features/wallet/components/dialogs/transfer-dialog'
-import { useAffiliate } from '@/features/wallet/hooks'
 import type { UserWalletData } from '@/features/wallet/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,12 +87,9 @@ export function ReferralPage() {
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [affiliateCode, setAffiliateCode] = useState('')
   const [affiliateLink, setAffiliateLink] = useState('')
-  const [transferOpen, setTransferOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [claimError, setClaimError] = useState('')
-
-  const { transferQuota, transferring } = useAffiliate()
 
   const fetchAll = useCallback(async () => {
     await Promise.all([
@@ -126,12 +121,6 @@ export function ReferralPage() {
     setRefreshing(true)
     await fetchAll().catch(() => undefined)
     setRefreshing(false)
-  }
-
-  const handleTransfer = async (quota: number): Promise<boolean> => {
-    const ok = await transferQuota(quota)
-    if (ok) await fetchAll()
-    return ok
   }
 
   const handleClaim = async () => {
@@ -428,28 +417,11 @@ export function ReferralPage() {
                     </Button>
                   </CardContent>
                 </Card>
-
-                <Button
-                  variant='outline'
-                  className='w-full'
-                  onClick={() => setTransferOpen(true)}
-                  disabled={affQuota <= 0 || transferring}
-                >
-                  {t('Transfer to Balance')}
-                </Button>
               </div>
             </div>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>
-
-      <TransferDialog
-        open={transferOpen}
-        onOpenChange={setTransferOpen}
-        onConfirm={handleTransfer}
-        availableQuota={affQuota}
-        transferring={transferring}
-      />
     </>
   )
 }
