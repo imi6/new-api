@@ -23,6 +23,7 @@ import { Link } from '@tanstack/react-router'
 
 import { SectionPageLayout } from '@/components/layout'
 import { CopyButton } from '@/components/copy-button'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -363,6 +364,26 @@ export function ReferralPage() {
                             }
                           )}
                         </p>
+                        <div className='flex flex-col gap-1'>
+                          <span className='text-muted-foreground'>
+                            {t('Groups that earn rebate')}
+                          </span>
+                          {(summary.rebate_groups ?? []).length === 0 ? (
+                            <span>{t('All groups earn rebate')}</span>
+                          ) : (
+                            <div className='flex flex-wrap gap-1'>
+                              {summary.rebate_groups.map((group) => (
+                                <Badge
+                                  key={group}
+                                  variant='secondary'
+                                  className='text-[10px]'
+                                >
+                                  {group}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <div className='flex justify-between'>
                           <span className='text-muted-foreground'>{t('Your paid consumption')}</span>
                           <span className='tabular-nums'>{formatQuota(summary.paid_consumed)}</span>
