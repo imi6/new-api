@@ -100,11 +100,13 @@ function dollarInputValue(value: QuotaInputValue): number | '' {
 type QuotaSettingsSectionProps = {
   defaultValues: QuotaFormValues
   complianceConfirmed?: boolean
+  userUsableGroups?: string
 }
 
 export function QuotaSettingsSection({
   defaultValues,
   complianceConfirmed = true,
+  userUsableGroups = '',
 }: QuotaSettingsSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
@@ -115,14 +117,22 @@ export function QuotaSettingsSection({
     queryKey: ['groups'],
     queryFn: getGroups,
   })
-  const groupOptions = useMemo(
-    () =>
-      (groupsData?.data ?? []).map((group) => ({
-        label: group,
-        value: group,
-      })),
-    [groupsData]
-  )
+  const groupOptions = useMemo(() => {
+    const allGroups = groupsData?.data ?? []
+    // Filter to only user-selectable groups when the usable-groups map is set
+    let usable: Set<string> | null = null
+    if (userUsableGroups) {
+      try {
+        const parsed = JSON.parse(userUsableGroups) as Record<string, unknown>
+        usable = new Set(Object.keys(parsed))
+      } catch {
+        // invalid JSON — show all groups
+      }
+    }
+    return allGroups
+      .filter((g) => usable === null || usable.has(g))
+      .map((group) => ({ label: group, value: group }))
+  }, [groupsData, userUsableGroups])
 
   const handleNumberChange =
     (onChange: (value: QuotaInputValue) => void) =>
