@@ -48,11 +48,12 @@ export function ApiInfoPanel() {
     () =>
       items.filter((item) => {
         if (item.show_in_keys === false) return false
-        if (item.min_used_quota_usd && item.min_used_quota_usd > 0) {
-          if (usedQuotaUsd < item.min_used_quota_usd) return false
-        }
-        if (item.min_quota_usd && item.min_quota_usd > 0) {
-          if (quotaUsd < item.min_quota_usd) return false
+        const hasUsedThreshold = item.min_used_quota_usd && item.min_used_quota_usd > 0
+        const hasQuotaThreshold = item.min_quota_usd && item.min_quota_usd > 0
+        if (hasUsedThreshold || hasQuotaThreshold) {
+          const usedOk = !hasUsedThreshold || usedQuotaUsd >= item.min_used_quota_usd
+          const quotaOk = !hasQuotaThreshold || quotaUsd >= item.min_quota_usd
+          if (!usedOk && !quotaOk) return false
         }
         return true
       }),
