@@ -146,6 +146,36 @@ func paidConsumptionDelta(unpaidBalance int, paidConsumed int, usedDelta int) in
 	return 0
 }
 
+// IsGroupRebateEligible reports whether consumption billed to the given group
+// earns referral rebate. An empty AffiliateRebateGroups setting means every
+// group earns it, so upgrading without configuring the setting keeps the
+// previous behaviour. Consumption in an excluded group still counts toward the
+// downstream threshold; only the rebate grant is withheld.
+func IsGroupRebateEligible(group string) bool {
+	allowed := strings.TrimSpace(common.AffiliateRebateGroups)
+	if allowed == "" {
+		return true
+	}
+	for entry := range strings.SplitSeq(allowed, ",") {
+		if strings.TrimSpace(entry) == group {
+			return true
+		}
+	}
+	return false
+}
+
+// rebateEligibleGroups returns the configured groups as a list. An empty list
+// means the setting is unset and every group earns rebate.
+func rebateEligibleGroups() []string {
+	groups := make([]string, 0)
+	for entry := range strings.SplitSeq(common.AffiliateRebateGroups, ",") {
+		if name := strings.TrimSpace(entry); name != "" {
+			groups = append(groups, name)
+		}
+	}
+	return groups
+}
+
 func affiliateRebateFloor(paidConsumed int, percent float64) int {
 	if paidConsumed <= 0 || percent <= 0 {
 		return 0
@@ -161,10 +191,38 @@ func affiliateRebateFloor(paidConsumed int, percent float64) int {
 	return quota
 }
 
+// apportionRebateGrant splits a rebate grant down to the rebate-eligible share
+// of the consumption that produced it. A single relay request carries one group,
+// so eligible is either the whole delta or zero and the split is exact; only
+// batch mode aggregates several requests into one delta and splits it
+// proportionally.
+func apportionRebateGrant(grant int, eligibleDelta int, totalDelta int) int {
+	if grant <= 0 || eligibleDelta <= 0 || totalDelta <= 0 {
+		return 0
+	}
+	if eligibleDelta >= totalDelta {
+		return grant
+	}
+	share := decimal.NewFromInt(int64(grant)).
+		Mul(decimal.NewFromInt(int64(eligibleDelta))).
+		Div(decimal.NewFromInt(int64(totalDelta))).
+		Floor()
+	quota, err := common.WalletQuotaFromDecimalStrict(share)
+	if err != nil || quota < 0 {
+		return 0
+	}
+	return min(quota, grant)
+}
+
 // affiliateLedgerChange settles an invitee's paid consumption into rebate.
 // Consumption is rebated once at the percent in force when it is covered, so
 // later setting changes do not rewrite rebate that was already earned.
-func affiliateLedgerChange(covered int, earned int, paidAfter int, positive bool) (int, int) {
+//
+// eligibleDelta is the part of totalDelta billed to a group that earns rebate
+// (see IsGroupRebateEligible). Consumption in an excluded group still advances
+// covered and therefore still counts toward the downstream threshold; only the
+// grant is withheld.
+func affiliateLedgerChange(covered int, earned int, paidAfter int, eligibleDelta int, totalDelta int, positive bool) (int, int) {
 	percent := common.AffiliateRebatePercent
 	threshold := common.AffiliateRebateDownstreamQuota
 	if positive {
@@ -181,6 +239,7 @@ func affiliateLedgerChange(covered int, earned int, paidAfter int, positive bool
 		if grant < 0 {
 			grant = 0
 		}
+		grant = apportionRebateGrant(grant, eligibleDelta, totalDelta)
 		return paidAfter, earned + grant
 	}
 	if paidAfter >= covered {
@@ -205,7 +264,11 @@ func affiliateLedgerChange(covered int, earned int, paidAfter int, positive bool
 // paid consumption, accrues rebate for the inviter, and is logged per day.
 // The daily row is written after the usage commits, so a failure there only
 // under-counts the claim window and never loses usage statistics.
-func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, quotaDelta int, requestDelta int) error {
+//
+// rebateDelta is the share of walletDelta billed to a rebate-eligible group.
+// It only limits the rebate grant; the full walletDelta still counts toward
+// the invitee's paid consumption and the downstream threshold.
+func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, rebateDelta int, quotaDelta int, requestDelta int) error {
 	if walletDelta == 0 {
 		return applyUserQuotaUsage(db, id, usedDelta, 0, quotaDelta, requestDelta)
 	}
@@ -224,7 +287,12 @@ func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, q
 		if paidDelta == 0 || user.InviterId <= 0 {
 			return nil
 		}
-		covered, earned := affiliateLedgerChange(user.AffiliateRebateCovered, user.AffiliateRebateEarned, user.PaidQuotaConsumed+paidDelta, paidDelta > 0)
+		// The grant is apportioned by the eligible share of this wallet
+		// charge, so a gift-funded part never changes the ratio.
+		covered, earned := affiliateLedgerChange(
+			user.AffiliateRebateCovered, user.AffiliateRebateEarned,
+			user.PaidQuotaConsumed+paidDelta, rebateDelta, walletDelta, paidDelta > 0,
+		)
 		if covered == user.AffiliateRebateCovered && earned == user.AffiliateRebateEarned {
 			return nil
 		}
@@ -398,17 +466,20 @@ type AffiliateInviteeRebate struct {
 }
 
 type AffiliateRebateSummary struct {
-	Percent             float64                  `json:"percent"`
-	DownstreamThreshold int                      `json:"downstream_threshold"`
-	UpstreamMinimum     int                      `json:"upstream_minimum"`
-	PaidConsumed        int                      `json:"paid_consumed"`
-	WeekPaidConsumed    int                      `json:"week_paid_consumed"`
-	WeekClaimed         int                      `json:"week_claimed"`
-	CanClaim            bool                     `json:"can_claim"`
-	Accrued             int                      `json:"accrued"`
-	Claimed             int                      `json:"claimed"`
-	Claimable           int                      `json:"claimable"`
-	Invitees            []AffiliateInviteeRebate `json:"invitees"`
+	Percent             float64 `json:"percent"`
+	DownstreamThreshold int     `json:"downstream_threshold"`
+	UpstreamMinimum     int     `json:"upstream_minimum"`
+	PaidConsumed        int     `json:"paid_consumed"`
+	WeekPaidConsumed    int     `json:"week_paid_consumed"`
+	WeekClaimed         int     `json:"week_claimed"`
+	CanClaim            bool    `json:"can_claim"`
+	Accrued             int     `json:"accrued"`
+	Claimed             int     `json:"claimed"`
+	Claimable           int     `json:"claimable"`
+	// RebateGroups lists the groups that earn rebate. Empty means every group
+	// earns it, which the frontend states instead of listing names.
+	RebateGroups []string                 `json:"rebate_groups"`
+	Invitees     []AffiliateInviteeRebate `json:"invitees"`
 }
 
 func maskAffiliateUsername(name string) string {
@@ -496,6 +567,7 @@ func GetAffiliateRebateSummary(userID int) (*AffiliateRebateSummary, error) {
 		WeekClaimed:         weekClaimed,
 		CanClaim:            common.AffiliateRebatePercent > 0 && user.PaidQuotaConsumed >= common.AffiliateRebateUpstreamQuota,
 		Claimed:             user.AffiliateRebateClaimed,
+		RebateGroups:        rebateEligibleGroups(),
 		Invitees:            make([]AffiliateInviteeRebate, 0, len(invitees)),
 	}
 	for _, invitee := range invitees {
