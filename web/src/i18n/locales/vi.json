@@ -5810,6 +5810,7 @@
     "Review your payment details": "Xem lại chi tiết thanh toán của bạn",
     "Review your purchase details before proceeding.": "Xem lại chi tiết mua hàng trước khi tiếp tục.",
     "Revoke": "Thu hồi",
+    "Revoke all": "Thu hồi tất cả",
     "Revoke session?": "Thu hồi phiên này?",
     "Revoke this access token? Scripts using it stop working immediately.": "Thu hồi token truy cập này? Các script đang dùng nó sẽ ngừng hoạt động ngay lập tức.",
     "Revoked access tokens": "Token truy cập đã thu hồi",
