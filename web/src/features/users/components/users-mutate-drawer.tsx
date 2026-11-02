@@ -97,6 +97,7 @@ import {
 } from '../lib'
 import type { User } from '../types'
 import { UserQuotaDialog } from './user-quota-dialog'
+import { AffQuotaDialog } from './aff-quota-dialog'
 import { useUsers } from './users-provider'
 
 type UsersMutateDrawerProps = {
@@ -116,6 +117,7 @@ export function UsersMutateDrawer({
   const currentUser = useAuthStore((s) => s.auth.user)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+  const [affQuotaDialogOpen, setAffQuotaDialogOpen] = useState(false)
   // Matrix as loaded from the server; an unchanged matrix is not resubmitted so
   // routine edits of an administrator do not require step-up verification.
   const loadedPermissions = useRef<AdminPermissionMatrix | undefined>(undefined)
@@ -477,6 +479,31 @@ export function UsersMutateDrawer({
                     )}
                   />
 
+                  {/* Referral program quota (aff_quota) — update mode only */}
+                  {isUpdate && (
+                    <FormItem>
+                      <FormLabel>{t('Referral program quota')}</FormLabel>
+                      <div className='flex gap-2'>
+                        <Input
+                          value={formatQuota(currentRow?.aff_quota ?? 0)}
+                          readOnly
+                          className='flex-1'
+                        />
+                        <Button
+                          type='button'
+                          variant='outline'
+                          onClick={() => setAffQuotaDialogOpen(true)}
+                        >
+                          <Pencil className='mr-1 h-4 w-4' />
+                          {t('Adjust')}
+                        </Button>
+                      </div>
+                      <FormDescription>
+                        {t('Pending referral rewards, transferable to wallet balance.')}
+                      </FormDescription>
+                    </FormItem>
+                  )}
+
                   <FormField
                     control={form.control}
                     name='remark'
@@ -599,6 +626,17 @@ export function UsersMutateDrawer({
           onOpenChange={setQuotaDialogOpen}
           userId={currentRow.id}
           currentQuota={parseQuotaFromDollars(currentQuotaRaw || 0)}
+          onSuccess={refreshUserData}
+        />
+      )}
+
+      {/* Adjust Referral Program Quota Dialog */}
+      {currentRow && (
+        <AffQuotaDialog
+          open={affQuotaDialogOpen}
+          onOpenChange={setAffQuotaDialogOpen}
+          userId={currentRow.id}
+          currentAffQuota={currentRow.aff_quota ?? 0}
           onSuccess={refreshUserData}
         />
       )}
