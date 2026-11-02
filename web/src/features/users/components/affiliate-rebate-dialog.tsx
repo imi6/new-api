@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
-import { formatQuota, parseQuotaFromDollars } from '@/lib/format'
+import { formatQuota, parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
 
@@ -147,11 +147,28 @@ export function AffiliateRebateDialog(props: AffiliateRebateDialogProps) {
 
         {/* Amount input */}
         <div className='flex flex-col gap-1.5'>
-          <Label htmlFor='affiliate-rebate-amount'>
-            {tokensOnly
-              ? t('Amount (tokens)')
-              : t('Amount ({{currency}})', { currency: currencyLabel })}
-          </Label>
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='affiliate-rebate-amount'>
+              {tokensOnly
+                ? t('Amount (tokens)')
+                : t('Amount ({{currency}})', { currency: currencyLabel })}
+            </Label>
+            {mode === 'revoke' && props.currentClaimable > 0 && (
+              <button
+                type='button'
+                className='text-muted-foreground hover:text-foreground text-xs underline underline-offset-2'
+                onClick={() =>
+                  setAmount(
+                    tokensOnly
+                      ? String(props.currentClaimable)
+                      : quotaUnitsToDollars(props.currentClaimable).toFixed(6)
+                  )
+                }
+              >
+                {t('Revoke all')}
+              </button>
+            )}
+          </div>
           <Input
             id='affiliate-rebate-amount'
             type='number'
