@@ -221,6 +221,12 @@ export interface ApiInfoItem {
   route: string
   description: string
   color: string
+  /** Whether this address is shown on the API Keys page. Defaults to true when absent. */
+  show_in_keys?: boolean
+  /** Minimum user total consumption in USD to see this address (0 = everyone). */
+  min_used_quota_usd?: number
+  /** Minimum user wallet balance in USD to see this address (0 = everyone). */
+  min_quota_usd?: number
 }
 
 export interface PingStatus {
