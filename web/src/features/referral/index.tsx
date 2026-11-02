@@ -276,6 +276,26 @@ export function ReferralPage() {
                   </CardContent>
                 </Card>
 
+                {/* Rebate groups card */}
+                {!summaryLoading && summary != null && (
+                  <Card>
+                    <CardContent className='flex flex-col gap-3 p-4'>
+                      <h3 className='text-sm font-semibold'>{t('Groups that earn rebate')}</h3>
+                      {(summary.rebate_groups ?? []).length === 0 ? (
+                        <p className='text-muted-foreground text-sm'>{t('All groups earn rebate')}</p>
+                      ) : (
+                        <div className='flex flex-wrap gap-1.5'>
+                          {summary.rebate_groups.map((group) => (
+                            <Badge key={group} variant='secondary' className='text-xs'>
+                              {group}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Invitee list */}
                 <Card>
                   <CardContent className='flex flex-col gap-3 p-4'>
@@ -364,26 +384,6 @@ export function ReferralPage() {
                             }
                           )}
                         </p>
-                        <div className='flex flex-col gap-1'>
-                          <span className='text-muted-foreground'>
-                            {t('Groups that earn rebate')}
-                          </span>
-                          {(summary.rebate_groups ?? []).length === 0 ? (
-                            <span>{t('All groups earn rebate')}</span>
-                          ) : (
-                            <div className='flex flex-wrap gap-1'>
-                              {summary.rebate_groups.map((group) => (
-                                <Badge
-                                  key={group}
-                                  variant='secondary'
-                                  className='text-[10px]'
-                                >
-                                  {group}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
                         <div className='flex justify-between'>
                           <span className='text-muted-foreground'>{t('Your paid consumption')}</span>
                           <span className='tabular-nums'>{formatQuota(summary.paid_consumed)}</span>
