@@ -1509,27 +1509,29 @@ func UpdateUserLastLoginAt(id int) {
 }
 
 func UpdateUserUsedQuotaAndRequestCount(id int, quota int) {
-	recordUserUsedQuota(id, quota, 1, true)
+	recordUserUsedQuota(id, quota, 1, true, true)
 }
 
 // RecordUserUsedQuotaAndRequestCount updates usage statistics.
 // walletFunded usage consumes gift quota before it counts as paid consumption.
-func RecordUserUsedQuotaAndRequestCount(id int, quota int, walletFunded bool) {
-	recordUserUsedQuota(id, quota, 1, walletFunded)
+// rebateEligible is false when the billed group earns no referral rebate; the
+// usage still counts toward the invitee's paid consumption either way.
+func RecordUserUsedQuotaAndRequestCount(id int, quota int, walletFunded bool, rebateEligible bool) {
+	recordUserUsedQuota(id, quota, 1, walletFunded, rebateEligible)
 }
 
 // UpdateUserUsedQuota adjusts accumulated usage without changing request count.
 func UpdateUserUsedQuota(id int, quota int) {
-	recordUserUsedQuota(id, quota, 0, true)
+	recordUserUsedQuota(id, quota, 0, true, true)
 }
 
 // RecordUserUsedQuota adjusts accumulated usage without changing request count.
 // Subscription usage passes walletFunded false so it does not consume gift quota.
-func RecordUserUsedQuota(id int, quota int, walletFunded bool) {
-	recordUserUsedQuota(id, quota, 0, walletFunded)
+func RecordUserUsedQuota(id int, quota int, walletFunded bool, rebateEligible bool) {
+	recordUserUsedQuota(id, quota, 0, walletFunded, rebateEligible)
 }
 
-func recordUserUsedQuota(id int, quota int, requestDelta int, walletFunded bool) {
+func recordUserUsedQuota(id int, quota int, requestDelta int, walletFunded bool, rebateEligible bool) {
 	if quota == 0 && requestDelta == 0 {
 		return
 	}
@@ -1537,28 +1539,38 @@ func recordUserUsedQuota(id int, quota int, requestDelta int, walletFunded bool)
 	if walletFunded {
 		walletDelta = quota
 	}
+	rebateDelta := 0
+	if rebateEligible {
+		rebateDelta = walletDelta
+	}
 	if common.BatchUpdateEnabled {
 		if quota != 0 {
 			addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
 		}
 		if walletDelta != 0 {
+			// The rebate store must be written in the same call as the wallet
+			// store: batchUpdate pairs them per user, so splitting them across
+			// intervals would apportion a grant against the wrong total.
 			addNewRecord(BatchUpdateTypeWalletUsedQuota, id, walletDelta)
+			if rebateDelta != 0 {
+				addNewRecord(BatchUpdateTypeRebateQuota, id, rebateDelta)
+			}
 		}
 		if requestDelta != 0 {
 			addNewRecord(BatchUpdateTypeRequestCount, id, requestDelta)
 		}
 		return
 	}
-	if err := applyAttributedUsage(DB, id, quota, walletDelta, 0, requestDelta); err != nil {
+	if err := applyAttributedUsage(DB, id, quota, walletDelta, rebateDelta, 0, requestDelta); err != nil {
 		common.SysLog(common.LogText("failed to update user used quota: %s", err.Error()))
 	}
 }
 
-func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, walletUsedQuota int, requestCount int) {
+func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, walletUsedQuota int, rebateQuota int, requestCount int) {
 	if quota == 0 && usedQuota == 0 && walletUsedQuota == 0 && requestCount == 0 {
 		return
 	}
-	err := applyAttributedUsage(DB, id, usedQuota, walletUsedQuota, quota, requestCount)
+	err := applyAttributedUsage(DB, id, usedQuota, walletUsedQuota, rebateQuota, quota, requestCount)
 	if err != nil {
 		common.SysLog(common.LogText("failed to batch update user quota, used quota and request count: %s", err.Error()))
 	}
