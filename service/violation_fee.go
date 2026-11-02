@@ -127,7 +127,7 @@ func ChargeViolationFeeIfNeeded(ctx *gin.Context, relayInfo *relaycommon.RelayIn
 		return false
 	}
 
-	model.RecordUserUsedQuotaAndRequestCount(relayInfo.UserId, feeQuota, relayInfo.BillingSource != BillingSourceSubscription)
+	model.RecordUserUsedQuotaAndRequestCount(relayInfo.UserId, feeQuota, relayInfo.BillingSource != BillingSourceSubscription, model.IsGroupRebateEligible(relayInfo.UsingGroup))
 	model.UpdateChannelUsedQuota(relayInfo.ChannelId, feeQuota)
 
 	useTimeSeconds := time.Now().Unix() - relayInfo.StartTime.Unix()
