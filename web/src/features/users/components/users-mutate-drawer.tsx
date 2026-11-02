@@ -100,6 +100,7 @@ import {
 import type { User } from '../types'
 import { UserQuotaDialog } from './user-quota-dialog'
 import { AffQuotaDialog } from './aff-quota-dialog'
+import { AffiliateRebateDialog } from './affiliate-rebate-dialog'
 import { useUsers } from './users-provider'
 
 type UsersMutateDrawerProps = {
@@ -120,6 +121,7 @@ export function UsersMutateDrawer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
   const [affQuotaDialogOpen, setAffQuotaDialogOpen] = useState(false)
+  const [affiliateRebateDialogOpen, setAffiliateRebateDialogOpen] = useState(false)
   // Matrix as loaded from the server; an unchanged matrix is not resubmitted so
   // routine edits of an administrator do not require step-up verification.
   const loadedPermissions = useRef<AdminPermissionMatrix | undefined>(undefined)
@@ -518,6 +520,31 @@ export function UsersMutateDrawer({
                     </FormItem>
                   )}
 
+                  {/* Invite rebate (affiliate_rebate_unused) — update mode only */}
+                  {isUpdate && (
+                    <FormItem>
+                      <FormLabel>{t('Invite rebate balance')}</FormLabel>
+                      <div className='flex gap-2'>
+                        <Input
+                          value={formatQuota(currentRow?.affiliate_rebate_unused ?? 0)}
+                          readOnly
+                          className='flex-1'
+                        />
+                        <Button
+                          type='button'
+                          variant='outline'
+                          onClick={() => setAffiliateRebateDialogOpen(true)}
+                        >
+                          <Pencil className='mr-1 h-4 w-4' />
+                          {t('Adjust')}
+                        </Button>
+                      </div>
+                      <FormDescription>
+                        {t('Earned rebate not yet claimed. Grant transfers to wallet; revoke marks as claimed without crediting.')}
+                      </FormDescription>
+                    </FormItem>
+                  )}
+
                   <FormField
                     control={form.control}
                     name='remark'
@@ -651,6 +678,17 @@ export function UsersMutateDrawer({
           onOpenChange={setAffQuotaDialogOpen}
           userId={currentRow.id}
           currentAffQuota={currentRow.aff_quota ?? 0}
+          onSuccess={refreshUserData}
+        />
+      )}
+
+      {/* Adjust Invite Rebate Dialog */}
+      {currentRow && (
+        <AffiliateRebateDialog
+          open={affiliateRebateDialogOpen}
+          onOpenChange={setAffiliateRebateDialogOpen}
+          userId={currentRow.id}
+          currentClaimable={currentRow.affiliate_rebate_unused ?? 0}
           onSuccess={refreshUserData}
         />
       )}
