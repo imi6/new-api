@@ -6,6 +6,7 @@
     "{{count}} unsaved price changes": "Несохранённых изменений цен: {{count}}",
     "_copy": "_копировать",
     "Add or subtract from the pending referral reward balance.": "Добавить или вычесть из запаса реферальных вознаграждений.",
+    "Adjust": "Изменить",
     "Adjust invite rebate": "Изменить реферальный кэшбэк",
     "Adjust referral program quota": "Изменить квоту реферальной программы",
     "All groups earn rebate": "Кэшбэк начисляется всем группам",
