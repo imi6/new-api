@@ -233,7 +233,7 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 		logger.LogError(ctx, common.LogText("total tokens is 0, cannot consume quota, userId %d, channelId %d, tokenId %d, model %s， pre-consumed quota %d",
 			relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, modelName, relayInfo.FinalPreConsumedQuota))
 	} else {
-		model.RecordUserUsedQuotaAndRequestCount(relayInfo.UserId, quota, relayInfo.BillingSource != BillingSourceSubscription)
+		model.RecordUserUsedQuotaAndRequestCount(relayInfo.UserId, quota, relayInfo.BillingSource != BillingSourceSubscription, model.IsGroupRebateEligible(relayInfo.UsingGroup))
 		model.UpdateChannelUsedQuota(relayInfo.ChannelId, quota)
 	}
 
@@ -372,7 +372,7 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 		logger.LogError(ctx, common.LogText("total tokens is 0, cannot consume quota, userId %d, channelId %d, tokenId %d, model %s， pre-consumed quota %d",
 			relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, billingModelName, relayInfo.FinalPreConsumedQuota))
 	} else {
-		model.RecordUserUsedQuotaAndRequestCount(relayInfo.UserId, quota, relayInfo.BillingSource != BillingSourceSubscription)
+		model.RecordUserUsedQuotaAndRequestCount(relayInfo.UserId, quota, relayInfo.BillingSource != BillingSourceSubscription, model.IsGroupRebateEligible(relayInfo.UsingGroup))
 		model.UpdateChannelUsedQuota(relayInfo.ChannelId, quota)
 	}
 
