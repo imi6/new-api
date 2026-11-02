@@ -5551,6 +5551,7 @@
     "Review your payment details": "支払い詳細を確認",
     "Review your purchase details before proceeding.": "続行前に購入詳細を確認してください。",
     "Revoke": "取り消す",
+    "Revoke all": "すべて取り消す",
     "Revoke session?": "このセッションを取り消しますか？",
     "Revoke this access token? Scripts using it stop working immediately.": "このアクセストークンを取り消しますか？使用中のスクリプトはすぐに動作しなくなります。",
     "Revoked access tokens": "取り消されたアクセストークン",
