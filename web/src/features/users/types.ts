@@ -138,6 +138,8 @@ export type ManageUserAction =
   | 'delete'
   | 'add_quota'
   | 'add_aff_quota'
+  | 'grant_affiliate_rebate'
+  | 'revoke_affiliate_rebate'
 
 export type QuotaAdjustMode = 'add' | 'subtract' | 'override'
 
@@ -152,6 +154,12 @@ export interface ManageUserAffQuotaPayload {
   id: number
   action: 'add_aff_quota'
   mode: 'add' | 'subtract'
+  value: number
+}
+
+export interface ManageUserAffiliateRebatePayload {
+  id: number
+  action: 'grant_affiliate_rebate' | 'revoke_affiliate_rebate'
   value: number
 }
 
