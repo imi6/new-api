@@ -426,7 +426,7 @@ export function QuotaSettingsSection({
                     <FormControl>
                       <MultiSelect
                         options={groupOptions}
-                        value={
+                        selected={
                           field.value
                             ? field.value.split(',').filter(Boolean)
                             : []
