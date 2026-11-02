@@ -266,6 +266,8 @@ export interface AffiliateRebateSummary {
   accrued: number
   claimed: number
   claimable: number
+  /** Groups that earn rebate; empty means every group earns it. */
+  rebate_groups: string[]
   invitees: AffiliateInviteeRebate[]
 }
 
