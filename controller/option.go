@@ -47,6 +47,29 @@ func isPositiveOptionValue(value string) bool {
 	return err == nil && floatValue > 0
 }
 
+// normalizeRebateGroups trims and de-duplicates the rebate group list and
+// rejects names that are not configured groups, so a typo cannot silently
+// withhold rebate. An empty result is valid and means every group earns it.
+func normalizeRebateGroups(raw string) (string, error) {
+	groups := make([]string, 0)
+	seen := make(map[string]struct{})
+	for entry := range strings.SplitSeq(raw, ",") {
+		name := strings.TrimSpace(entry)
+		if name == "" {
+			continue
+		}
+		if _, duplicate := seen[name]; duplicate {
+			continue
+		}
+		if !ratio_setting.ContainsGroupRatio(name) {
+			return "", common.NewMessage("Unknown group: " + name)
+		}
+		seen[name] = struct{}{}
+		groups = append(groups, name)
+	}
+	return strings.Join(groups, ","), nil
+}
+
 func collectModelNamesFromOptionValue(raw string, modelNames map[string]struct{}) {
 	if strings.TrimSpace(raw) == "" {
 		return
@@ -225,6 +248,16 @@ func UpdateOption(c *gin.Context) {
 			common.ApiErrorT(c, "Invalid parameters")
 			return
 		}
+	}
+	if option.Key == "AffiliateRebateGroups" {
+		// Normalize to a comma-separated list of known groups. An empty value
+		// is valid and means every group earns rebate.
+		normalized, err := normalizeRebateGroups(option.Value.(string))
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		option.Value = normalized
 	}
 	if option.Key == "TaskPublicAddress" && option.Value.(string) != "" {
 		if err := service.ValidateTaskArtifactBaseURL(option.Value.(string)); err != nil {

@@ -31,6 +31,7 @@ const defaultBillingSettings: BillingSettings = {
   AffiliateRebatePercent: 0,
   AffiliateRebateDownstreamQuota: 0,
   AffiliateRebateUpstreamQuota: 0,
+  AffiliateRebateGroups: '',
   TopUpLink: '',
   'quota_setting.enable_free_model_pre_consume': true,
   'quota_setting.trust_quota_usd': 10,
