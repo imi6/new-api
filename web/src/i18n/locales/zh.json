@@ -5787,6 +5787,7 @@
     "Review your payment details": "查看您的付款详情",
     "Review your purchase details before proceeding.": "在继续之前，请审阅您的购买详情。",
     "Revoke": "撤销",
+    "Revoke all": "撤销全部",
     "Revoke session?": "撤销此会话？",
     "Revoke this access token? Scripts using it stop working immediately.": "撤销此访问令牌？使用它的脚本会立即失效。",
     "Revoked access tokens": "已撤销的访问令牌",
