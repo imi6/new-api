@@ -17,12 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
 import i18next from 'i18next'
-import type { ChangeEvent } from 'react'
+import { type ChangeEvent, useMemo } from 'react'
 import type { Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 
+import { MultiSelect } from '@/components/multi-select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Form,
@@ -35,6 +37,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { getGroups } from '@/features/users/api'
 import {
   formatQuota,
   getEditableQuotaStep,
@@ -64,6 +67,7 @@ const quotaSchema = z.object({
   AffiliateRebatePercent: z.coerce.number().min(0).max(100),
   AffiliateRebateDownstreamQuota: z.coerce.number().min(0),
   AffiliateRebateUpstreamQuota: z.coerce.number().min(0),
+  AffiliateRebateGroups: z.string(),
   TopUpLink: z.string(),
   quota_setting: z.object({
     enable_free_model_pre_consume: z.boolean(),
@@ -106,6 +110,20 @@ export function QuotaSettingsSection({
   const updateOption = useUpdateOption()
   useSystemConfigStore((state) => state.config.currency)
   const dollarStep = getEditableQuotaStep()
+
+  const { data: groupsData } = useQuery({
+    queryKey: ['groups'],
+    queryFn: getGroups,
+  })
+  const groupOptions = useMemo(
+    () =>
+      (groupsData?.data ?? []).map((group) => ({
+        label: group,
+        value: group,
+      })),
+    [groupsData]
+  )
+
   const handleNumberChange =
     (onChange: (value: QuotaInputValue) => void) =>
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -397,6 +415,38 @@ export function QuotaSettingsSection({
                 </FormItem>
               )}
             />
+
+            <SettingsFormGridItem span='full'>
+              <FormField
+                control={form.control}
+                name='AffiliateRebateGroups'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Groups that earn rebate')}</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        options={groupOptions}
+                        value={
+                          field.value
+                            ? field.value.split(',').filter(Boolean)
+                            : []
+                        }
+                        onChange={(selected) =>
+                          field.onChange(selected.join(','))
+                        }
+                        placeholder={t('All groups earn rebate')}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Leave empty so every group earns rebate. Consumption in an excluded group still counts toward the invitee threshold but earns no rebate.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </SettingsFormGridItem>
 
             <SettingsFormGridItem span='full'>
               <FormField
