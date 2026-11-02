@@ -1123,6 +1123,10 @@ func ManageUser(c *gin.Context) {
 		manageUserAffQuota(c, req)
 		return
 	}
+	if req.Action == "grant_affiliate_rebate" || req.Action == "revoke_affiliate_rebate" {
+		manageUserAffiliateRebate(c, req)
+		return
+	}
 	user := model.User{
 		Id: req.Id,
 	}
