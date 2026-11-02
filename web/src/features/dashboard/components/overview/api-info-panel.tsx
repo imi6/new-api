@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Route } from 'lucide-react'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { IconBadge } from '@/components/ui/icon-badge'
@@ -28,14 +28,36 @@ import {
   getDefaultPingStatus,
 } from '@/features/dashboard/lib/api-info'
 import type { PingStatusMap, ApiInfoItem } from '@/features/dashboard/types'
+import { quotaUnitsToDollars } from '@/lib/format'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { PanelWrapper } from '../ui/panel-wrapper'
 import { ApiInfoItemComponent } from './api-info-item'
 
 export function ApiInfoPanel() {
   const { t } = useTranslation()
-  const { items: list, loading } = useApiInfo()
+  const { items, loading } = useApiInfo()
+  const user = useAuthStore((s) => s.auth.user)
   const [pingStatus, setPingStatus] = useState<PingStatusMap>({})
+
+  const usedQuotaUsd = quotaUnitsToDollars(user?.used_quota ?? 0)
+  const quotaUsd = quotaUnitsToDollars(user?.quota ?? 0)
+
+  // Apply the same visibility rules as the API Keys page address bar
+  const list = useMemo(
+    () =>
+      items.filter((item) => {
+        if (item.show_in_keys === false) return false
+        if (item.min_used_quota_usd && item.min_used_quota_usd > 0) {
+          if (usedQuotaUsd < item.min_used_quota_usd) return false
+        }
+        if (item.min_quota_usd && item.min_quota_usd > 0) {
+          if (quotaUsd < item.min_quota_usd) return false
+        }
+        return true
+      }),
+    [items, usedQuotaUsd, quotaUsd]
+  )
 
   const handleTest = useCallback(async (url: string) => {
     setPingStatus((prev) => ({
