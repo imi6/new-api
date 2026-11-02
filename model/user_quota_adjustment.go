@@ -97,3 +97,62 @@ func AdjustUserQuota(userID, operatorRole int, mode string, value int) (*UserQuo
 	}
 	return &adjustment, nil
 }
+
+// AdjustAffQuota adjusts a user's referral program quota (aff_quota) by the
+// given mode and value. Unlike wallet quota it is not mirrored in Redis, so no
+// cache update is needed. Only add and subtract are supported; override is not
+// because the field has no separate "used" counter to reconcile against.
+func AdjustAffQuota(userID, operatorRole int, mode string, value int) (*UserQuotaAdjustment, error) {
+	if userID <= 0 || (mode != "add" && mode != "subtract") {
+		return nil, ErrInvalidUserQuotaAdjustment
+	}
+	if value <= 0 {
+		return nil, ErrInvalidUserQuotaAdjustment
+	}
+	if value > common.MaxWalletQuota {
+		return nil, ErrWalletQuotaLimitExceeded
+	}
+
+	var adjustment UserQuotaAdjustment
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var user User
+		if err := lockForUpdate(tx).Select("id", "username", "role", "aff_quota", "aff_history").
+			First(&user, userID).Error; err != nil {
+			return err
+		}
+		if operatorRole != common.RoleRootUser && operatorRole <= user.Role {
+			return ErrUserQuotaPermission
+		}
+		before := user.AffQuota
+		after := before
+		switch mode {
+		case "add":
+			after = before + value
+			if after < before { // overflow guard
+				return ErrWalletQuotaLimitExceeded
+			}
+		case "subtract":
+			after = before - value
+			if after < 0 {
+				after = 0
+			}
+		}
+		if after == before {
+			adjustment = UserQuotaAdjustment{UserID: user.Id, Username: user.Username, Before: before, After: after}
+			return nil
+		}
+		result := tx.Model(&User{}).Where("id = ?", userID).Update("aff_quota", after)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		adjustment = UserQuotaAdjustment{UserID: user.Id, Username: user.Username, Before: before, After: after}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &adjustment, nil
+}
