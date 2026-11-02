@@ -5540,6 +5540,7 @@
     "Review your payment details": "Vérifier vos détails de paiement",
     "Review your purchase details before proceeding.": "Vérifiez les détails de votre achat avant de continuer.",
     "Revoke": "Révoquer",
+    "Revoke all": "Tout révoquer",
     "Revoke session?": "Révoquer cette session ?",
     "Revoke this access token? Scripts using it stop working immediately.": "Révoquer ce jeton d’accès ? Les scripts qui l’utilisent cesseront immédiatement de fonctionner.",
     "Revoked access tokens": "Jetons d’accès révoqués",

@@ -5540,6 +5540,7 @@
     "Review your payment details": "查看您的付款詳情",
     "Review your purchase details before proceeding.": "在繼續之前，請審閱您的購買詳情。",
     "Revoke": "撤銷",
+    "Revoke all": "撤銷全部",
     "Revoke session?": "撤銷此工作階段？",
     "Revoke this access token? Scripts using it stop working immediately.": "撤銷此存取令牌？使用它的腳本會立即失效。",
     "Revoked access tokens": "已撤銷的存取令牌",
