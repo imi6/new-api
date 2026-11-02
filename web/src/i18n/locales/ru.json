@@ -5561,6 +5561,7 @@
     "Review your payment details": "Проверьте свои платежные данные",
     "Review your purchase details before proceeding.": "Просмотрите детали покупки перед продолжением.",
     "Revoke": "Отозвать",
+    "Revoke all": "Отозвать всё",
     "Revoke session?": "Отозвать сеанс?",
     "Revoke this access token? Scripts using it stop working immediately.": "Отозвать этот токен доступа? Скрипты, которые его используют, сразу перестанут работать.",
     "Revoked access tokens": "Отозванные токены доступа",
