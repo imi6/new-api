@@ -32,6 +32,7 @@ import type {
   ManageUserAction,
   ManageUserQuotaPayload,
   ManageUserAffQuotaPayload,
+  ManageUserAffiliateRebatePayload,
   ApiResponse,
 } from './types'
 
@@ -178,6 +179,17 @@ export async function adjustUserQuota(
  */
 export async function adjustUserAffQuota(
   payload: ManageUserAffQuotaPayload
+): Promise<ApiResponse<Partial<User>>> {
+  const res = await api.post('/api/user/manage', payload)
+  return res.data
+}
+
+/**
+ * Grant or revoke a user's earned affiliate rebate (affiliate_rebate_claimed).
+ * grant: transfers rebate to wallet; revoke: marks as claimed without crediting.
+ */
+export async function adjustUserAffiliateRebate(
+  payload: ManageUserAffiliateRebatePayload
 ): Promise<ApiResponse<Partial<User>>> {
   const res = await api.post('/api/user/manage', payload)
   return res.data
