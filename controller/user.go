@@ -1121,6 +1121,10 @@ func ManageUser(c *gin.Context) {
 		manageUserQuota(c, req)
 		return
 	}
+	if req.Action == "add_aff_quota" {
+		manageUserAffQuota(c, req)
+		return
+	}
 	user := model.User{
 		Id: req.Id,
 	}

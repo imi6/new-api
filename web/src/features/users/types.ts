@@ -137,6 +137,7 @@ export type ManageUserAction =
   | 'disable'
   | 'delete'
   | 'add_quota'
+  | 'add_aff_quota'
 
 export type QuotaAdjustMode = 'add' | 'subtract' | 'override'
 
@@ -144,6 +145,13 @@ export interface ManageUserQuotaPayload {
   id: number
   action: 'add_quota'
   mode: QuotaAdjustMode
+  value: number
+}
+
+export interface ManageUserAffQuotaPayload {
+  id: number
+  action: 'add_aff_quota'
+  mode: 'add' | 'subtract'
   value: number
 }
 
