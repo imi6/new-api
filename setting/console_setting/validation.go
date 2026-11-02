@@ -150,6 +150,27 @@ func validateApiInfo(apiInfoStr string) error {
 			return common.NewMessage("API info #{{index}} has an invalid color value", map[string]any{"index": i + 1})
 		}
 
+		// Optional: show_in_keys (bool, defaults to true)
+		if v, exists := apiInfo["show_in_keys"]; exists {
+			if _, ok := v.(bool); !ok {
+				return common.NewMessage("API info #{{index}} show_in_keys must be a boolean", map[string]any{"index": i + 1})
+			}
+		}
+
+		// Optional: min_used_quota_usd and min_quota_usd (number >= 0)
+		for _, field := range []string{"min_used_quota_usd", "min_quota_usd"} {
+			if v, exists := apiInfo[field]; exists {
+				switch n := v.(type) {
+				case float64:
+					if n < 0 {
+						return common.NewMessage("API info #{{index}} {{field}} must be >= 0", map[string]any{"index": i + 1, "field": field})
+					}
+				default:
+					return common.NewMessage("API info #{{index}} {{field}} must be a number", map[string]any{"index": i + 1, "field": field})
+				}
+			}
+		}
+
 		if err := checkDangerousContent(description, i+1, apiInfoMessages); err != nil {
 			return err
 		}
