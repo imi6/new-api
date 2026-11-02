@@ -66,6 +66,7 @@ const BILLING_SECTIONS = [
           AffiliateRebatePercent: settings.AffiliateRebatePercent,
           AffiliateRebateDownstreamQuota: settings.AffiliateRebateDownstreamQuota,
           AffiliateRebateUpstreamQuota: settings.AffiliateRebateUpstreamQuota,
+          AffiliateRebateGroups: settings.AffiliateRebateGroups ?? '',
           TopUpLink: settings.TopUpLink,
           quota_setting: {
             trust_quota_usd: settings['quota_setting.trust_quota_usd'],
