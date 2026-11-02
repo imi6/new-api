@@ -38,6 +38,8 @@ import {
 } from '@/components/ui/popover'
 import { useApiInfo } from '@/features/dashboard/hooks/use-status-data'
 import { useStatus } from '@/hooks/use-status'
+import { useAuthStore } from '@/stores/auth-store'
+import { quotaUnitsToDollars } from '@/lib/format'
 
 import { useApiKeys } from './api-keys-provider'
 
@@ -46,12 +48,30 @@ export function ApiKeysPrimaryButtons() {
   const { setOpen } = useApiKeys()
   const { status, loading } = useStatus()
   const { items } = useApiInfo()
+  const user = useAuthStore((s) => s.auth.user)
+
+  const usedQuotaUsd = quotaUnitsToDollars(user?.used_quota ?? 0)
+  const quotaUsd = quotaUnitsToDollars(user?.quota ?? 0)
+
   const serverAddress =
     (typeof status?.server_address === 'string' &&
       status.server_address.trim()) ||
     ''
-  const addresses = items.length
-    ? items
+
+  // Filter: show_in_keys must not be false, and user must meet quota thresholds
+  const visibleItems = items.filter((item) => {
+    if (item.show_in_keys === false) return false
+    if (item.min_used_quota_usd && item.min_used_quota_usd > 0) {
+      if (usedQuotaUsd < item.min_used_quota_usd) return false
+    }
+    if (item.min_quota_usd && item.min_quota_usd > 0) {
+      if (quotaUsd < item.min_quota_usd) return false
+    }
+    return true
+  })
+
+  const addresses = visibleItems.length
+    ? visibleItems
     : [
         {
           url: serverAddress || window.location.origin,
