@@ -141,3 +141,59 @@ func manageUserAffQuota(c *gin.Context, req ManageRequest) {
 	success = true
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": ""})
 }
+
+// manageUserAffiliateRebate lets an admin grant (transfer rebate → wallet) or
+// revoke (mark as claimed without crediting wallet) a user's rebate balance.
+func manageUserAffiliateRebate(c *gin.Context, req ManageRequest) {
+	mode := "grant"
+	if req.Action == "revoke_affiliate_rebate" {
+		mode = "revoke"
+	}
+	action := "user.affiliate_rebate_" + mode
+	params := model.AuditFields{
+		"target_user_id":  req.Id,
+		"mode":            mode,
+		"requested_quota": req.Value,
+	}
+	success := false
+	defer func() {
+		content := auditContentEN(action, params)
+		if !success {
+			content = "Failed affiliate rebate adjustment"
+		}
+		model.RecordOperationAuditLog(c.GetInt("id"), c.GetInt("role"), content, c.ClientIP(), action, params,
+			auditOperatorInfo(c), &model.AuditRequestInfo{
+				Method: c.Request.Method, Route: c.FullPath(), Status: c.Writer.Status(), Success: success,
+			}, c)
+		markAuditLogged(c)
+	}()
+
+	adjustment, err := model.AdjustAffiliateRebate(req.Id, c.GetInt("role"), mode, req.Value)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrInvalidUserQuotaAdjustment):
+			params["failure_reason"] = "invalid_parameters"
+			common.ApiErrorT(c, "Quota change amount cannot be zero")
+		case errors.Is(err, model.ErrUserQuotaPermission):
+			params["failure_reason"] = "permission_denied"
+			common.ApiErrorT(c, "No permission to update users of same or higher permission level")
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			params["failure_reason"] = "target_not_found"
+			common.ApiErrorT(c, "User does not exist")
+		case errors.Is(err, model.ErrWalletQuotaLimitExceeded):
+			params["failure_reason"] = "quota_limit_exceeded"
+			common.ApiError(c, err)
+		default:
+			params["failure_reason"] = "database_error"
+			common.ApiError(c, err)
+		}
+		return
+	}
+
+	params["target_username"] = adjustment.Username
+	params["from"] = adjustment.Before
+	params["to"] = adjustment.After
+	params["quota"] = req.Value
+	success = true
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": ""})
+}
