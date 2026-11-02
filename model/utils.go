@@ -19,6 +19,10 @@ const (
 	BatchUpdateTypeChannelUsedQuota
 	BatchUpdateTypeRequestCount
 	BatchUpdateTypeWalletUsedQuota
+	// BatchUpdateTypeRebateQuota is the share of BatchUpdateTypeWalletUsedQuota
+	// billed to groups that earn referral rebate. Both are written in the same
+	// call so a flush apportions each user's grant against a matching total.
+	BatchUpdateTypeRebateQuota
 	BatchUpdateTypeCount // if you add a new type, you need to add a new map and a new lock
 )
 
@@ -89,7 +93,7 @@ func batchUpdate() {
 	}
 
 	for i, store := range stores {
-		if i == BatchUpdateTypeUserQuota || i == BatchUpdateTypeUsedQuota || i == BatchUpdateTypeWalletUsedQuota || i == BatchUpdateTypeRequestCount {
+		if i == BatchUpdateTypeUserQuota || i == BatchUpdateTypeUsedQuota || i == BatchUpdateTypeWalletUsedQuota || i == BatchUpdateTypeRebateQuota || i == BatchUpdateTypeRequestCount {
 			continue
 		}
 		for key, value := range store {
@@ -108,16 +112,17 @@ func batchUpdate() {
 	userQuotaStore := stores[BatchUpdateTypeUserQuota]
 	usedQuotaStore := stores[BatchUpdateTypeUsedQuota]
 	walletUsedQuotaStore := stores[BatchUpdateTypeWalletUsedQuota]
+	rebateQuotaStore := stores[BatchUpdateTypeRebateQuota]
 	requestCountStore := stores[BatchUpdateTypeRequestCount]
 
 	userIDs := make(map[int]struct{}, len(userQuotaStore)+len(usedQuotaStore)+len(requestCountStore))
-	for _, store := range []map[int]int{userQuotaStore, usedQuotaStore, walletUsedQuotaStore, requestCountStore} {
+	for _, store := range []map[int]int{userQuotaStore, usedQuotaStore, walletUsedQuotaStore, rebateQuotaStore, requestCountStore} {
 		for key := range store {
 			userIDs[key] = struct{}{}
 		}
 	}
 	for key := range userIDs {
-		updateUserQuotaUsedQuotaAndRequestCount(key, userQuotaStore[key], usedQuotaStore[key], walletUsedQuotaStore[key], requestCountStore[key])
+		updateUserQuotaUsedQuotaAndRequestCount(key, userQuotaStore[key], usedQuotaStore[key], walletUsedQuotaStore[key], rebateQuotaStore[key], requestCountStore[key])
 	}
 	common.SysLog(common.LogText("batch update finished"))
 }
