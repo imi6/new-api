@@ -1,5 +1,6 @@
 {
   "translation": {
+    "0 = visible to everyone": "0 = mọi người đều thấy",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -19,11 +20,16 @@
     "Groups that earn rebate": "Nhóm được hoàn tiền",
     "Invite rebate balance": "Số dư hoàn tiền mời",
     "Leave empty so every group earns rebate. Consumption in an excluded group still counts toward the invitee threshold but earns no rebate.": "Để trống để tất cả nhóm được hoàn tiền. Tiêu dùng ở nhóm bị loại trừ vần tính vào ngưỡng người được mời nhưng không phát sinh hoàn tiền.",
+    "Min total consumption (USD)": "Tiêu thụ tối thiểu (USD)",
+    "Min wallet balance (USD)": "Số dư tối thiểu (USD)",
+    "Only checked addresses are shown in the API Keys panel.": "Chỉ các địa chỉ được chọn mới hiển thị trong bảng khoá API.",
     "Pending referral rewards, transferable to wallet balance.": "Phần thưởng giới thiệu chưa chuyển, có thể chuyển vào số dư.",
     "Rebate granted to wallet": "Hoàn tiền đã cấp vào ví",
     "Rebate revoked": "Hoàn tiền đã thu hồi",
     "Referral program quota": "Hạn mức giới thiệu",
     "Referral program quota updated": "Hạn mức giới thiệu đã cập nhật",
+    "Show in keys page": "Trang khoá",
+    "Show on API Keys page": "Hiển thị trên trang khoá API",
     "，": ", ",
     ", and": ", và",
     "，and ": " và ",

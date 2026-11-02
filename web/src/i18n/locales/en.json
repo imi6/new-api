@@ -1,5 +1,6 @@
 {
   "translation": {
+    "0 = visible to everyone": "0 = visible to everyone",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -19,11 +20,16 @@
     "Groups that earn rebate": "Groups that earn rebate",
     "Invite rebate balance": "Invite rebate balance",
     "Leave empty so every group earns rebate. Consumption in an excluded group still counts toward the invitee threshold but earns no rebate.": "Leave empty so every group earns rebate. Consumption in an excluded group still counts toward the invitee threshold but earns no rebate.",
+    "Min total consumption (USD)": "Min total consumption (USD)",
+    "Min wallet balance (USD)": "Min wallet balance (USD)",
+    "Only checked addresses are shown in the API Keys panel.": "Only checked addresses are shown in the API Keys panel.",
     "Pending referral rewards, transferable to wallet balance.": "Pending referral rewards, transferable to wallet balance.",
     "Rebate granted to wallet": "Rebate granted to wallet",
     "Rebate revoked": "Rebate revoked",
     "Referral program quota": "Referral program quota",
     "Referral program quota updated": "Referral program quota updated",
+    "Show in keys page": "Show in keys page",
+    "Show on API Keys page": "Show on API Keys page",
     "，": ", ",
     ", and": ", and",
     "，and ": ", and ",

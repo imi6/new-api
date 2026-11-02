@@ -1,5 +1,6 @@
 {
   "translation": {
+    "0 = visible to everyone": "0 = visible par tous",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -19,11 +20,16 @@
     "Groups that earn rebate": "Groupes bénéficiant de la remise",
     "Invite rebate balance": "Solde de remise d'invitation",
     "Leave empty so every group earns rebate. Consumption in an excluded group still counts toward the invitee threshold but earns no rebate.": "Laissez vide pour que tous les groupes bénéficient de la remise. La consommation d'un groupe exclu compte toujours pour le seuil de l'invité mais ne génère aucune remise.",
+    "Min total consumption (USD)": "Consommation totale min. (USD)",
+    "Min wallet balance (USD)": "Solde min. (USD)",
+    "Only checked addresses are shown in the API Keys panel.": "Seules les adresses cochées apparaissent dans le panneau des clés API.",
     "Pending referral rewards, transferable to wallet balance.": "Récompenses de parrainage en attente, transférables vers le solde.",
     "Rebate granted to wallet": "Remise accordée au portefeuille",
     "Rebate revoked": "Remise révoquée",
     "Referral program quota": "Quota du programme de parrainage",
     "Referral program quota updated": "Quota de parrainage mis à jour",
+    "Show in keys page": "Page des clés",
+    "Show on API Keys page": "Afficher sur la page des clés API",
     "，": ", ",
     ", and": ", et",
     "，and ": " et ",

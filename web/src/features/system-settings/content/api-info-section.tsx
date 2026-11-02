@@ -72,6 +72,9 @@ type ApiInfo = {
   route: string
   description: string
   color: string
+  show_in_keys: boolean
+  min_used_quota_usd: number
+  min_quota_usd: number
 }
 
 type ApiInfoSectionProps = {
@@ -85,6 +88,9 @@ const createApiInfoSchema = (t: (key: string) => string) =>
     route: z.string().min(1, t('Route is required')),
     description: z.string().min(1, t('Description is required')),
     color: z.string().min(1, t('Color is required')),
+    show_in_keys: z.boolean(),
+    min_used_quota_usd: z.coerce.number().min(0),
+    min_quota_usd: z.coerce.number().min(0),
   })
 
 type ApiInfoFormValues = z.infer<ReturnType<typeof createApiInfoSchema>>
@@ -147,6 +153,9 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
       route: '',
       description: '',
       color: 'blue',
+      show_in_keys: true,
+      min_used_quota_usd: 0,
+      min_quota_usd: 0,
     },
   })
 
@@ -170,6 +179,9 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
       route: '',
       description: '',
       color: 'blue',
+      show_in_keys: true,
+      min_used_quota_usd: 0,
+      min_quota_usd: 0,
     })
     setShowDialog(true)
   }
@@ -181,6 +193,9 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
       route: apiInfo.route,
       description: apiInfo.description,
       color: apiInfo.color,
+      show_in_keys: apiInfo.show_in_keys ?? true,
+      min_used_quota_usd: apiInfo.min_used_quota_usd ?? 0,
+      min_quota_usd: apiInfo.min_quota_usd ?? 0,
     })
     setShowDialog(true)
   }
@@ -372,6 +387,15 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
               ),
             },
             {
+              id: 'show_in_keys',
+              header: t('Show in keys page'),
+              cell: (apiInfo) => (
+                <span className={apiInfo.show_in_keys === false ? 'text-muted-foreground' : 'text-green-600'}>
+                  {apiInfo.show_in_keys === false ? t('Hidden') : t('Visible')}
+                </span>
+              ),
+            },
+            {
               id: 'actions',
               header: t('Actions'),
               cell: (apiInfo) => (
@@ -511,6 +535,62 @@ export function ApiInfoSection({ enabled, data }: ApiInfoSectionProps) {
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name='show_in_keys'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center gap-3 space-y-0 rounded-md border p-3'>
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div>
+                    <FormLabel>{t('Show on API Keys page')}</FormLabel>
+                    <FormDescription>
+                      {t('Only checked addresses are shown in the API Keys panel.')}
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <div className='grid grid-cols-2 gap-4'>
+              <FormField
+                control={form.control}
+                name='min_used_quota_usd'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Min total consumption (USD)')}</FormLabel>
+                    <FormControl>
+                      <Input type='number' min={0} step='0.01' {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t('0 = visible to everyone')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='min_quota_usd'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Min wallet balance (USD)')}</FormLabel>
+                    <FormControl>
+                      <Input type='number' min={0} step='0.01' {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t('0 = visible to everyone')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </form>
         </Form>
       </Dialog>

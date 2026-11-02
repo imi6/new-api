@@ -1,5 +1,6 @@
 {
   "translation": {
+    "0 = visible to everyone": "0 = 所有人可見",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -19,11 +20,16 @@
     "Groups that earn rebate": "參與返利的分組",
     "Invite rebate balance": "邀請返利餘額",
     "Leave empty so every group earns rebate. Consumption in an excluded group still counts toward the invitee threshold but earns no rebate.": "留空則全部分組參與返利。未選中的分組消費仍計入受邀用戶門檻，但不產生返利。",
+    "Min total consumption (USD)": "最低總消耗 (USD)",
+    "Min wallet balance (USD)": "最低餘額 (USD)",
+    "Only checked addresses are shown in the API Keys panel.": "只有勾選的地址才會在 API 金鑰頁面顯示。",
     "Pending referral rewards, transferable to wallet balance.": "待轉出的推薦獎勵，可轉入錢包餘額。",
     "Rebate granted to wallet": "返利已發放到錢包",
     "Rebate revoked": "返利已撤銷",
     "Referral program quota": "推薦計畫獎勵額度",
     "Referral program quota updated": "推薦獎勵額度已更新",
+    "Show in keys page": "金鑰頁展示",
+    "Show on API Keys page": "在 API 金鑰頁展示",
     "，": "，",
     ", and": "，和",
     "，and ": "，並",
