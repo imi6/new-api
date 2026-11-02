@@ -133,6 +133,12 @@ var QuotaForInvitee = 0
 var AffiliateRebatePercent = 0.0
 var AffiliateRebateDownstreamQuota = 0
 var AffiliateRebateUpstreamQuota = 0
+
+// AffiliateRebateGroups limits which user groups earn referral rebate, as a
+// comma-separated list of group names. An empty value means every group earns
+// rebate, which keeps existing deployments unchanged on upgrade. Consumption
+// in an excluded group still counts toward the downstream threshold.
+var AffiliateRebateGroups = ""
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 
