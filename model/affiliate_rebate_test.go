@@ -104,9 +104,9 @@ func TestBatchUpdateAttributesWalletUsageOnFlush(t *testing.T) {
 	user := createRebateTestUser(t, "batch-rebate-user", User{Quota: 1000, UnpaidQuotaBalance: 100})
 
 	common.BatchUpdateEnabled = true
-	RecordUserUsedQuota(user.Id, 80, true)
-	RecordUserUsedQuota(user.Id, 50, false)
-	RecordUserUsedQuota(user.Id, 40, true)
+	RecordUserUsedQuota(user.Id, 80, true, true)
+	RecordUserUsedQuota(user.Id, 50, false, true)
+	RecordUserUsedQuota(user.Id, 40, true, true)
 	require.NoError(t, DB.First(&user, user.Id).Error)
 	assert.Equal(t, 0, user.UsedQuota)
 	assert.Equal(t, 100, user.UnpaidQuotaBalance)
