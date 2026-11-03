@@ -60,3 +60,67 @@ func DoCheckin(c *gin.Context) {
 		"checkin_date":  checkin.CheckinDate,
 	})
 }
+
+// AdminGetCheckinRecords 管理员查询签到记录
+// GET /api/user/checkin/admin?date=2026-11-03&p=1&page_size=20
+func AdminGetCheckinRecords(c *gin.Context) {
+	date := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
+	pageInfo := common.GetPageQuery(c)
+
+	records, total, err := model.GetAdminCheckinRecords(date, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(records)
+	common.ApiSuccess(c, pageInfo)
+}
+
+	setting := operation_setting.GetCheckinSetting()
+	if !setting.Enabled {
+		common.ApiErrorT(c, "Check-in feature is not enabled")
+		return
+	}
+	userId := c.GetInt("id")
+	// 获取月份参数，默认为当前月份
+	month := c.DefaultQuery("month", time.Now().Format("2006-01"))
+
+	stats, err := model.GetUserCheckinStats(userId, month)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"enabled":   setting.Enabled,
+			"min_quota": setting.MinQuota,
+			"max_quota": setting.MaxQuota,
+			"stats":     stats,
+		},
+	})
+}
+
+// DoCheckin 执行用户签到
+func DoCheckin(c *gin.Context) {
+	setting := operation_setting.GetCheckinSetting()
+	if !setting.Enabled {
+		common.ApiErrorT(c, "Check-in feature is not enabled")
+		return
+	}
+
+	userId := c.GetInt("id")
+
+	checkin, err := model.UserCheckin(userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	model.RecordLog(userId, model.LogTypeSystem, common.NewMessage("Daily check-in, received {{quota}}", map[string]any{"quota": logger.FormatQuota(checkin.QuotaAwarded)}))
+	common.ApiSuccessT(c, "Check-in successful", gin.H{
+		"quota_awarded": checkin.QuotaAwarded,
+		"checkin_date":  checkin.CheckinDate,
+	})
+}
