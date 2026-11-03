@@ -17,11 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
+import { RefreshCw } from 'lucide-react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -32,7 +35,10 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { api } from '@/lib/api'
+import { formatQuota } from '@/lib/format'
 
 import {
   SettingsForm,
@@ -194,6 +200,113 @@ export function CheckinSettingsSection({
           )}
         </SettingsForm>
       </Form>
+    </SettingsSection>
+
+    <TodayCheckinList />
+  )
+}
+
+interface AdminCheckinRecord {
+  id: number
+  user_id: number
+  username: string
+  checkin_date: string
+  quota_awarded: number
+  created_at: number
+}
+
+interface AdminCheckinResponse {
+  success: boolean
+  data: {
+    items: AdminCheckinRecord[]
+    total: number
+    page: number
+    page_size: number
+  }
+}
+
+async function fetchTodayCheckins(): Promise<AdminCheckinResponse> {
+  const today = new Date().toISOString().slice(0, 10)
+  const res = await api.get(`/api/user/checkin/admin?date=${today}&p=1&page_size=100`)
+  return res.data
+}
+
+function TodayCheckinList() {
+  const { t } = useTranslation()
+  const { data, isLoading, refetch, isFetching } = useQuery({
+    queryKey: ['admin-checkins-today'],
+    queryFn: fetchTodayCheckins,
+    refetchInterval: 60_000,
+  })
+
+  const records = data?.data?.items ?? []
+  const total = data?.data?.total ?? 0
+  const totalQuota = records.reduce((s, r) => s + r.quota_awarded, 0)
+
+  return (
+    <SettingsSection
+      title={
+        <span className='flex items-center gap-2'>
+          {t("Today's check-ins")}
+          <span className='text-muted-foreground text-xs font-normal'>
+            {t('{{count}} records', { count: total })}
+          </span>
+        </span>
+      }
+    >
+      <div className='space-y-3'>
+        <div className='flex items-center justify-between'>
+          <p className='text-muted-foreground text-sm'>
+            {t('Total quota awarded today')}: {formatQuota(totalQuota)}
+          </p>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`mr-1.5 size-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            {t('Refresh')}
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className='space-y-2'>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className='h-10 w-full rounded-lg' />
+            ))}
+          </div>
+        ) : records.length === 0 ? (
+          <p className='text-muted-foreground py-6 text-center text-sm'>
+            {t('No check-ins today')}
+          </p>
+        ) : (
+          <div className='rounded-lg border overflow-hidden'>
+            <table className='w-full text-sm'>
+              <thead className='bg-muted/50'>
+                <tr>
+                  <th className='px-4 py-2.5 text-left font-medium text-xs text-muted-foreground'>{t('User')}</th>
+                  <th className='px-4 py-2.5 text-left font-medium text-xs text-muted-foreground'>{t('Check-in time')}</th>
+                  <th className='px-4 py-2.5 text-right font-medium text-xs text-muted-foreground'>{t('Quota awarded')}</th>
+                </tr>
+              </thead>
+              <tbody className='divide-y'>
+                {records.map((r) => (
+                  <tr key={r.id} className='hover:bg-muted/20'>
+                    <td className='px-4 py-2.5 font-medium'>{r.username}</td>
+                    <td className='px-4 py-2.5 text-muted-foreground'>
+                      {new Date(r.created_at * 1000).toLocaleTimeString()}
+                    </td>
+                    <td className='px-4 py-2.5 text-right tabular-nums'>
+                      {formatQuota(r.quota_awarded)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </SettingsSection>
   )
 }
