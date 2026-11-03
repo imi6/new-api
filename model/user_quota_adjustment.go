@@ -161,6 +161,8 @@ func AdjustAffiliateRebate(userID, operatorRole int, mode string, value int) (*U
 	}
 	return &adjustment, nil
 }
+
+// AdjustAffQuota adjusts a user's referral program quota (aff_quota) by the
 // given mode and value. Unlike wallet quota it is not mirrored in Redis, so no
 // cache update is needed. Only add and subtract are supported; override is not
 // because the field has no separate "used" counter to reconcile against.
