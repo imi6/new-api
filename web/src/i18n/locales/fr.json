@@ -10,6 +10,7 @@
     "Adjust invite rebate": "Ajuster la remise d'invitation",
     "Adjust referral program quota": "Ajuster le quota de parrainage",
     "All groups earn rebate": "Tous les groupes bénéficient de la remise",
+    "Auto ({{platform}})": "Auto ({{platform}})",
     "Check-in time": "Heure de connexion",
     "Claimable balance: {{current}} → {{after}} (marked as claimed, wallet unchanged)": "Solde réclamable : {{current}} → {{after}} (marqué comme réclamé, portefeuille inchangé)",
     "Claimable balance: {{current}} → {{after}} (rebate transferred to wallet)": "Solde réclamable : {{current}} → {{after}} (remise transférée au portefeuille)",
