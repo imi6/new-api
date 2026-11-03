@@ -20,6 +20,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   apiKeyGroupPlatform,
+  apiKeyPlatformIconKey,
   formatApiKeyGroupRatio,
 } from '../api-key-group-platforms'
 
@@ -67,6 +68,24 @@ describe('apiKeyGroupPlatform', () => {
   test('puts account-specific names that match no vendor into Other', () => {
     expect(apiKeyGroupPlatform('custom-group-a')).toBe('Other')
     expect(apiKeyGroupPlatform('custom-group-b')).toBe('Other')
+  })
+})
+
+describe('apiKeyPlatformIconKey', () => {
+  test('maps built-in platforms to their brand icon keys', () => {
+    expect(apiKeyPlatformIconKey('Claude')).toBe('Claude.Color')
+    expect(apiKeyPlatformIconKey('GPT')).toBe('OpenAI')
+    expect(apiKeyPlatformIconKey('Grok')).toBe('Grok')
+  })
+
+  test('passes a custom platform name through to the icon loader', () => {
+    expect(apiKeyPlatformIconKey('Mistral')).toBe('Mistral')
+    expect(apiKeyPlatformIconKey('我的渠道')).toBe('我的渠道')
+  })
+
+  test('returns no icon for Other or an empty name', () => {
+    expect(apiKeyPlatformIconKey('Other')).toBeUndefined()
+    expect(apiKeyPlatformIconKey('')).toBeUndefined()
   })
 })
 
