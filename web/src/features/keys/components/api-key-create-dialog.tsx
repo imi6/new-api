@@ -45,8 +45,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { getUserGroups, getUserModels } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { quotaUnitsToEditableAmount } from '@/lib/format'
+import { ChannelTypeLogo } from '@/features/channels/components/channel-type-badge'
 import { handleServerError } from '@/lib/handle-server-error'
-import { getLobeIcon } from '@/lib/lobe-icon'
 import {
   requireServerSuccess,
   translateServerText,
@@ -63,8 +63,9 @@ import {
 } from '../lib'
 import type { ApiKey } from '../types'
 import {
+  OTHER_PLATFORM,
   apiKeyGroupPlatform,
-  apiKeyPlatformIconKey,
+  apiKeyPlatformLabel,
   formatApiKeyGroupRatio,
 } from '../lib/api-key-group-platforms'
 import type { ApiKeyGroupOption } from './api-key-group-combobox'
@@ -86,19 +87,18 @@ function ratioNumber(ratio: number | string): number | null {
 }
 
 function platformLabel(
-  name: string,
+  platform: string,
   translate: (key: string) => string
 ): string {
-  return name === 'Other' ? translate('Other') : name
+  return apiKeyPlatformLabel(platform, translate)
 }
 
-/** Brand icon for a platform, from the shared @lobehub/icons loader. */
+/** Channel type icon for a platform, the same one the channel picker shows. */
 function PlatformIcon(props: { name: string }) {
-  const iconKey = apiKeyPlatformIconKey(props.name)
-  if (!iconKey) return null
+  if (props.name === OTHER_PLATFORM) return null
   return (
-    <span className='flex size-4 shrink-0 items-center justify-center' aria-hidden='true'>
-      {getLobeIcon(iconKey, 16)}
+    <span aria-hidden='true' className='flex size-4 shrink-0 items-center justify-center'>
+      <ChannelTypeLogo type={Number(props.name)} size={16} />
     </span>
   )
 }
@@ -200,10 +200,12 @@ export function ApiKeyCreateDialog({
       counts.set(name, (counts.get(name) ?? 0) + 1)
     }
     return [...counts.entries()].sort((left, right) => {
+      const leftOther = left[0] === OTHER_PLATFORM
+      if (leftOther !== (right[0] === OTHER_PLATFORM)) return leftOther ? 1 : -1
       if (right[1] !== left[1]) return right[1] - left[1]
-      return left[0].localeCompare(right[0])
+      return platformLabel(left[0], t).localeCompare(platformLabel(right[0], t))
     })
-  }, [groups, platformMap])
+  }, [groups, platformMap, t])
 
   const visibleGroups = useMemo(() => {
     const query = search.trim().toLowerCase()
