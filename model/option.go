@@ -153,6 +153,7 @@ func InitOptionMap() {
 	common.OptionMap["AffiliateRebateDownstreamQuota"] = strconv.Itoa(common.AffiliateRebateDownstreamQuota)
 	common.OptionMap["AffiliateRebateUpstreamQuota"] = strconv.Itoa(common.AffiliateRebateUpstreamQuota)
 	common.OptionMap["AffiliateRebateGroups"] = common.AffiliateRebateGroups
+	common.OptionMap["GroupPlatformMap"] = common.GroupPlatformMap
 	common.OptionMap["QuotaRemindEnabled"] = strconv.FormatBool(common.QuotaRemindEnabled)
 	common.OptionMap["QuotaRemindThreshold"] = strconv.Itoa(common.QuotaRemindThreshold)
 	common.OptionMap["PreConsumedQuota"] = strconv.Itoa(common.PreConsumedQuota)
@@ -675,6 +676,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.AffiliateRebateUpstreamQuota, _ = strconv.Atoi(value)
 	case "AffiliateRebateGroups":
 		common.AffiliateRebateGroups = value
+	case "GroupPlatformMap":
+		common.GroupPlatformMap = value
 	case "QuotaRemindThreshold":
 		common.QuotaRemindThreshold, _ = strconv.Atoi(value)
 	case "PreConsumedQuota":

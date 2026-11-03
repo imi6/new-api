@@ -82,6 +82,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatNumber } from '@/lib/format'
 
+import {
+  PLATFORM_NAMES,
+  apiKeyGroupPlatform,
+} from '../../keys/lib/api-key-group-platforms'
 import { safeJsonParse } from '../utils/json-parser'
 import { GroupSpecialUsableRulesEditor } from './group-special-usable-editor'
 
@@ -102,6 +106,7 @@ type GroupRatioVisualEditorProps = {
   autoGroups: string
   maxTokenAutoGroupsField: ReactNode
   groupSpecialUsableGroup: string
+  groupPlatformMap: string
   onChange: (field: string, value: string) => void
 }
 
@@ -112,11 +117,19 @@ type GroupPricingRow = {
   topupRatio: string
   selectable: boolean
   description: string
+  platform: string
 }
 
 type RegistryEntry = {
   name: string
   ratio: number
+}
+
+// Combobox needs a non-empty value; it stands for "no stored platform".
+const AUTO_PLATFORM = '__auto__'
+
+function platformDisplayName(name: string, t: (key: string) => string) {
+  return name === 'Other' ? t('Other') : name
 }
 
 const sectionCardClassName = 'min-w-0 shadow-none'
@@ -159,11 +172,16 @@ function parseNestedRatioMap(
 function buildGroupPricingRows(
   groupRatio: string,
   userUsableGroups: string,
-  topupGroupRatio: string
+  topupGroupRatio: string,
+  groupPlatformMap: string
 ): GroupPricingRow[] {
   const ratioMap = parseRatioMap(groupRatio)
   const usableMap = parseUsableMap(userUsableGroups)
   const topupMap = parseRatioMap(topupGroupRatio)
+  const platformMap = safeJsonParse<Record<string, string>>(groupPlatformMap, {
+    fallback: {},
+    silent: true,
+  })
   const names = new Set([
     ...Object.keys(ratioMap),
     ...Object.keys(usableMap),
@@ -177,6 +195,7 @@ function buildGroupPricingRows(
     topupRatio: Object.hasOwn(topupMap, name) ? String(topupMap[name]) : '',
     selectable: Object.hasOwn(usableMap, name),
     description: String(usableMap[name] ?? ''),
+    platform: String(platformMap[name] ?? ''),
   }))
 }
 
@@ -184,6 +203,7 @@ function serializeGroupPricingRows(rows: GroupPricingRow[]) {
   const groupRatio: Record<string, number> = {}
   const userUsableGroups: Record<string, string> = {}
   const topupGroupRatio: Record<string, number> = {}
+  const groupPlatformMap: Record<string, string> = {}
 
   for (const row of rows) {
     const name = row.name.trim()
@@ -196,12 +216,18 @@ function serializeGroupPricingRows(rows: GroupPricingRow[]) {
     if (topup !== '' && Number.isFinite(Number(topup))) {
       topupGroupRatio[name] = Number(topup)
     }
+    // An empty platform means "auto-detect from the name", so only explicit
+    // admin choices are stored and a renamed group keeps no stale value.
+    if (row.platform) {
+      groupPlatformMap[name] = row.platform
+    }
   }
 
   return {
     GroupRatio: JSON.stringify(groupRatio, null, 2),
     UserUsableGroups: JSON.stringify(userUsableGroups, null, 2),
     TopupGroupRatio: JSON.stringify(topupGroupRatio, null, 2),
+    GroupPlatformMap: JSON.stringify(groupPlatformMap, null, 2),
   }
 }
 
@@ -211,19 +237,26 @@ function groupPricingSignature(rows: GroupPricingRow[]): string {
     groupRatio: parseRatioMap(serialized.GroupRatio),
     userUsableGroups: parseUsableMap(serialized.UserUsableGroups),
     topupGroupRatio: parseRatioMap(serialized.TopupGroupRatio),
+    groupPlatformMap: parseUsableMap(serialized.GroupPlatformMap),
   })
 }
 
 function sourceGroupPricingSignature(
   groupRatio: string,
   userUsableGroups: string,
-  topupGroupRatio: string
+  topupGroupRatio: string,
+  groupPlatformMap: string
 ): string {
-  return JSON.stringify({
-    groupRatio: parseRatioMap(groupRatio),
-    userUsableGroups: parseUsableMap(userUsableGroups),
-    topupGroupRatio: parseRatioMap(topupGroupRatio),
-  })
+  // Rebuild through the same row model so entries for groups that no longer
+  // exist are dropped exactly as serializeGroupPricingRows drops them.
+  return groupPricingSignature(
+    buildGroupPricingRows(
+      groupRatio,
+      userUsableGroups,
+      topupGroupRatio,
+      groupPlatformMap
+    )
+  )
 }
 
 function UnknownGroupBadge() {
@@ -277,6 +310,7 @@ export const GroupRatioVisualEditor = memo(function GroupRatioVisualEditor({
   autoGroups,
   maxTokenAutoGroupsField,
   groupSpecialUsableGroup,
+  groupPlatformMap,
   onChange,
 }: GroupRatioVisualEditorProps) {
   const { t, i18n } = useTranslation()
@@ -370,6 +404,7 @@ export const GroupRatioVisualEditor = memo(function GroupRatioVisualEditor({
           groupRatio={groupRatio}
           userUsableGroups={userUsableGroups}
           topupGroupRatio={topupGroupRatio}
+          groupPlatformMap={groupPlatformMap}
           onChange={onChange}
           onShowDetail={setDetailGroup}
         />
@@ -475,6 +510,7 @@ type GroupPricingTableProps = {
   groupRatio: string
   userUsableGroups: string
   topupGroupRatio: string
+  groupPlatformMap: string
   onChange: (field: string, value: string) => void
   onShowDetail: (name: string) => void
 }
@@ -483,20 +519,22 @@ function GroupPricingTable({
   groupRatio,
   userUsableGroups,
   topupGroupRatio,
+  groupPlatformMap,
   onChange,
   onShowDetail,
 }: GroupPricingTableProps) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [rows, setRows] = useState<GroupPricingRow[]>(() =>
-    buildGroupPricingRows(groupRatio, userUsableGroups, topupGroupRatio)
+    buildGroupPricingRows(groupRatio, userUsableGroups, topupGroupRatio, groupPlatformMap)
   )
 
   useEffect(() => {
     const incomingSignature = sourceGroupPricingSignature(
       groupRatio,
       userUsableGroups,
-      topupGroupRatio
+      topupGroupRatio,
+      groupPlatformMap
     )
     setRows((currentRows) => {
       if (groupPricingSignature(currentRows) === incomingSignature) {
@@ -505,10 +543,11 @@ function GroupPricingTable({
       return buildGroupPricingRows(
         groupRatio,
         userUsableGroups,
-        topupGroupRatio
+        topupGroupRatio,
+        groupPlatformMap
       )
     })
-  }, [groupRatio, userUsableGroups, topupGroupRatio])
+  }, [groupRatio, userUsableGroups, topupGroupRatio, groupPlatformMap])
 
   const emitRows = useCallback(
     (nextRows: GroupPricingRow[]) => {
@@ -517,6 +556,7 @@ function GroupPricingTable({
       onChange('GroupRatio', serialized.GroupRatio)
       onChange('UserUsableGroups', serialized.UserUsableGroups)
       onChange('TopupGroupRatio', serialized.TopupGroupRatio)
+      onChange('GroupPlatformMap', serialized.GroupPlatformMap)
     },
     [onChange]
   )
@@ -551,6 +591,7 @@ function GroupPricingTable({
         topupRatio: '',
         selectable: true,
         description: '',
+        platform: '',
       },
       ...rows,
     ])
@@ -626,7 +667,7 @@ function GroupPricingTable({
             )}
           </InputGroup>
           <StaticDataTable
-            tableClassName='min-w-[760px]'
+            tableClassName='min-w-[900px]'
             tableProps={{ 'aria-label': t('Pricing groups') }}
             data={visibleRows}
             getRowKey={(row) => row._id}
@@ -738,6 +779,42 @@ function GroupPricingTable({
                       -
                     </span>
                   ),
+              },
+              {
+                id: 'platform',
+                header: t('Platform'),
+                className: 'w-36',
+                cell: (row) => (
+                  <Combobox
+                    options={[
+                      {
+                        value: AUTO_PLATFORM,
+                        label: t('Auto ({{platform}})', {
+                          platform: platformDisplayName(
+                            apiKeyGroupPlatform(row.name),
+                            t
+                          ),
+                        }),
+                      },
+                      ...PLATFORM_NAMES.map((name) => ({
+                        value: name,
+                        label: platformDisplayName(name, t),
+                      })),
+                    ]}
+                    value={row.platform || AUTO_PLATFORM}
+                    onValueChange={(value) => {
+                      if (!value) return
+                      updateRow(
+                        row._id,
+                        'platform',
+                        value === AUTO_PLATFORM ? '' : value
+                      )
+                    }}
+                    className='w-full'
+                    placeholder={t('Platform')}
+                    aria-label={t('Platform')}
+                  />
+                ),
               },
               {
                 id: 'actions',
