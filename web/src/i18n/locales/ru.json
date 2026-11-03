@@ -801,6 +801,7 @@
     "Authorization Endpoint (Optional)": "Конечная точка авторизации (необязательно)",
     "Authorize": "Авторизовать",
     "Auto": "Авто",
+    "Auto ({{platform}})": "Авто ({{platform}})",
     "Auto (Circuit Breaker)": "Авто (Автовыключатель)",
     "Auto assignment order": "Порядок автоматического назначения",
     "Auto Ban": "Автоматическая блокировка",

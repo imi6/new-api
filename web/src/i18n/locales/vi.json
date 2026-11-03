@@ -801,6 +801,7 @@
     "Authorization Endpoint (Optional)": "Điểm cuối ủy quyền (Tùy chọn)",
     "Authorize": "Ủy quyền",
     "Auto": "Tự động",
+    "Auto ({{platform}})": "Tự động ({{platform}})",
     "Auto (Circuit Breaker)": "Tự động (Bộ ngắt mạch)",
     "Auto assignment order": "Thứ tự gán tự động",
     "Auto Ban": "Cấm tự động",
