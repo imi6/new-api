@@ -139,6 +139,11 @@ var AffiliateRebateUpstreamQuota = 0
 // rebate, which keeps existing deployments unchanged on upgrade. Consumption
 // in an excluded group still counts toward the downstream threshold.
 var AffiliateRebateGroups = ""
+
+// GroupPlatformMap stores the admin-configured platform classification for
+// each group, as a JSON object {"GroupName":"PlatformName",...}. An empty
+// value means every group falls back to the automatic name-matching rules.
+var GroupPlatformMap = ""
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 
