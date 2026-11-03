@@ -81,12 +81,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatNumber } from '@/lib/format'
-import { getLobeIcon } from '@/lib/lobe-icon'
 
+import { ChannelTypeLogo } from '../../channels/components/channel-type-badge'
 import {
-  PLATFORM_NAMES,
+  PLATFORM_TYPE_OPTIONS,
   apiKeyGroupPlatform,
-  apiKeyPlatformIconKey,
+  apiKeyPlatformLabel,
+  isPlatformType,
 } from '../../keys/lib/api-key-group-platforms'
 import { safeJsonParse } from '../utils/json-parser'
 import { GroupSpecialUsableRulesEditor } from './group-special-usable-editor'
@@ -127,9 +128,8 @@ type RegistryEntry = {
   ratio: number
 }
 
-function platformDisplayName(name: string, t: (key: string) => string) {
-  return name === 'Other' ? t('Other') : name
-}
+// The select needs a non-empty value; it stands for "no assigned platform".
+const AUTO_PLATFORM = '__auto__'
 
 const sectionCardClassName = 'min-w-0 shadow-none'
 const sectionHeaderClassName = 'gap-2 border-b'
@@ -194,7 +194,9 @@ function buildGroupPricingRows(
     topupRatio: Object.hasOwn(topupMap, name) ? String(topupMap[name]) : '',
     selectable: Object.hasOwn(usableMap, name),
     description: String(usableMap[name] ?? ''),
-    platform: String(platformMap[name] ?? ''),
+    // A value that is not a channel type (a name saved by an earlier
+    // version) is dropped, and the next save removes it from the map.
+    platform: isPlatformType(platformMap[name]) ? String(platformMap[name]) : '',
   }))
 }
 
@@ -561,23 +563,16 @@ function GroupPricingTable({
     [onChange]
   )
 
-  // Built-in platforms first, then custom names already used by other rows
-  // so a custom platform can be picked again instead of retyped.
-  const platformOptions = useMemo(() => {
-    const names = [...PLATFORM_NAMES]
-    for (const row of rows) {
-      const platform = row.platform.trim()
-      if (platform && !names.includes(platform)) names.push(platform)
-    }
-    return names.map((name) => {
-      const iconKey = apiKeyPlatformIconKey(name)
-      return {
-        value: name,
-        label: platformDisplayName(name, t),
-        icon: iconKey ? getLobeIcon(iconKey, 16) : undefined,
-      }
-    })
-  }, [rows, t])
+  // The same channel types, names and icons as the channel picker.
+  const platformOptions = useMemo(
+    () =>
+      PLATFORM_TYPE_OPTIONS.map((option) => ({
+        value: String(option.value),
+        label: t(option.label),
+        icon: <ChannelTypeLogo type={option.value} size={16} />,
+      })),
+    [t]
+  )
 
   const updateRow = useCallback(
     (
@@ -803,33 +798,35 @@ function GroupPricingTable({
                 header: t('Platform'),
                 className: 'w-44',
                 cell: (row) => {
-                  const autoPlatform = platformDisplayName(
+                  const autoPlatform = apiKeyPlatformLabel(
                     apiKeyGroupPlatform(row.name),
                     t
                   )
-                  // Typing a name not in the list creates a custom platform;
-                  // picking the first option or clearing the field returns
-                  // to auto detection.
+                  // The first option clears the assignment, so the group
+                  // falls back to name matching.
                   return (
                     <Combobox
                       options={[
                         {
-                          value: '',
+                          value: AUTO_PLATFORM,
                           label: t('Auto ({{platform}})', {
                             platform: autoPlatform,
                           }),
                         },
                         ...platformOptions,
                       ]}
-                      value={row.platform}
-                      allowCustomValue
-                      onValueChange={(value) =>
-                        updateRow(row._id, 'platform', value ?? '')
-                      }
+                      value={row.platform || AUTO_PLATFORM}
+                      showSelectedIcon
+                      onValueChange={(value) => {
+                        if (!value) return
+                        updateRow(
+                          row._id,
+                          'platform',
+                          value === AUTO_PLATFORM ? '' : value
+                        )
+                      }}
                       className='w-full'
-                      searchPlaceholder={t('Auto ({{platform}})', {
-                        platform: autoPlatform,
-                      })}
+                      placeholder={t('Platform')}
                       aria-label={t('Platform')}
                     />
                   )
