@@ -37,8 +37,26 @@ const PLATFORM_RULES: Array<{ name: string; pattern: RegExp }> = [
   { name: 'Azure', pattern: /azure|(?:^|[\s\-_])az(?:$|[\s\-_])/i },
 ]
 
-export function apiKeyGroupPlatform(label: string): string {
+/** All known platform names, for use in select dropdowns. */
+export const PLATFORM_NAMES: string[] = [
+  'Claude', 'GPT', 'Gemini', 'Grok', 'DeepSeek', 'GLM', 'Kimi',
+  'OpenRouter', '国模', 'Seedance', 'Qwen', 'Doubao', 'AWS', 'Azure', 'Other',
+]
+
+/**
+ * Resolve a group's platform.
+ * @param label   The group name.
+ * @param platformMap  Optional admin-configured override map (GroupPlatformMap parsed as JSON).
+ *                     When provided and the group has an entry, that value wins over the pattern rules.
+ */
+export function apiKeyGroupPlatform(
+  label: string,
+  platformMap?: Record<string, string>
+): string {
   const name = label.trim()
+  if (platformMap && Object.hasOwn(platformMap, name) && platformMap[name]) {
+    return platformMap[name]
+  }
   for (const rule of PLATFORM_RULES) {
     if (rule.pattern.test(name)) return rule.name
   }

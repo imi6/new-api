@@ -11,6 +11,7 @@
     "Adjust invite rebate": "招待リベートを調整",
     "Adjust referral program quota": "紹介報酷を調整",
     "All groups earn rebate": "すべてのグループがリベート対象",
+    "Auto ({{platform}})": "自動（{{platform}}）",
     "Check-in time": "チェックイン時刻",
     "Claimable balance: {{current}} → {{after}} (marked as claimed, wallet unchanged)": "請求可能残高：{{current}} → {{after}}（請求済みに記録、ウォレット変更なし）",
     "Claimable balance: {{current}} → {{after}} (rebate transferred to wallet)": "請求可能残高：{{current}} → {{after}}（リベートをウォレットに転送）",

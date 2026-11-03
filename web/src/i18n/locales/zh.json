@@ -11,6 +11,7 @@
     "Adjust invite rebate": "调整邀请返利",
     "Adjust referral program quota": "调整推荐奖励额度",
     "All groups earn rebate": "全部分组参与返利",
+    "Auto ({{platform}})": "自动（{{platform}}）",
     "Check-in time": "签到时间",
     "Claimable balance: {{current}} → {{after}} (marked as claimed, wallet unchanged)": "可领取余额：{{current}} → {{after}}（标记为已领取，钱包不变）",
     "Claimable balance: {{current}} → {{after}} (rebate transferred to wallet)": "可领取余额：{{current}} → {{after}}（返利已转入钱包）",

@@ -11,6 +11,7 @@
     "Adjust invite rebate": "Изменить реферальный кэшбэк",
     "Adjust referral program quota": "Изменить квоту реферальной программы",
     "All groups earn rebate": "Кэшбэк начисляется всем группам",
+    "Auto ({{platform}})": "Авто ({{platform}})",
     "Check-in time": "Время отметки",
     "Claimable balance: {{current}} → {{after}} (marked as claimed, wallet unchanged)": "Доступно: {{current}} → {{after}} (отмечено как выведенное, баланс не изменён)",
     "Claimable balance: {{current}} → {{after}} (rebate transferred to wallet)": "Доступно: {{current}} → {{after}} (кэшбэк переведён на баланс)",
