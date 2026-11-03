@@ -43,6 +43,35 @@ export const PLATFORM_NAMES: string[] = [
   'OpenRouter', '国模', 'Seedance', 'Qwen', 'Doubao', 'AWS', 'Azure', 'Other',
 ]
 
+// @lobehub/icons keys for the built-in platforms. Seedance has no icon of
+// its own, so it uses its maker ByteDance; 国模 has none and falls back to
+// a letter badge like any custom platform.
+const PLATFORM_ICON_KEYS: Record<string, string> = {
+  Claude: 'Claude.Color',
+  GPT: 'OpenAI',
+  Gemini: 'Gemini.Color',
+  Grok: 'Grok',
+  DeepSeek: 'DeepSeek.Color',
+  GLM: 'ChatGLM.Color',
+  Kimi: 'Kimi.Color',
+  OpenRouter: 'OpenRouter',
+  Seedance: 'ByteDance.Color',
+  Qwen: 'Qwen.Color',
+  Doubao: 'Doubao.Color',
+  AWS: 'Aws.Color',
+  Azure: 'Azure.Color',
+}
+
+/**
+ * Icon key for getLobeIcon. A custom platform name is passed through, so a
+ * name that matches a @lobehub/icons brand (e.g. "Mistral") gets that icon
+ * and any other name gets the loader's letter badge. "Other" has no icon.
+ */
+export function apiKeyPlatformIconKey(platform: string): string | undefined {
+  if (!platform || platform === 'Other') return undefined
+  return PLATFORM_ICON_KEYS[platform] ?? platform
+}
+
 /**
  * Resolve a group's platform.
  * @param label   The group name.
