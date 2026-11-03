@@ -144,7 +144,34 @@ func userCheckinWithoutTransaction(checkin *Checkin, userId int, quotaAwarded in
 	return checkin, nil
 }
 
-// GetUserCheckinStats 获取用户签到统计信息
+// AdminCheckinRecord 管理员查询用的签到记录（含用户名）
+type AdminCheckinRecord struct {
+	Id           int    `json:"id"`
+	UserId       int    `json:"user_id"`
+	Username     string `json:"username"`
+	CheckinDate  string `json:"checkin_date"`
+	QuotaAwarded int    `json:"quota_awarded"`
+	CreatedAt    int64  `json:"created_at"`
+}
+
+// GetAdminCheckinRecords 管理员查询指定日期的全部签到记录（含用户名、分页）
+func GetAdminCheckinRecords(date string, offset int, limit int) ([]AdminCheckinRecord, int64, error) {
+	var records []AdminCheckinRecord
+	var total int64
+
+	query := DB.Table("checkins c").
+		Select("c.id, c.user_id, u.username, c.checkin_date, c.quota_awarded, c.created_at").
+		Joins("LEFT JOIN users u ON u.id = c.user_id").
+		Where("c.checkin_date = ?", date)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("c.created_at DESC").Offset(offset).Limit(limit).Scan(&records).Error; err != nil {
+		return nil, 0, err
+	}
+	return records, total, nil
+}
 func GetUserCheckinStats(userId int, month string) (map[string]any, error) {
 	// 获取指定月份的所有签到记录
 	startDate := month + "-01"
