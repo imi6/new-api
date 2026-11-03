@@ -209,6 +209,16 @@ export function ApiKeyCreateDialog({
     staleTime: 0,
   })
 
+  // Admin-assigned platforms arrive with each group; groups without one fall
+  // back to name matching inside apiKeyGroupPlatform.
+  const platformMap = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const [key, info] of Object.entries(groupsData?.data || {})) {
+      if (info.platform) map[key] = info.platform
+    }
+    return map
+  }, [groupsData])
+
   const groups = useMemo<ApiKeyGroupOption[]>(() => {
     const entries = Object.entries(groupsData?.data || {}) as Array<
       [string, { desc?: string; ratio: number | string }]
@@ -235,19 +245,19 @@ export function ApiKeyCreateDialog({
   const platforms = useMemo(() => {
     const counts = new Map<string, number>()
     for (const group of groups) {
-      const name = apiKeyGroupPlatform(group.label)
+      const name = apiKeyGroupPlatform(group.label, platformMap)
       counts.set(name, (counts.get(name) ?? 0) + 1)
     }
     return [...counts.entries()].sort((left, right) => {
       if (right[1] !== left[1]) return right[1] - left[1]
       return left[0].localeCompare(right[0])
     })
-  }, [groups])
+  }, [groups, platformMap])
 
   const visibleGroups = useMemo(() => {
     const query = search.trim().toLowerCase()
     const filtered = groups.filter((group) => {
-      const groupPlatform = apiKeyGroupPlatform(group.label)
+      const groupPlatform = apiKeyGroupPlatform(group.label, platformMap)
       if (platform !== ALL_PLATFORMS && groupPlatform !== platform) return false
       if (!query) return true
       return (
@@ -731,7 +741,7 @@ export function ApiKeyCreateDialog({
               <>
                 <div>
                   <p className='text-muted-foreground text-xs'>
-                    {platformLabel(apiKeyGroupPlatform(previewGroup.label), t)}
+                    {platformLabel(apiKeyGroupPlatform(previewGroup.label, platformMap), t)}
                   </p>
                   <h3 className='mt-1 text-base font-semibold'>
                     {previewGroup.label}
