@@ -193,7 +193,7 @@ export function ReferralPage() {
                     tone='default'
                     icon={<User className='size-4' />}
                     label={t('Invited users')}
-                    value={String(affCount)}
+                    value={String(summary?.invitees?.length ?? affCount)}
                     sub={t('Completed binding users')}
                   />
                   <StatCard
