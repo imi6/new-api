@@ -81,10 +81,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatNumber } from '@/lib/format'
+import { getLobeIcon } from '@/lib/lobe-icon'
 
 import {
   PLATFORM_NAMES,
   apiKeyGroupPlatform,
+  apiKeyPlatformIconKey,
 } from '../../keys/lib/api-key-group-platforms'
 import { safeJsonParse } from '../utils/json-parser'
 import { GroupSpecialUsableRulesEditor } from './group-special-usable-editor'
@@ -124,9 +126,6 @@ type RegistryEntry = {
   name: string
   ratio: number
 }
-
-// Combobox needs a non-empty value; it stands for "no stored platform".
-const AUTO_PLATFORM = '__auto__'
 
 function platformDisplayName(name: string, t: (key: string) => string) {
   return name === 'Other' ? t('Other') : name
@@ -218,8 +217,9 @@ function serializeGroupPricingRows(rows: GroupPricingRow[]) {
     }
     // An empty platform means "auto-detect from the name", so only explicit
     // admin choices are stored and a renamed group keeps no stale value.
-    if (row.platform) {
-      groupPlatformMap[name] = row.platform
+    const platform = row.platform.trim()
+    if (platform) {
+      groupPlatformMap[name] = platform
     }
   }
 
@@ -561,6 +561,24 @@ function GroupPricingTable({
     [onChange]
   )
 
+  // Built-in platforms first, then custom names already used by other rows
+  // so a custom platform can be picked again instead of retyped.
+  const platformOptions = useMemo(() => {
+    const names = [...PLATFORM_NAMES]
+    for (const row of rows) {
+      const platform = row.platform.trim()
+      if (platform && !names.includes(platform)) names.push(platform)
+    }
+    return names.map((name) => {
+      const iconKey = apiKeyPlatformIconKey(name)
+      return {
+        value: name,
+        label: platformDisplayName(name, t),
+        icon: iconKey ? getLobeIcon(iconKey, 16) : undefined,
+      }
+    })
+  }, [rows, t])
+
   const updateRow = useCallback(
     (
       id: string,
@@ -783,38 +801,39 @@ function GroupPricingTable({
               {
                 id: 'platform',
                 header: t('Platform'),
-                className: 'w-36',
-                cell: (row) => (
-                  <Combobox
-                    options={[
-                      {
-                        value: AUTO_PLATFORM,
-                        label: t('Auto ({{platform}})', {
-                          platform: platformDisplayName(
-                            apiKeyGroupPlatform(row.name),
-                            t
-                          ),
-                        }),
-                      },
-                      ...PLATFORM_NAMES.map((name) => ({
-                        value: name,
-                        label: platformDisplayName(name, t),
-                      })),
-                    ]}
-                    value={row.platform || AUTO_PLATFORM}
-                    onValueChange={(value) => {
-                      if (!value) return
-                      updateRow(
-                        row._id,
-                        'platform',
-                        value === AUTO_PLATFORM ? '' : value
-                      )
-                    }}
-                    className='w-full'
-                    placeholder={t('Platform')}
-                    aria-label={t('Platform')}
-                  />
-                ),
+                className: 'w-44',
+                cell: (row) => {
+                  const autoPlatform = platformDisplayName(
+                    apiKeyGroupPlatform(row.name),
+                    t
+                  )
+                  // Typing a name not in the list creates a custom platform;
+                  // picking the first option or clearing the field returns
+                  // to auto detection.
+                  return (
+                    <Combobox
+                      options={[
+                        {
+                          value: '',
+                          label: t('Auto ({{platform}})', {
+                            platform: autoPlatform,
+                          }),
+                        },
+                        ...platformOptions,
+                      ]}
+                      value={row.platform}
+                      allowCustomValue
+                      onValueChange={(value) =>
+                        updateRow(row._id, 'platform', value ?? '')
+                      }
+                      className='w-full'
+                      searchPlaceholder={t('Auto ({{platform}})', {
+                        platform: autoPlatform,
+                      })}
+                      aria-label={t('Platform')}
+                    />
+                  )
+                },
               },
               {
                 id: 'actions',
