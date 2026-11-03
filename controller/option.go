@@ -320,6 +320,25 @@ func UpdateOption(c *gin.Context) {
 			common.ApiError(c, err)
 			return
 		}
+	case "GroupPlatformMap":
+		// Display-only classification shown to every user, so it must be a
+		// flat JSON object of non-empty group name -> short platform name.
+		raw := strings.TrimSpace(option.Value.(string))
+		if raw != "" {
+			platforms := make(map[string]string)
+			if err := common.UnmarshalJsonStr(raw, &platforms); err != nil {
+				common.ApiErrorT(c, "Invalid parameters")
+				return
+			}
+			for group, platform := range platforms {
+				platform = strings.TrimSpace(platform)
+				if strings.TrimSpace(group) == "" || platform == "" || len(platform) > 64 {
+					common.ApiErrorT(c, "Invalid parameters")
+					return
+				}
+			}
+		}
+		option.Value = raw
 	case "gemini.safety_settings":
 		err = model_setting.ValidateGeminiSafetySettings(option.Value.(string))
 		if err != nil {

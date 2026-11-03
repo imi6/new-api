@@ -28,7 +28,21 @@ describe('apiKeyGroupPlatform', () => {
     expect(apiKeyGroupPlatform('Azure-GPT可蒸馏')).toBe('Azure')
     expect(apiKeyGroupPlatform('Azure-GPT不可蒸馏')).toBe('Azure')
     expect(apiKeyGroupPlatform('AZ-GPT')).toBe('Azure')
-    expect(apiKeyGroupPlatform('Claude-AWS Bedrock')).toBe('AWS')
+    expect(apiKeyGroupPlatform('AWS Bedrock')).toBe('AWS')
+  })
+
+  test('prefers the model vendor over the infrastructure provider', () => {
+    expect(apiKeyGroupPlatform('Claude-AWS Bedrock')).toBe('Claude')
+  })
+
+  test('uses an admin-assigned platform before name matching', () => {
+    expect(
+      apiKeyGroupPlatform('Claude-AWS Bedrock', { 'Claude-AWS Bedrock': 'AWS' })
+    ).toBe('AWS')
+  })
+
+  test('falls back to name matching when the group has no assignment', () => {
+    expect(apiKeyGroupPlatform('GPT Plus', { other: 'AWS' })).toBe('GPT')
   })
 
   test('keeps the remaining vendor families together', () => {
