@@ -17,8 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 const PLATFORM_RULES: Array<{ name: string; pattern: RegExp }> = [
-  { name: 'AWS', pattern: /aws/i },
-  { name: 'Azure', pattern: /azure|(?:^|[\s\-_])az(?:$|[\s\-_])/i },
+  // More specific rules first — a name like "Claude-AWS Bedrock" should
+  // resolve to Claude, not AWS, because the claude/anthropic keyword is
+  // more meaningful than the infrastructure provider.
   { name: 'Claude', pattern: /claude|anthropic/i },
   { name: 'GPT', pattern: /openai|(?:^|[\s\-_])gpt/i },
   { name: 'Gemini', pattern: /gemini|(?:^|[\s\-_])google/i },
@@ -31,6 +32,9 @@ const PLATFORM_RULES: Array<{ name: string; pattern: RegExp }> = [
   { name: 'Seedance', pattern: /seedance/i },
   { name: 'Qwen', pattern: /qwen|通义/i },
   { name: 'Doubao', pattern: /doubao|豆包/i },
+  // Infrastructure providers checked after model/vendor names
+  { name: 'AWS', pattern: /aws/i },
+  { name: 'Azure', pattern: /azure|(?:^|[\s\-_])az(?:$|[\s\-_])/i },
 ]
 
 export function apiKeyGroupPlatform(label: string): string {
