@@ -19,73 +19,86 @@ For commercial licensing, please contact support@quantumnous.com
 import { describe, expect, test } from 'vitest'
 
 import {
+  OTHER_PLATFORM,
   apiKeyGroupPlatform,
-  apiKeyPlatformIconKey,
+  apiKeyPlatformLabel,
   formatApiKeyGroupRatio,
+  isPlatformType,
 } from '../api-key-group-platforms'
 
+// Channel type ids, as in features/channels/constants.ts.
+const OPENAI = '1'
+const AZURE = '3'
+const ANTHROPIC = '14'
+const ALI = '17'
+const OPENROUTER = '20'
+const GEMINI = '24'
+const MOONSHOT = '25'
+const ZHIPU_GLM = '26'
+const AWS = '33'
+const DEEPSEEK = '43'
+const XAI = '48'
+
 describe('apiKeyGroupPlatform', () => {
-  test('keeps Azure and AWS as separate groups', () => {
-    expect(apiKeyGroupPlatform('Azure-GPT可蒸馏')).toBe('Azure')
-    expect(apiKeyGroupPlatform('Azure-GPT不可蒸馏')).toBe('Azure')
-    expect(apiKeyGroupPlatform('AZ-GPT')).toBe('Azure')
-    expect(apiKeyGroupPlatform('AWS Bedrock')).toBe('AWS')
+  test('maps vendor names in a group to their channel type', () => {
+    expect(apiKeyGroupPlatform('Claude Max-3')).toBe(ANTHROPIC)
+    expect(apiKeyGroupPlatform('GPT Plus')).toBe(OPENAI)
+    expect(apiKeyGroupPlatform('OpenAI GPT 特价分组')).toBe(OPENAI)
+    expect(apiKeyGroupPlatform('Gemini-Ultra')).toBe(GEMINI)
+    expect(apiKeyGroupPlatform('Grok Heavy')).toBe(XAI)
+    expect(apiKeyGroupPlatform('DeepSeek')).toBe(DEEPSEEK)
+    expect(apiKeyGroupPlatform('GLM')).toBe(ZHIPU_GLM)
+    expect(apiKeyGroupPlatform('Kimi')).toBe(MOONSHOT)
+    expect(apiKeyGroupPlatform('Qwen 通义')).toBe(ALI)
+    expect(apiKeyGroupPlatform('openrouter全模型')).toBe(OPENROUTER)
   })
 
-  test('prefers the model vendor over the infrastructure provider', () => {
-    expect(apiKeyGroupPlatform('Claude-AWS Bedrock')).toBe('Claude')
+  test('prefers the model vendor over the cloud that hosts it', () => {
+    expect(apiKeyGroupPlatform('Claude-AWS Bedrock')).toBe(ANTHROPIC)
+    expect(apiKeyGroupPlatform('Azure-GPT可蒸馏')).toBe(OPENAI)
+    expect(apiKeyGroupPlatform('AWS Bedrock')).toBe(AWS)
+    expect(apiKeyGroupPlatform('Azure 专线')).toBe(AZURE)
   })
 
-  test('uses an admin-assigned platform before name matching', () => {
+  test('uses an admin-assigned channel type before name matching', () => {
     expect(
-      apiKeyGroupPlatform('Claude-AWS Bedrock', { 'Claude-AWS Bedrock': 'AWS' })
-    ).toBe('AWS')
+      apiKeyGroupPlatform('Claude-AWS Bedrock', { 'Claude-AWS Bedrock': AWS })
+    ).toBe(AWS)
   })
 
-  test('falls back to name matching when the group has no assignment', () => {
-    expect(apiKeyGroupPlatform('GPT Plus', { other: 'AWS' })).toBe('GPT')
+  test('ignores an assignment that is not a channel type', () => {
+    expect(apiKeyGroupPlatform('GPT Plus', { 'GPT Plus': 'Claude' })).toBe(
+      OPENAI
+    )
+    expect(apiKeyGroupPlatform('GPT Plus', { 'GPT Plus': '999' })).toBe(OPENAI)
   })
 
-  test('keeps the remaining vendor families together', () => {
-    expect(apiKeyGroupPlatform('Claude Max-3')).toBe('Claude')
-    expect(apiKeyGroupPlatform('Claude-顶级华强北')).toBe('Claude')
-    expect(apiKeyGroupPlatform('Claude Enterprise官转')).toBe('Claude')
-    expect(apiKeyGroupPlatform('GPT Plus')).toBe('GPT')
-    expect(apiKeyGroupPlatform('GPTPRO特惠')).toBe('GPT')
-    expect(apiKeyGroupPlatform('GPT官KEY')).toBe('GPT')
-    expect(apiKeyGroupPlatform('OpenAI GPT 特价分组')).toBe('GPT')
-    expect(apiKeyGroupPlatform('Gemini-Vertex')).toBe('Gemini')
-    expect(apiKeyGroupPlatform('Gemini-Ultra')).toBe('Gemini')
-    expect(apiKeyGroupPlatform('Grok Free')).toBe('Grok')
-    expect(apiKeyGroupPlatform('Grok Heavy')).toBe('Grok')
-    expect(apiKeyGroupPlatform('DeepSeek')).toBe('DeepSeek')
-    expect(apiKeyGroupPlatform('GLM')).toBe('GLM')
-    expect(apiKeyGroupPlatform('Kimi')).toBe('Kimi')
-    expect(apiKeyGroupPlatform('openrouter全模型')).toBe('OpenRouter')
-    expect(apiKeyGroupPlatform('国模聚合')).toBe('国模')
-  })
-
-  test('puts account-specific names that match no vendor into Other', () => {
-    expect(apiKeyGroupPlatform('custom-group-a')).toBe('Other')
-    expect(apiKeyGroupPlatform('custom-group-b')).toBe('Other')
+  test('puts names that match no channel type into Other', () => {
+    expect(apiKeyGroupPlatform('custom-group-a')).toBe(OTHER_PLATFORM)
   })
 })
 
-describe('apiKeyPlatformIconKey', () => {
-  test('maps built-in platforms to their brand icon keys', () => {
-    expect(apiKeyPlatformIconKey('Claude')).toBe('Claude.Color')
-    expect(apiKeyPlatformIconKey('GPT')).toBe('OpenAI')
-    expect(apiKeyPlatformIconKey('Grok')).toBe('Grok')
+describe('isPlatformType', () => {
+  test('accepts known channel types and rejects anything else', () => {
+    expect(isPlatformType(ANTHROPIC)).toBe(true)
+    expect(isPlatformType('61')).toBe(false)
+    expect(isPlatformType('Claude')).toBe(false)
+    expect(isPlatformType('')).toBe(false)
+    expect(isPlatformType(undefined)).toBe(false)
+  })
+})
+
+describe('apiKeyPlatformLabel', () => {
+  const t = (key: string) => `t:${key}`
+
+  test('uses the channel type name the channel picker shows', () => {
+    expect(apiKeyPlatformLabel(ANTHROPIC, t)).toBe('t:Anthropic')
+    expect(apiKeyPlatformLabel(ALI, t)).toBe('t:Ali')
   })
 
-  test('passes a custom platform name through to the icon loader', () => {
-    expect(apiKeyPlatformIconKey('Mistral')).toBe('Mistral')
-    expect(apiKeyPlatformIconKey('我的渠道')).toBe('我的渠道')
-  })
-
-  test('returns no icon for Other or an empty name', () => {
-    expect(apiKeyPlatformIconKey('Other')).toBeUndefined()
-    expect(apiKeyPlatformIconKey('')).toBeUndefined()
+  test('labels Other and unknown values as Other', () => {
+    expect(apiKeyPlatformLabel(OTHER_PLATFORM, t)).toBe('t:Other')
+    expect(apiKeyPlatformLabel('999', t)).toBe('t:Other')
   })
 })
 
