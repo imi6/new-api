@@ -801,6 +801,7 @@
     "Authorization Endpoint (Optional)": "授權端點（可選）",
     "Authorize": "授權",
     "Auto": "自動",
+    "Auto ({{platform}})": "自動（{{platform}}）",
     "Auto (Circuit Breaker)": "自動分組（熔斷）",
     "Auto assignment order": "自動分配順序",
     "Auto Ban": "自動封鎖",

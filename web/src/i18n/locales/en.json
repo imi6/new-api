@@ -801,6 +801,7 @@
     "Authorization Endpoint (Optional)": "Authorization Endpoint (Optional)",
     "Authorize": "Authorize",
     "Auto": "Auto",
+    "Auto ({{platform}})": "Auto ({{platform}})",
     "Auto (Circuit Breaker)": "Auto (Circuit Breaker)",
     "Auto assignment order": "Auto assignment order",
     "Auto Ban": "Auto Ban",

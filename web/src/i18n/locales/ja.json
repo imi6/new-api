@@ -801,6 +801,7 @@
     "Authorization Endpoint (Optional)": "認証エンドポイント (オプション)",
     "Authorize": "認証",
     "Auto": "自動",
+    "Auto ({{platform}})": "自動（{{platform}}）",
     "Auto (Circuit Breaker)": "自動（サーキットブレーカー）",
     "Auto assignment order": "自動割り当て順序",
     "Auto Ban": "自動BAN",
