@@ -16,80 +16,82 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-const PLATFORM_RULES: Array<{ name: string; pattern: RegExp }> = [
-  // More specific rules first — a name like "Claude-AWS Bedrock" should
-  // resolve to Claude, not AWS, because the claude/anthropic keyword is
-  // more meaningful than the infrastructure provider.
-  { name: 'Claude', pattern: /claude|anthropic/i },
-  { name: 'GPT', pattern: /openai|(?:^|[\s\-_])gpt/i },
-  { name: 'Gemini', pattern: /gemini|(?:^|[\s\-_])google/i },
-  { name: 'Grok', pattern: /grok|xai/i },
-  { name: 'DeepSeek', pattern: /deepseek/i },
-  { name: 'GLM', pattern: /(?:^|[\s\-_])glm/i },
-  { name: 'Kimi', pattern: /kimi/i },
-  { name: 'OpenRouter', pattern: /openrouter/i },
-  { name: '国模', pattern: /国模/ },
-  { name: 'Seedance', pattern: /seedance/i },
-  { name: 'Qwen', pattern: /qwen|通义/i },
-  { name: 'Doubao', pattern: /doubao|豆包/i },
-  // Infrastructure providers checked after model/vendor names
-  { name: 'AWS', pattern: /aws/i },
-  { name: 'Azure', pattern: /azure|(?:^|[\s\-_])az(?:$|[\s\-_])/i },
+import {
+  CHANNEL_TYPES,
+  CHANNEL_TYPE_OPTIONS,
+  CHANNEL_TYPE_TASK_PLUGIN,
+} from '@/features/channels/constants'
+
+// A group's platform is a channel type id stored as a string ("14" is
+// Anthropic), so the platforms, their names and their icons are the same
+// ones shown when creating a channel.
+
+/** Platform for groups that match no channel type. */
+export const OTHER_PLATFORM = 'other'
+
+/** Channel types an admin can assign to a group, in channel picker order. */
+export const PLATFORM_TYPE_OPTIONS = CHANNEL_TYPE_OPTIONS.filter(
+  (option) => option.value !== CHANNEL_TYPE_TASK_PLUGIN
+)
+
+const PLATFORM_TYPE_IDS = new Set(
+  PLATFORM_TYPE_OPTIONS.map((option) => String(option.value))
+)
+
+// Name matching for groups without an admin assignment. Model vendors come
+// before the clouds that host them, so "Claude-AWS Bedrock" is Anthropic and
+// "Azure-GPT" is OpenAI; an admin can assign AWS or Azure explicitly.
+const PLATFORM_RULES: Array<{ type: number; pattern: RegExp }> = [
+  { type: 14, pattern: /claude|anthropic/i },
+  { type: 1, pattern: /openai|(?:^|[\s\-_])gpt/i },
+  { type: 24, pattern: /gemini|(?:^|[\s\-_])google/i },
+  { type: 48, pattern: /grok|xai/i },
+  { type: 43, pattern: /deepseek/i },
+  { type: 26, pattern: /(?:^|[\s\-_])glm|zhipu|智谱/i },
+  { type: 25, pattern: /kimi|moonshot/i },
+  { type: 17, pattern: /qwen|通义|百炼|bailian/i },
+  { type: 54, pattern: /seedance|seedream/i },
+  { type: 45, pattern: /doubao|豆包|volc|火山/i },
+  { type: 35, pattern: /minimax/i },
+  { type: 42, pattern: /mistral/i },
+  { type: 23, pattern: /hunyuan|混元|腾讯/i },
+  { type: 20, pattern: /openrouter/i },
+  { type: 41, pattern: /vertex/i },
+  { type: 33, pattern: /aws|bedrock/i },
+  { type: 3, pattern: /azure|(?:^|[\s\-_])az(?:$|[\s\-_])/i },
 ]
 
-/** All known platform names, for use in select dropdowns. */
-export const PLATFORM_NAMES: string[] = [
-  'Claude', 'GPT', 'Gemini', 'Grok', 'DeepSeek', 'GLM', 'Kimi',
-  'OpenRouter', '国模', 'Seedance', 'Qwen', 'Doubao', 'AWS', 'Azure', 'Other',
-]
-
-// @lobehub/icons keys for the built-in platforms. Seedance has no icon of
-// its own, so it uses its maker ByteDance; 国模 has none and falls back to
-// a letter badge like any custom platform.
-const PLATFORM_ICON_KEYS: Record<string, string> = {
-  Claude: 'Claude.Color',
-  GPT: 'OpenAI',
-  Gemini: 'Gemini.Color',
-  Grok: 'Grok',
-  DeepSeek: 'DeepSeek.Color',
-  GLM: 'ChatGLM.Color',
-  Kimi: 'Kimi.Color',
-  OpenRouter: 'OpenRouter',
-  Seedance: 'ByteDance.Color',
-  Qwen: 'Qwen.Color',
-  Doubao: 'Doubao.Color',
-  AWS: 'Aws.Color',
-  Azure: 'Azure.Color',
+/** Whether a stored value is a channel type id a group can be assigned. */
+export function isPlatformType(value: string | undefined): boolean {
+  return Boolean(value) && PLATFORM_TYPE_IDS.has(String(value))
 }
 
 /**
- * Icon key for getLobeIcon. A custom platform name is passed through, so a
- * name that matches a @lobehub/icons brand (e.g. "Mistral") gets that icon
- * and any other name gets the loader's letter badge. "Other" has no icon.
- */
-export function apiKeyPlatformIconKey(platform: string): string | undefined {
-  if (!platform || platform === 'Other') return undefined
-  return PLATFORM_ICON_KEYS[platform] ?? platform
-}
-
-/**
- * Resolve a group's platform.
- * @param label   The group name.
- * @param platformMap  Optional admin-configured override map (GroupPlatformMap parsed as JSON).
- *                     When provided and the group has an entry, that value wins over the pattern rules.
+ * Resolve a group's platform to a channel type id string, or OTHER_PLATFORM.
+ * An admin assignment in platformMap wins; a value that is not a known
+ * channel type (for example a name saved by an older version) is ignored.
  */
 export function apiKeyGroupPlatform(
   label: string,
   platformMap?: Record<string, string>
 ): string {
   const name = label.trim()
-  if (platformMap && Object.hasOwn(platformMap, name) && platformMap[name]) {
-    return platformMap[name]
-  }
+  const assigned = platformMap?.[name]
+  if (isPlatformType(assigned)) return String(assigned)
   for (const rule of PLATFORM_RULES) {
-    if (rule.pattern.test(name)) return rule.name
+    if (rule.pattern.test(name)) return String(rule.type)
   }
-  return 'Other'
+  return OTHER_PLATFORM
+}
+
+/** Display name of a platform, translated like the channel picker. */
+export function apiKeyPlatformLabel(
+  platform: string,
+  t: (key: string) => string
+): string {
+  const label = CHANNEL_TYPES[Number(platform) as keyof typeof CHANNEL_TYPES]
+  if (platform === OTHER_PLATFORM || !label) return t('Other')
+  return t(label)
 }
 
 export function formatApiKeyGroupRatio(ratio: number | string): string {
