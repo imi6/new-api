@@ -118,6 +118,7 @@ export function CheckinSettingsSection({
   }
 
   return (
+    <>
     <SettingsSection title={t('Check-in Settings')}>
       <Form {...form}>
         <SettingsForm onSubmit={form.handleSubmit(onSubmit)} autoComplete='off'>
@@ -203,6 +204,7 @@ export function CheckinSettingsSection({
     </SettingsSection>
 
     <TodayCheckinList />
+    </>
   )
 }
 
@@ -244,19 +246,11 @@ function TodayCheckinList() {
   const totalQuota = records.reduce((s, r) => s + r.quota_awarded, 0)
 
   return (
-    <SettingsSection
-      title={
-        <span className='flex items-center gap-2'>
-          {t("Today's check-ins")}
-          <span className='text-muted-foreground text-xs font-normal'>
-            {t('{{count}} records', { count: total })}
-          </span>
-        </span>
-      }
-    >
+    <SettingsSection title={t("Today's check-ins")}>
       <div className='space-y-3'>
         <div className='flex items-center justify-between'>
           <p className='text-muted-foreground text-sm'>
+            {t('{{count}} records', { count: total })} ·{' '}
             {t('Total quota awarded today')}: {formatQuota(totalQuota)}
           </p>
           <Button
