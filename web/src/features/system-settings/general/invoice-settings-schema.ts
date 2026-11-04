@@ -40,14 +40,6 @@ function rangedNumber(
   return integer ? base.int(message) : base
 }
 
-/** Non-blank, trimmed category lines, in the order the server reads them. */
-export function parseInvoiceCategories(text: string): string[] {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '')
-}
-
 /**
  * Messages are locale keys; FormMessage translates them. The server checks
  * the same ranges again when each option is saved.
@@ -77,7 +69,11 @@ export const invoiceSettingsSchema = z.object({
       true
     ),
     categories: z.string().superRefine((value, ctx) => {
-      const categories = parseInvoiceCategories(value)
+      // Non-blank, trimmed lines, the same way the server reads them.
+      const categories = value
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '')
       if (categories.length === 0) {
         ctx.addIssue({
           code: 'custom',
