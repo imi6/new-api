@@ -107,6 +107,7 @@ export function InvoiceDetailDialog(props: InvoiceDetailDialogProps) {
             <StatusBadge
               label={t(INVOICE_STATUS_META[invoice.status].labelKey)}
               variant={INVOICE_STATUS_META[invoice.status].variant}
+              copyable={false}
             />
           </div>
           {invoice.status === 'rejected' && invoice.reject_reason && (
@@ -137,6 +138,7 @@ export function InvoiceDetailDialog(props: InvoiceDetailDialogProps) {
                   <StatusBadge
                     label={t(ORDER_TYPE_LABEL_KEYS[item.order_type])}
                     variant='neutral'
+                    copyable={false}
                     size='sm'
                   />
                   <span className='min-w-0 flex-1 truncate font-mono'>
