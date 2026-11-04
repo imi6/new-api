@@ -939,4 +939,12 @@ export const STATIC_I18N_KEYS = [
   'Select a product category',
   'Invalid email address',
   'Required for a special VAT invoice',
+  // Invoice settings validation.
+  'Enter a tax rate between 0 and 100',
+  'Enter a whole number of days between 1 and 3650',
+  'Enter a whole number of minutes between 5 and 1440',
+  'Enter a whole number of KB between 10 and 20480',
+  'Enter at least one product category',
+  'Enter at most 50 product categories',
+  'Each product category can have at most 100 characters',
 ] as const
