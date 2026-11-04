@@ -381,6 +381,7 @@ func migrateDB() error {
 		&Invoice{},
 		&InvoiceItem{},
 		&InvoiceOrderLock{},
+		&InvoiceTaxPayment{},
 	)
 	if err != nil {
 		return err
