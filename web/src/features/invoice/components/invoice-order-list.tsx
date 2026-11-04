@@ -120,6 +120,7 @@ export function InvoiceOrderList(props: InvoiceOrderListProps) {
                         <StatusBadge
                           label={t(ORDER_TYPE_LABEL_KEYS[order.order_type])}
                           variant='neutral'
+                          copyable={false}
                           size='sm'
                         />
                         <span className='truncate font-mono text-xs'>
