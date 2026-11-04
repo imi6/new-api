@@ -7662,7 +7662,6 @@
     "Amount and tax payment": "Số tiền và thanh toán thuế",
     "Application rejected": "Đã từ chối đơn",
     "Applications whose tax is not paid in time are cancelled and their orders released.": "Đơn không thanh toán thuế đúng hạn sẽ bị hủy và các đơn hàng được giải phóng.",
-    "Charged on top of the order amount when a user applies. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi người dùng gửi đơn. 0 nghĩa là không thu thuế.",
     "Confirm issued": "Xác nhận đã xuất",
     "Each product category can have at most 100 characters": "Mỗi danh mục tối đa 100 ký tự",
     "Enable invoicing": "Bật xuất hóa đơn",
@@ -7700,11 +7699,14 @@
     "Tax": "Thuế",
     "Tax order number": "Mã giao dịch thuế",
     "Tax payment timeout (minutes)": "Thời hạn thanh toán thuế (phút)",
-    "Tax rate (%)": "Thuế suất (%)",
     "The orders become invoiceable again.": "Các đơn hàng có thể xuất hóa đơn lại.",
     "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.": "Thuế ¥{{amount}} được hoàn vào số dư của người dùng và các đơn hàng có thể xuất hóa đơn lại.",
     "The user is notified by email and can download the uploaded file. This cannot be undone.": "Người dùng sẽ nhận email thông báo và có thể tải tệp đã tải lên. Không thể hoàn tác thao tác này.",
     "The user sees this reason in the invoice center and the email.": "Người dùng sẽ thấy lý do này trong trung tâm hóa đơn và email.",
-    "{{count}} orders": "{{count}} đơn hàng"
+    "{{count}} orders": "{{count}} đơn hàng",
+    "General invoice tax rate (%)": "Thuế suất hóa đơn thông thường (%)",
+    "Special invoice tax rate (%)": "Thuế suất hóa đơn đặc biệt (%)",
+    "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT thông thường. 0 nghĩa là không thu thuế.",
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT đặc biệt. 0 nghĩa là không thu thuế."
   }
 }
