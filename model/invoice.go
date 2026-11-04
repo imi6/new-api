@@ -415,7 +415,7 @@ func UniqueInvoiceOrderRefs(refs []InvoiceOrderRef) ([]InvoiceOrderRef, error) {
 
 // QuoteInvoice recomputes the amounts of the selected orders the way
 // CreateInvoice does, without claiming them.
-func QuoteInvoice(userId int, refs []InvoiceOrderRef) (InvoiceAmounts, error) {
+func QuoteInvoice(userId int, refs []InvoiceOrderRef, invoiceType string) (InvoiceAmounts, error) {
 	refs, err := UniqueInvoiceOrderRefs(refs)
 	if err != nil {
 		return InvoiceAmounts{}, err
@@ -424,7 +424,7 @@ func QuoteInvoice(userId int, refs []InvoiceOrderRef) (InvoiceAmounts, error) {
 	if err != nil {
 		return InvoiceAmounts{}, err
 	}
-	return invoiceAmountsOf(orders), nil
+	return invoiceAmountsOf(orders, invoiceType), nil
 }
 
 // resolveInvoiceOrders loads exactly the referenced orders and checks the
@@ -453,12 +453,18 @@ func resolveInvoiceOrders(tx *gorm.DB, userId int, refs []InvoiceOrderRef) ([]In
 	return orders, nil
 }
 
-func invoiceAmountsOf(orders []InvoiceOrder) InvoiceAmounts {
+// invoiceAmountsOf prices the orders at the tax rate of the invoice type:
+// special invoices and general invoices have separate rates.
+func invoiceAmountsOf(orders []InvoiceOrder, invoiceType string) InvoiceAmounts {
 	amounts := make([]decimal.Decimal, 0, len(orders))
 	for _, order := range orders {
 		amounts = append(amounts, decimal.RequireFromString(order.Amount))
 	}
-	return CalculateInvoiceAmounts(amounts, decimal.NewFromFloat(operation_setting.InvoiceTaxRate()))
+	rate := operation_setting.InvoiceTaxRate()
+	if invoiceType == InvoiceTypeSpecial {
+		rate = operation_setting.InvoiceSpecialTaxRate()
+	}
+	return CalculateInvoiceAmounts(amounts, decimal.NewFromFloat(rate))
 }
 
 // NewInvoiceTaxTradeNo returns an Epay order number for an invoice tax
@@ -498,7 +504,7 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 		if err != nil {
 			return err
 		}
-		amounts := invoiceAmountsOf(orders)
+		amounts := invoiceAmountsOf(orders, invoice.InvoiceType)
 		invoice.OrderAmount = amounts.OrderAmount.StringFixed(2)
 		invoice.TaxRate = amounts.TaxRate.String()
 		invoice.TaxAmount = amounts.TaxAmount.StringFixed(2)

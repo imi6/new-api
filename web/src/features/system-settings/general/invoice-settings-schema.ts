@@ -53,6 +53,11 @@ export const invoiceSettingsSchema = z.object({
       'Enter a tax rate between 0 and 100',
       false
     ),
+    special_tax_rate: rangedNumber(
+      INVOICE_SETTING_LIMITS.taxRate,
+      'Enter a tax rate between 0 and 100',
+      false
+    ),
     order_days: rangedNumber(
       INVOICE_SETTING_LIMITS.orderDays,
       'Enter a whole number of days between 1 and 3650',
