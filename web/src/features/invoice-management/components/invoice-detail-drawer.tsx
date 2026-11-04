@@ -45,6 +45,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { downloadInvoiceFile } from '@/features/invoice/api'
 import {
+  BALANCE_PAY_KEY,
   INVOICE_STATUS_META,
   ORDER_TYPE_LABEL_KEYS,
 } from '@/features/invoice/lib/invoice'
@@ -192,7 +193,13 @@ export function InvoiceDetailDrawer(props: InvoiceDetailDrawerProps) {
         },
         { label: t('Invoice amount'), value: `¥${invoice.invoice_amount}` },
         { label: t('Tax order number'), value: invoice.tax_trade_no ?? '' },
-        { label: t('Payment method'), value: invoice.tax_payment_method },
+        {
+          label: t('Payment method'),
+          value:
+            invoice.tax_payment_method === BALANCE_PAY_KEY
+              ? t('Balance')
+              : invoice.tax_payment_method,
+        },
         {
           label: t('Tax paid at'),
           value: formatTimestampToDate(invoice.tax_paid_time),
