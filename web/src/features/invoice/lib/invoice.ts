@@ -114,7 +114,8 @@ export interface InvoiceAmountPreview {
 
 /**
  * Preview of model.CalculateInvoiceAmounts: sum, then the tax rounded half
- * away from zero to the cent. Display only; the server recomputes on submit.
+ * away from zero to the cent. The invoice is issued for the order total and
+ * the tax is paid on top. Display only; the server recomputes on submit.
  */
 export function previewInvoiceAmounts(
   amounts: string[],
@@ -125,7 +126,7 @@ export function previewInvoiceAmounts(
   // Round the product first so 33.33 × 6% does not land on 199.99999.
   const exact = Math.round(orderCents * rate * 1e6) / 1e8
   const taxCents = Math.round(exact)
-  return { orderCents, taxCents, invoiceCents: orderCents + taxCents }
+  return { orderCents, taxCents, invoiceCents: orderCents }
 }
 
 export function orderKey(order: InvoiceOrderRef): string {
