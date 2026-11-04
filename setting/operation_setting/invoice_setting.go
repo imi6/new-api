@@ -18,6 +18,7 @@ type InvoiceSetting struct {
 	SpecialTaxRate        float64 `json:"special_tax_rate"` // special invoice, percent
 	OrderDays             int     `json:"order_days"`
 	Categories            string  `json:"categories"` // one product category per line
+	NormalEnabled         bool    `json:"normal_enabled"`
 	SpecialEnabled        bool    `json:"special_enabled"`
 	PaymentTimeoutMinutes int     `json:"payment_timeout_minutes"`
 	FileMaxKB             int     `json:"file_max_kb"`
@@ -47,6 +48,7 @@ var invoiceSetting = InvoiceSetting{
 	SpecialTaxRate:        defaultInvoiceTaxRate,
 	OrderDays:             defaultInvoiceOrderDays,
 	Categories:            defaultInvoiceCategories,
+	NormalEnabled:         true,
 	SpecialEnabled:        true,
 	PaymentTimeoutMinutes: defaultInvoicePaymentTimeoutMinutes,
 	FileMaxKB:             defaultInvoiceFileMaxKB,
@@ -126,7 +128,7 @@ func ValidateInvoiceSettingOption(key, value string) error {
 	}
 	value = strings.TrimSpace(value)
 	switch field {
-	case "enabled", "special_enabled":
+	case "enabled", "normal_enabled", "special_enabled":
 		if _, err := strconv.ParseBool(value); err != nil {
 			return common.NewMessage("Invalid parameters")
 		}
