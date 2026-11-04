@@ -113,6 +113,13 @@ const defaultBillingSettings: BillingSettings = {
   'checkin_setting.enabled': false,
   'checkin_setting.min_quota': 1000,
   'checkin_setting.max_quota': 10000,
+  'invoice_setting.enabled': false,
+  'invoice_setting.tax_rate': 6,
+  'invoice_setting.order_days': 30,
+  'invoice_setting.categories': '*生产生活服务*软件开发服务',
+  'invoice_setting.special_enabled': true,
+  'invoice_setting.payment_timeout_minutes': 30,
+  'invoice_setting.file_max_kb': 100,
 }
 
 export function BillingSettings() {
