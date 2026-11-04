@@ -43,7 +43,10 @@ export interface InvoicePayMethod {
 
 export interface InvoiceConfig {
   enabled: boolean
+  /** Percent for a general VAT invoice. */
   tax_rate: number
+  /** Percent for a special VAT invoice. */
+  special_tax_rate: number
   order_days: number
   categories: string[]
   special_enabled: boolean
