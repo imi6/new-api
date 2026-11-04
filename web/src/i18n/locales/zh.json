@@ -7730,6 +7730,11 @@
     "Pay with balance": "余额支付",
     "The tax was paid with your balance": "税费已从余额扣除",
     "Deducts {{quota}} from your balance of {{balance}}.": "将从余额 {{balance}} 中扣除 {{quota}}。",
-    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "开票申请 {{id}} 的税费 ¥{{amount}} 已使用余额支付，扣除 {{quota}}"
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "开票申请 {{id}} 的税费 ¥{{amount}} 已使用余额支付，扣除 {{quota}}",
+    "Allow general VAT invoices": "允许开具增值税普通发票",
+    "Users can apply for a general VAT invoice as a company or an individual.": "用户可以以企业或个人名义申请增值税普通发票。",
+    "Open at least one invoice type": "至少开启一种发票类型",
+    "No invoice type is available. Contact the administrator.": "暂无可申请的发票类型，请联系管理员。",
+    "General VAT invoices are not available": "暂不支持开具增值税普通发票"
   }
 }

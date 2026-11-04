@@ -135,7 +135,8 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
-      invoice_type: 'normal',
+      // Start on the general invoice unless only special invoices are open.
+      invoice_type: props.config.normal_enabled ? 'normal' : 'special',
       title_type: 'company',
       title: '',
       tax_no: '',
@@ -250,6 +251,19 @@ export function InvoiceForm(props: InvoiceFormProps) {
     />
   )
 
+  if (!props.config.normal_enabled && !props.config.special_enabled) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('Invoice details')}</CardTitle>
+          <CardDescription>
+            {t('No invoice type is available. Contact the administrator.')}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -283,9 +297,11 @@ export function InvoiceForm(props: InvoiceFormProps) {
                     spacing={2}
                     className='grid w-full grid-cols-2 gap-2'
                   >
-                    <ToggleGroupItem value='normal' className='w-full'>
-                      {t('General VAT invoice')}
-                    </ToggleGroupItem>
+                    {props.config.normal_enabled && (
+                      <ToggleGroupItem value='normal' className='w-full'>
+                        {t('General VAT invoice')}
+                      </ToggleGroupItem>
+                    )}
                     {props.config.special_enabled && (
                       <ToggleGroupItem value='special' className='w-full'>
                         {t('Special VAT invoice')}

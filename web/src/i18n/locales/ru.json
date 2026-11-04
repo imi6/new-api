@@ -7730,6 +7730,11 @@
     "Pay with balance": "Оплатить с баланса",
     "The tax was paid with your balance": "Налог оплачен с вашего баланса",
     "Deducts {{quota}} from your balance of {{balance}}.": "С баланса {{balance}} будет списано {{quota}}.",
-    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "Налог ¥{{amount}} по заявке на счёт {{id}} оплачен с баланса: {{quota}}"
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "Налог ¥{{amount}} по заявке на счёт {{id}} оплачен с баланса: {{quota}}",
+    "Allow general VAT invoices": "Разрешить обычные счета-фактуры НДС",
+    "Users can apply for a general VAT invoice as a company or an individual.": "Пользователи могут запросить обычный счёт-фактуру НДС на организацию или физическое лицо.",
+    "Open at least one invoice type": "Включите хотя бы один тип счёта",
+    "No invoice type is available. Contact the administrator.": "Нет доступных типов счетов. Обратитесь к администратору.",
+    "General VAT invoices are not available": "Обычные счета-фактуры НДС недоступны"
   }
 }

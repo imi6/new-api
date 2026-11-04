@@ -347,6 +347,9 @@ func (input *InvoiceInput) Normalize() error {
 	}
 	switch input.InvoiceType {
 	case InvoiceTypeNormal:
+		if !operation_setting.GetInvoiceSetting().NormalEnabled {
+			return common.NewMessage("General VAT invoices are not available")
+		}
 	case InvoiceTypeSpecial:
 		if !operation_setting.GetInvoiceSetting().SpecialEnabled {
 			return common.NewMessage("Special VAT invoices are not available")
