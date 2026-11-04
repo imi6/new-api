@@ -81,7 +81,10 @@ const (
 	MsgEmailInvoiceIssuedContent   = "email.invoice.issued_content"
 	MsgEmailInvoiceRejectedSubject = "email.invoice.rejected_subject"
 	MsgEmailInvoiceRejectedContent = "email.invoice.rejected_content"
-	MsgEmailInvoiceLink            = "email.invoice.link"
+	// MsgEmailInvoiceRejectedRefundContent is the rejection text when paid
+	// tax was returned to the balance.
+	MsgEmailInvoiceRejectedRefundContent = "email.invoice.rejected_refund_content"
+	MsgEmailInvoiceLink                  = "email.invoice.link"
 
 	MsgEmailSecurityNoticeSubject = "email.security_notice.subject"
 	MsgEmailSecurityNoticeChanged = "email.security_notice.changed"
