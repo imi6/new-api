@@ -118,6 +118,7 @@ const defaultBillingSettings: BillingSettings = {
   'invoice_setting.special_tax_rate': 6,
   'invoice_setting.order_days': 30,
   'invoice_setting.categories': '*生产生活服务*软件开发服务',
+  'invoice_setting.normal_enabled': true,
   'invoice_setting.special_enabled': true,
   'invoice_setting.payment_timeout_minutes': 30,
   'invoice_setting.file_max_kb': 100,
