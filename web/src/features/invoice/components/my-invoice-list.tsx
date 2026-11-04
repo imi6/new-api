@@ -48,7 +48,11 @@ import { createServerError } from '@/lib/server-error-message'
 
 import { cancelInvoice, downloadInvoiceFile, payInvoice } from '../api'
 import { useMyInvoices } from '../hooks/use-invoice'
-import { INVOICE_STATUS_FILTERS, INVOICE_STATUS_META } from '../lib/invoice'
+import {
+  BALANCE_PAY_KEY,
+  INVOICE_STATUS_FILTERS,
+  INVOICE_STATUS_META,
+} from '../lib/invoice'
 import type { Invoice, InvoiceStatus } from '../types'
 import { InvoiceDetailDialog } from './invoice-detail-dialog'
 
@@ -84,15 +88,24 @@ export function MyInvoiceList(props: MyInvoiceListProps) {
     })),
   ]
 
-  async function handlePay(invoice: Invoice) {
+  async function handlePay(invoice: Invoice, withBalance: boolean) {
     setBusyId(invoice.id)
     try {
-      // Empty method and gateway reuse the ones chosen at submission.
+      // Empty method and gateway reuse the Epay method chosen at submission.
       const res = await payInvoice(invoice.id, {
-        payment_method: '',
+        payment_method: withBalance ? BALANCE_PAY_KEY : '',
         gateway: '',
       })
-      if (!res.success || !res.data?.url) {
+      if (!res.success) {
+        handleServerError(createServerError(res, t('Failed to start payment')))
+        return
+      }
+      if (withBalance) {
+        toast.success(t('The tax was paid with your balance'))
+        props.onChanged()
+        return
+      }
+      if (!res.data?.url) {
         handleServerError(createServerError(res, t('Failed to start payment')))
         return
       }
@@ -244,9 +257,17 @@ export function MyInvoiceList(props: MyInvoiceListProps) {
                           {t('Cancel application')}
                         </Button>
                         <Button
+                          variant='outline'
                           size='sm'
                           disabled={busy}
-                          onClick={() => handlePay(invoice)}
+                          onClick={() => handlePay(invoice, true)}
+                        >
+                          {t('Pay with balance')}
+                        </Button>
+                        <Button
+                          size='sm'
+                          disabled={busy}
+                          onClick={() => handlePay(invoice, false)}
                         >
                           {t('Pay tax')}
                         </Button>

@@ -7735,6 +7735,10 @@
     "Special invoice tax rate (%)": "Taux de taxe de la facture spéciale (%)",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA ordinaire. 0 signifie aucune taxe.",
     "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA spéciale. 0 signifie aucune taxe.",
-    "Amount to pay": "Montant à payer"
+    "Amount to pay": "Montant à payer",
+    "Pay with balance": "Payer avec le solde",
+    "The tax was paid with your balance": "La taxe a été payée avec votre solde",
+    "Deducts {{quota}} from your balance of {{balance}}.": "{{quota}} sera déduit de votre solde de {{balance}}.",
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "La taxe de ¥{{amount}} de la demande de facture {{id}} a été payée avec {{quota}} de solde"
   }
 }
