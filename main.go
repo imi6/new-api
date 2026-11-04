@@ -326,6 +326,10 @@ func InitResources() error {
 	}
 	model.InitOptionMap()
 
+	if err := service.InitInvoiceStorage(); err != nil {
+		common.SysError(common.LogText("failed to create invoice directory: %s", err.Error()))
+	}
+
 	// 清理旧的磁盘缓存文件
 	common.CleanupOldCacheFiles()
 
