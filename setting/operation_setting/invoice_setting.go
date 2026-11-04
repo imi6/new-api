@@ -14,7 +14,8 @@ import (
 // invoice_setting.<json key> options.
 type InvoiceSetting struct {
 	Enabled               bool    `json:"enabled"`
-	TaxRate               float64 `json:"tax_rate"` // percent, 6 means 6%
+	TaxRate               float64 `json:"tax_rate"`         // general invoice, percent, 6 means 6%
+	SpecialTaxRate        float64 `json:"special_tax_rate"` // special invoice, percent
 	OrderDays             int     `json:"order_days"`
 	Categories            string  `json:"categories"` // one product category per line
 	SpecialEnabled        bool    `json:"special_enabled"`
@@ -43,6 +44,7 @@ const (
 var invoiceSetting = InvoiceSetting{
 	Enabled:               false,
 	TaxRate:               defaultInvoiceTaxRate,
+	SpecialTaxRate:        defaultInvoiceTaxRate,
 	OrderDays:             defaultInvoiceOrderDays,
 	Categories:            defaultInvoiceCategories,
 	SpecialEnabled:        true,
@@ -58,10 +60,19 @@ func GetInvoiceSetting() *InvoiceSetting {
 	return &invoiceSetting
 }
 
-// InvoiceTaxRate is the tax percent applied to new applications. A stored
-// value outside 0–100 falls back to the default.
+// InvoiceTaxRate is the tax percent applied to new general invoice
+// applications. A stored value outside 0–100 falls back to the default.
 func InvoiceTaxRate() float64 {
-	rate := invoiceSetting.TaxRate
+	return invoiceTaxRateInRange(invoiceSetting.TaxRate)
+}
+
+// InvoiceSpecialTaxRate is the tax percent applied to new special invoice
+// applications. A stored value outside 0–100 falls back to the default.
+func InvoiceSpecialTaxRate() float64 {
+	return invoiceTaxRateInRange(invoiceSetting.SpecialTaxRate)
+}
+
+func invoiceTaxRateInRange(rate float64) float64 {
 	if math.IsNaN(rate) || rate < 0 || rate > 100 {
 		return defaultInvoiceTaxRate
 	}
@@ -119,7 +130,7 @@ func ValidateInvoiceSettingOption(key, value string) error {
 		if _, err := strconv.ParseBool(value); err != nil {
 			return common.NewMessage("Invalid parameters")
 		}
-	case "tax_rate":
+	case "tax_rate", "special_tax_rate":
 		rate, err := strconv.ParseFloat(value, 64)
 		if err != nil || math.IsNaN(rate) || rate < 0 || rate > 100 {
 			return invoiceRangeError(0, 100)
