@@ -166,7 +166,8 @@ type InvoiceAmounts struct {
 }
 
 // CalculateInvoiceAmounts applies a percent tax rate to the order total.
-// Every amount is rounded half away from zero to two decimal places.
+// The invoice is issued for the order total; the tax is what the user pays
+// on top. Every amount is rounded half away from zero to two decimal places.
 func CalculateInvoiceAmounts(orderAmounts []decimal.Decimal, taxRatePercent decimal.Decimal) InvoiceAmounts {
 	total := decimal.Zero
 	for _, amount := range orderAmounts {
@@ -178,7 +179,7 @@ func CalculateInvoiceAmounts(orderAmounts []decimal.Decimal, taxRatePercent deci
 		OrderAmount:   total,
 		TaxRate:       taxRatePercent,
 		TaxAmount:     tax,
-		InvoiceAmount: total.Add(tax),
+		InvoiceAmount: total,
 	}
 }
 
