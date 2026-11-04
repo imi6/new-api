@@ -378,6 +378,9 @@ func migrateDB() error {
 		&UserAccessToken{},
 		&UserPaidConsumptionDay{},
 		&AffiliateRebateClaim{},
+		&Invoice{},
+		&InvoiceItem{},
+		&InvoiceOrderLock{},
 	)
 	if err != nil {
 		return err
