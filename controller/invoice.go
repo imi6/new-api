@@ -243,9 +243,10 @@ type invoicePayRequest struct {
 	Gateway       string `json:"gateway"`
 }
 
-// PayInvoice starts a new payment attempt for an application that still
-// waits for payment. The order number stays the same, so a late callback of
-// an earlier attempt still settles it once.
+// PayInvoice starts a new payment attempt, with a new order number, for an
+// application that still waits for payment. Epay sites refuse an order number
+// they have already seen. An earlier attempt paid late is settled or refunded
+// on its own.
 func PayInvoice(c *gin.Context) {
 	id, ok := invoiceIdParam(c)
 	if !ok {
@@ -270,22 +271,18 @@ func PayInvoice(c *gin.Context) {
 		common.ApiError(c, model.ErrInvoiceAlreadyProcessed)
 		return
 	}
-	if req.PaymentMethod != "" {
-		method, site, err := resolveInvoicePayMethod(req.PaymentMethod, req.Gateway)
-		if err != nil {
-			common.ApiError(c, err)
-			return
-		}
-		// Keep the gateway the earlier attempt used: its callback must still
-		// verify against the gateway stored on the application.
-		if site != operation_setting.NormalizeEpayGateway(invoice.TaxGateway) {
-			common.ApiErrorT(c, "Choose a payment method of the same payment site as the first attempt, or cancel this application and submit again")
-			return
-		}
-		if invoice, err = model.SetInvoiceTaxPayment(userId, id, method, site); err != nil {
-			common.ApiError(c, err)
-			return
-		}
+	paymentMethod, gateway := req.PaymentMethod, req.Gateway
+	if paymentMethod == "" {
+		paymentMethod, gateway = invoice.TaxPaymentMethod, invoice.TaxGateway
+	}
+	method, site, err := resolveInvoicePayMethod(paymentMethod, gateway)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if invoice, err = model.NewInvoiceTaxPaymentAttempt(userId, id, method, site); err != nil {
+		common.ApiError(c, err)
+		return
 	}
 	uri, params, err := startInvoiceTaxPayment(invoice)
 	if err != nil {
@@ -574,6 +571,6 @@ func AdminRejectInvoice(c *gin.Context) {
 		return
 	}
 	service.RemoveInvoiceFile(result.OldFileKey)
-	go service.NotifyInvoiceRejected(model.GetUserLanguage(result.Invoice.UserId), result.Invoice)
+	go service.NotifyInvoiceRejected(model.GetUserLanguage(result.Invoice.UserId), result.Invoice, result.RefundQuota > 0)
 	common.ApiSuccess(c, gin.H{"invoice": result.Invoice, "refund_quota": result.RefundQuota})
 }

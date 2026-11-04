@@ -35,6 +35,10 @@ const (
 	InvoiceOrderSubscription = "subscription"
 	InvoiceOrderRedemption   = "redemption"
 
+	InvoiceTaxPaymentPending  = "pending"
+	InvoiceTaxPaymentPaid     = "paid"
+	InvoiceTaxPaymentRefunded = "refunded"
+
 	// InvoiceMaxOrders is the most orders one application may include.
 	InvoiceMaxOrders = 100
 )
@@ -47,6 +51,10 @@ var (
 	ErrInvoiceOrderTaken       error = common.NewMessage("Some orders are already used by another invoice application")
 	ErrInvoiceFileMissing      error = common.NewMessage("Upload the invoice file first")
 	ErrInvoiceCallbackMismatch       = errors.New("invoice tax callback does not match the application")
+
+	// errInvoiceTaxPaymentSettled rolls back a callback that lost the race to
+	// settle the same payment attempt.
+	errInvoiceTaxPaymentSettled = errors.New("invoice tax payment already settled")
 )
 
 // Invoice is one invoice application. Money columns hold decimal text with two
@@ -69,7 +77,7 @@ type Invoice struct {
 	TaxRate          string  `json:"tax_rate" gorm:"type:varchar(16)"`
 	TaxAmount        string  `json:"tax_amount" gorm:"type:varchar(32)"`
 	InvoiceAmount    string  `json:"invoice_amount" gorm:"type:varchar(32)"`
-	TaxTradeNo       *string `json:"tax_trade_no" gorm:"type:varchar(128);uniqueIndex"` // NULL when no tax is due
+	TaxTradeNo       *string `json:"tax_trade_no" gorm:"type:varchar(128);uniqueIndex"` // latest attempt, or the paid one; NULL when no tax is due
 	TaxPaymentMethod string  `json:"tax_payment_method" gorm:"type:varchar(50)"`
 	TaxGateway       string  `json:"tax_gateway" gorm:"type:varchar(64)"`
 	TaxPaidTime      int64   `json:"tax_paid_time"`
@@ -102,6 +110,36 @@ type InvoiceOrderLock struct {
 	OrderType string `json:"order_type" gorm:"type:varchar(16);uniqueIndex:idx_invoice_order_lock"`
 	OrderId   int    `json:"order_id" gorm:"uniqueIndex:idx_invoice_order_lock"`
 	InvoiceId int    `json:"invoice_id" gorm:"index"`
+}
+
+// InvoiceTaxPayment is one Epay payment attempt for the tax of an
+// application. Each attempt gets its own order number, because Epay sites
+// refuse an order number they have already seen. A callback is checked
+// against the gateway and amount of the attempt it names.
+type InvoiceTaxPayment struct {
+	Id            int    `json:"id"`
+	InvoiceId     int    `json:"invoice_id" gorm:"index"`
+	UserId        int    `json:"user_id" gorm:"index"`
+	TradeNo       string `json:"trade_no" gorm:"type:varchar(128);uniqueIndex"`
+	PaymentMethod string `json:"payment_method" gorm:"type:varchar(50)"`
+	Gateway       string `json:"gateway" gorm:"type:varchar(64)"`
+	Amount        string `json:"amount" gorm:"type:varchar(32)"`
+	Status        string `json:"status" gorm:"type:varchar(16)"`
+	RefundQuota   int    `json:"refund_quota"`
+	CreateTime    int64  `json:"create_time"`
+	PaidTime      int64  `json:"paid_time"`
+}
+
+func newInvoiceTaxPayment(userId int, amount string, method string, gateway string) *InvoiceTaxPayment {
+	return &InvoiceTaxPayment{
+		UserId:        userId,
+		TradeNo:       NewInvoiceTaxTradeNo(userId),
+		PaymentMethod: method,
+		Gateway:       operation_setting.NormalizeEpayGateway(gateway),
+		Amount:        amount,
+		Status:        InvoiceTaxPaymentPending,
+		CreateTime:    common.GetTimestamp(),
+	}
 }
 
 // InvoiceOrder is an order the user can include in an application.
@@ -454,6 +492,7 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 		UpdateTime:  now,
 	}
 	var items []InvoiceItem
+	var payment *InvoiceTaxPayment
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		orders, err := resolveInvoiceOrders(tx, userId, refs)
 		if err != nil {
@@ -468,16 +507,22 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 			if input.TaxPaymentMethod == "" {
 				return common.NewMessage("Select a payment method")
 			}
-			tradeNo := NewInvoiceTaxTradeNo(userId)
+			payment = newInvoiceTaxPayment(userId, invoice.TaxAmount, input.TaxPaymentMethod, input.TaxGateway)
 			invoice.Status = InvoiceStatusPendingPayment
-			invoice.TaxTradeNo = &tradeNo
-			invoice.TaxPaymentMethod = input.TaxPaymentMethod
-			invoice.TaxGateway = operation_setting.NormalizeEpayGateway(input.TaxGateway)
+			invoice.TaxTradeNo = &payment.TradeNo
+			invoice.TaxPaymentMethod = payment.PaymentMethod
+			invoice.TaxGateway = payment.Gateway
 		} else {
 			invoice.Status = InvoiceStatusPendingReview
 		}
 		if err := tx.Create(invoice).Error; err != nil {
 			return err
+		}
+		if payment != nil {
+			payment.InvoiceId = invoice.Id
+			if err := tx.Create(payment).Error; err != nil {
+				return err
+			}
 		}
 		for _, order := range orders {
 			lock := &InvoiceOrderLock{OrderType: order.OrderType, OrderId: order.OrderId, InvoiceId: invoice.Id}
@@ -611,84 +656,133 @@ func creditInvoiceTaxRefund(tx *gorm.DB, userId int, taxAmount string) (int, err
 
 // InvoiceTaxPaymentResult tells the callback handler what happened.
 type InvoiceTaxPaymentResult struct {
-	Invoice     *Invoice
-	AlreadyDone bool // a duplicate callback; nothing changed
-	Refunded    bool // the application was cancelled, so the tax went back to the wallet
-	RefundQuota int
+	Invoice      *Invoice
+	AlreadyDone  bool // a duplicate callback; nothing changed
+	Refunded     bool // the application no longer waited for this attempt, so its money went back to the wallet
+	RefundQuota  int
+	RefundAmount string
 }
 
-// CompleteInvoiceTaxPayment settles a verified Epay callback for an invoice
-// tax order. The order number, the gateway, and the paid amount must all
-// match the application. A pending application moves to review; a cancelled
-// one gets the tax back once.
+// settleInvoiceTaxPayment moves a pending payment attempt to paid or
+// refunded. Losing the compare-and-swap means another callback settled the
+// attempt first, so the caller's transaction is rolled back.
+func settleInvoiceTaxPayment(tx *gorm.DB, paymentId int, status string, refundQuota int, now int64) error {
+	result := tx.Model(&InvoiceTaxPayment{}).
+		Where("id = ? AND status = ?", paymentId, InvoiceTaxPaymentPending).
+		Updates(map[string]any{"status": status, "refund_quota": refundQuota, "paid_time": now})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errInvoiceTaxPaymentSettled
+	}
+	return nil
+}
+
+// CompleteInvoiceTaxPayment settles a verified Epay callback for one tax
+// payment attempt. The gateway and the paid amount must match the attempt.
+// The first paid attempt of an application waiting for payment moves it to
+// review. Any other paid attempt, for a cancelled application or one that an
+// earlier attempt already paid, gets its money back once.
 func CompleteInvoiceTaxPayment(tradeNo string, paidMoney string, callbackGateway string) (*InvoiceTaxPaymentResult, error) {
-	if strings.TrimSpace(tradeNo) == "" {
+	tradeNo = strings.TrimSpace(tradeNo)
+	if tradeNo == "" {
 		return nil, ErrInvoiceNotFound
+	}
+	var located InvoiceTaxPayment
+	if err := DB.Select("invoice_id").Where("trade_no = ?", tradeNo).First(&located).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvoiceNotFound
+		}
+		return nil, err
 	}
 	result := &InvoiceTaxPaymentResult{}
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		// Lock the application before the attempt, the order every writer
+		// of both tables uses, so two writers never wait on each other.
 		invoice := &Invoice{}
-		if err := lockForUpdate(tx).Where("tax_trade_no = ?", tradeNo).First(invoice).Error; err != nil {
+		if err := lockForUpdate(tx).Where("id = ?", located.InvoiceId).First(invoice).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceNotFound
+			}
+			return err
+		}
+		payment := &InvoiceTaxPayment{}
+		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(payment).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrInvoiceNotFound
 			}
 			return err
 		}
 		result.Invoice = invoice
-		if operation_setting.NormalizeEpayGateway(invoice.TaxGateway) != operation_setting.NormalizeEpayGateway(callbackGateway) {
+		if operation_setting.NormalizeEpayGateway(payment.Gateway) != operation_setting.NormalizeEpayGateway(callbackGateway) {
 			return ErrInvoiceCallbackMismatch
 		}
 		paid, err := decimal.NewFromString(strings.TrimSpace(paidMoney))
 		if err != nil {
 			return ErrInvoiceCallbackMismatch
 		}
-		expected, err := decimal.NewFromString(invoice.TaxAmount)
+		expected, err := decimal.NewFromString(payment.Amount)
 		if err != nil || !paid.Round(2).Equal(expected.Round(2)) {
 			return ErrInvoiceCallbackMismatch
+		}
+		if payment.Status != InvoiceTaxPaymentPending {
+			result.AlreadyDone = true
+			return nil
 		}
 
 		now := common.GetTimestamp()
 		moved := tx.Model(&Invoice{}).
 			Where("id = ? AND status = ?", invoice.Id, InvoiceStatusPendingPayment).
-			Updates(map[string]any{"status": InvoiceStatusPendingReview, "tax_paid_time": now, "update_time": now})
+			Updates(map[string]any{
+				"status":             InvoiceStatusPendingReview,
+				"tax_trade_no":       payment.TradeNo,
+				"tax_payment_method": payment.PaymentMethod,
+				"tax_gateway":        payment.Gateway,
+				"tax_paid_time":      now,
+				"update_time":        now,
+			})
 		if moved.Error != nil {
 			return moved.Error
 		}
 		if moved.RowsAffected == 1 {
+			if err := settleInvoiceTaxPayment(tx, payment.Id, InvoiceTaxPaymentPaid, 0, now); err != nil {
+				return err
+			}
 			invoice.Status = InvoiceStatusPendingReview
+			invoice.TaxTradeNo = &payment.TradeNo
+			invoice.TaxPaymentMethod = payment.PaymentMethod
+			invoice.TaxGateway = payment.Gateway
 			invoice.TaxPaidTime = now
+			invoice.UpdateTime = now
 			return nil
 		}
 
-		// Not pending any more. A cancelled application whose tax was never
-		// recorded gets the tax back; tax_paid_time marks the refund as done.
-		refundMark := tx.Model(&Invoice{}).
-			Where("id = ? AND status = ? AND tax_paid_time = 0", invoice.Id, InvoiceStatusCancelled).
-			Updates(map[string]any{"tax_paid_time": now, "update_time": now})
-		if refundMark.Error != nil {
-			return refundMark.Error
-		}
-		if refundMark.RowsAffected == 0 {
-			result.AlreadyDone = true
-			return nil
-		}
-		quota, err := creditInvoiceTaxRefund(tx, invoice.UserId, invoice.TaxAmount)
+		// The application no longer waits for this attempt: it was cancelled,
+		// or another attempt paid it. Return this payment to the wallet.
+		quota, err := creditInvoiceTaxRefund(tx, invoice.UserId, payment.Amount)
 		if err != nil {
 			return err
 		}
-		invoice.TaxPaidTime = now
+		if err := settleInvoiceTaxPayment(tx, payment.Id, InvoiceTaxPaymentRefunded, quota, now); err != nil {
+			return err
+		}
 		result.Refunded = true
 		result.RefundQuota = quota
+		result.RefundAmount = payment.Amount
 		return nil
 	})
+	if errors.Is(err, errInvoiceTaxPaymentSettled) {
+		return &InvoiceTaxPaymentResult{Invoice: result.Invoice, AlreadyDone: true}, nil
+	}
 	if err != nil {
 		return result, err
 	}
 	if result.Refunded {
 		syncCreditUserQuotaCache(result.Invoice.UserId, result.RefundQuota, common.LogText("invoice tax refund"))
 		RecordLog(result.Invoice.UserId, LogTypeRefund, common.NewMessage(
-			"Invoice application {{id}} was already cancelled when its tax payment of ¥{{amount}} arrived, so {{quota}} was returned to your balance",
-			map[string]any{"id": result.Invoice.Id, "amount": result.Invoice.TaxAmount, "quota": logger.FormatQuota(result.RefundQuota)}))
+			"A tax payment of ¥{{amount}} for invoice application {{id}} arrived after the application no longer needed it, so {{quota}} was returned to your balance",
+			map[string]any{"id": result.Invoice.Id, "amount": result.RefundAmount, "quota": logger.FormatQuota(result.RefundQuota)}))
 	}
 	return result, nil
 }
@@ -840,23 +934,51 @@ func SetInvoiceFile(id int, file InvoiceFile) (string, error) {
 	return oldKey, err
 }
 
-// SetInvoiceTaxPayment records the payment method of a new payment attempt
-// for an application that still waits for payment.
-func SetInvoiceTaxPayment(userId int, id int, method string, gateway string) (*Invoice, error) {
-	result := DB.Model(&Invoice{}).
-		Where("id = ? AND user_id = ? AND status = ?", id, userId, InvoiceStatusPendingPayment).
-		Updates(map[string]any{
-			"tax_payment_method": method,
-			"tax_gateway":        operation_setting.NormalizeEpayGateway(gateway),
-			"update_time":        common.GetTimestamp(),
-		})
-	if result.Error != nil {
-		return nil, result.Error
+// NewInvoiceTaxPaymentAttempt starts a new payment attempt with a new order
+// number for an application that still waits for payment. Earlier attempts
+// stay valid: whichever is paid first settles the application, and any later
+// one is returned to the wallet.
+func NewInvoiceTaxPaymentAttempt(userId int, id int, method string, gateway string) (*Invoice, error) {
+	invoice := &Invoice{}
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockForUpdate(tx).Where("id = ? AND user_id = ?", id, userId).First(invoice).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceNotFound
+			}
+			return err
+		}
+		if invoice.Status != InvoiceStatusPendingPayment {
+			return ErrInvoiceAlreadyProcessed
+		}
+		payment := newInvoiceTaxPayment(userId, invoice.TaxAmount, method, gateway)
+		payment.InvoiceId = invoice.Id
+		if err := tx.Create(payment).Error; err != nil {
+			return err
+		}
+		result := tx.Model(&Invoice{}).
+			Where("id = ? AND status = ?", id, InvoiceStatusPendingPayment).
+			Updates(map[string]any{
+				"tax_trade_no":       payment.TradeNo,
+				"tax_payment_method": payment.PaymentMethod,
+				"tax_gateway":        payment.Gateway,
+				"update_time":        payment.CreateTime,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrInvoiceAlreadyProcessed
+		}
+		invoice.TaxTradeNo = &payment.TradeNo
+		invoice.TaxPaymentMethod = payment.PaymentMethod
+		invoice.TaxGateway = payment.Gateway
+		invoice.UpdateTime = payment.CreateTime
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	if result.RowsAffected == 0 {
-		return nil, ErrInvoiceAlreadyProcessed
-	}
-	return GetUserInvoice(userId, id)
+	return invoice, nil
 }
 
 func GetInvoiceById(id int) (*Invoice, error) {
