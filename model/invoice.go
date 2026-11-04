@@ -112,10 +112,12 @@ type InvoiceOrderLock struct {
 	InvoiceId int    `json:"invoice_id" gorm:"index"`
 }
 
-// InvoiceTaxPayment is one Epay payment attempt for the tax of an
-// application. Each attempt gets its own order number, because Epay sites
-// refuse an order number they have already seen. A callback is checked
-// against the gateway and amount of the attempt it names.
+// InvoiceTaxPayment is one payment attempt for the tax of an application.
+// Each Epay attempt gets its own order number, because Epay sites refuse an
+// order number they have already seen. A callback is checked against the
+// gateway and amount of the attempt it names. A balance payment is paid the
+// moment it is created and records the quota it took, and how much of that
+// was gift balance, so a refund puts back exactly what was taken.
 type InvoiceTaxPayment struct {
 	Id            int    `json:"id"`
 	InvoiceId     int    `json:"invoice_id" gorm:"index"`
@@ -126,6 +128,8 @@ type InvoiceTaxPayment struct {
 	Amount        string `json:"amount" gorm:"type:varchar(32)"`
 	Status        string `json:"status" gorm:"type:varchar(16)"`
 	RefundQuota   int    `json:"refund_quota"`
+	ChargedQuota  int    `json:"charged_quota" gorm:"default:0"`
+	GiftQuota     int    `json:"gift_quota" gorm:"default:0"`
 	CreateTime    int64  `json:"create_time"`
 	PaidTime      int64  `json:"paid_time"`
 }
@@ -510,17 +514,26 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 		invoice.TaxRate = amounts.TaxRate.String()
 		invoice.TaxAmount = amounts.TaxAmount.StringFixed(2)
 		invoice.InvoiceAmount = amounts.InvoiceAmount.StringFixed(2)
-		if amounts.TaxAmount.IsPositive() {
-			if input.TaxPaymentMethod == "" {
-				return common.NewMessage("Select a payment method")
+		switch {
+		case !amounts.TaxAmount.IsPositive():
+			invoice.Status = InvoiceStatusPendingReview
+		case input.TaxPaymentMethod == PaymentMethodBalance:
+			payment, err = chargeInvoiceTaxFromBalance(tx, userId, invoice.TaxAmount, now)
+			if err != nil {
+				return err
 			}
+			invoice.Status = InvoiceStatusPendingReview
+			invoice.TaxTradeNo = &payment.TradeNo
+			invoice.TaxPaymentMethod = payment.PaymentMethod
+			invoice.TaxPaidTime = now
+		case input.TaxPaymentMethod == "":
+			return common.NewMessage("Select a payment method")
+		default:
 			payment = newInvoiceTaxPayment(userId, invoice.TaxAmount, input.TaxPaymentMethod, input.TaxGateway)
 			invoice.Status = InvoiceStatusPendingPayment
 			invoice.TaxTradeNo = &payment.TradeNo
 			invoice.TaxPaymentMethod = payment.PaymentMethod
 			invoice.TaxGateway = payment.Gateway
-		} else {
-			invoice.Status = InvoiceStatusPendingReview
 		}
 		if err := tx.Create(invoice).Error; err != nil {
 			return err
@@ -545,6 +558,9 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 	})
 	if err != nil {
 		return nil, nil, err
+	}
+	if payment != nil && payment.PaymentMethod == PaymentMethodBalance {
+		recordInvoiceBalanceTax(invoice, payment)
 	}
 	return invoice, items, nil
 }
@@ -632,11 +648,10 @@ func GetInvoiceSummary(userId int) (*InvoiceSummary, error) {
 	return summary, nil
 }
 
-// creditInvoiceTaxRefund returns paid tax to the wallet at 1 CNY = 1 unit of
-// balance. It adds plain quota with no wallet-ceiling predicate, so a refund
-// cannot fail because the balance is near the limit, and none of it is marked
-// unpaid, so it counts as purchased balance.
-func creditInvoiceTaxRefund(tx *gorm.DB, userId int, taxAmount string) (int, error) {
+// invoiceTaxQuota is the wallet quota worth the tax at 1 CNY = 1 unit of
+// balance. Balance payments and refunds both use it, so a refund returns
+// exactly what a balance payment took.
+func invoiceTaxQuota(taxAmount string) (int, error) {
 	tax, err := decimal.NewFromString(taxAmount)
 	if err != nil {
 		return 0, err
@@ -644,21 +659,88 @@ func creditInvoiceTaxRefund(tx *gorm.DB, userId int, taxAmount string) (int, err
 	if !tax.IsPositive() {
 		return 0, nil
 	}
-	quota, err := common.WalletQuotaFromDecimalStrict(tax.Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
-	if err != nil {
-		return 0, err
-	}
+	return common.WalletQuotaFromDecimalStrict(tax.Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
+}
+
+// creditInvoiceTaxRefund returns tax to the wallet. It adds plain quota with
+// no wallet-ceiling predicate, so a refund cannot fail because the balance is
+// near the limit. giftQuota of it goes back to gift balance; the rest counts
+// as purchased balance, which is what tax paid through Epay is.
+func creditInvoiceTaxRefund(tx *gorm.DB, userId int, quota int, giftQuota int) error {
 	if quota <= 0 {
-		return 0, nil
+		return nil
 	}
-	result := tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", quota))
+	giftQuota = min(max(giftQuota, 0), quota)
+	result := tx.Model(&User{}).Where("id = ?", userId).Updates(map[string]any{
+		"quota":                gorm.Expr("quota + ?", quota),
+		"unpaid_quota_balance": gorm.Expr("unpaid_quota_balance + ?", giftQuota),
+	})
 	if result.Error != nil {
-		return 0, result.Error
+		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return 0, gorm.ErrRecordNotFound
+		return gorm.ErrRecordNotFound
 	}
-	return quota, nil
+	return nil
+}
+
+// chargeInvoiceTaxFromBalance takes the tax from the wallet and returns the
+// paid payment record for the caller to store. Gift balance is spent first,
+// as it is for usage and subscription purchases.
+func chargeInvoiceTaxFromBalance(tx *gorm.DB, userId int, taxAmount string, now int64) (*InvoiceTaxPayment, error) {
+	quota, err := invoiceTaxQuota(taxAmount)
+	if err != nil {
+		return nil, err
+	}
+	var user User
+	if err := lockForUpdate(tx).Select("id", "quota", "unpaid_quota_balance").Where("id = ?", userId).First(&user).Error; err != nil {
+		return nil, err
+	}
+	if user.Quota < quota {
+		return nil, common.NewMessage("Insufficient balance")
+	}
+	gift := min(max(user.UnpaidQuotaBalance, 0), quota)
+	if quota > 0 {
+		// The quota guard keeps the balance from going negative on SQLite,
+		// where lockForUpdate takes no row lock.
+		result := tx.Model(&User{}).Where("id = ? AND quota >= ?", userId, quota).Updates(map[string]any{
+			"quota": gorm.Expr("quota - ?", quota),
+			"unpaid_quota_balance": gorm.Expr(
+				"CASE WHEN unpaid_quota_balance >= ? THEN unpaid_quota_balance - ? ELSE 0 END",
+				gift, gift,
+			),
+		})
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil, common.NewMessage("Insufficient balance")
+		}
+	}
+	return &InvoiceTaxPayment{
+		UserId:        userId,
+		TradeNo:       fmt.Sprintf("INVBALUSR%dNO%s%d", userId, common.GetRandomString(6), now),
+		PaymentMethod: PaymentMethodBalance,
+		Amount:        taxAmount,
+		Status:        InvoiceTaxPaymentPaid,
+		ChargedQuota:  quota,
+		GiftQuota:     gift,
+		CreateTime:    now,
+		PaidTime:      now,
+	}, nil
+}
+
+// recordInvoiceBalanceTax runs after a balance payment commits: it moves the
+// cached balance and writes the user's log entry.
+func recordInvoiceBalanceTax(invoice *Invoice, payment *InvoiceTaxPayment) {
+	if payment.ChargedQuota > 0 {
+		if err := cacheDecrUserQuota(invoice.UserId, int64(payment.ChargedQuota)); err != nil {
+			common.SysLog(common.LogText("failed to decrease user quota cache after invoice tax balance payment: %s", err.Error()))
+		}
+	}
+	RecordLog(invoice.UserId, LogTypeSystem, common.NewMessage(
+		"The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance",
+		map[string]any{"id": invoice.Id, "amount": payment.Amount, "quota": logger.FormatQuota(payment.ChargedQuota)}))
 }
 
 // InvoiceTaxPaymentResult tells the callback handler what happened.
@@ -722,6 +804,10 @@ func CompleteInvoiceTaxPayment(tradeNo string, paidMoney string, callbackGateway
 			return err
 		}
 		result.Invoice = invoice
+		// A balance payment never goes through Epay.
+		if payment.PaymentMethod == PaymentMethodBalance {
+			return ErrInvoiceCallbackMismatch
+		}
 		if operation_setting.NormalizeEpayGateway(payment.Gateway) != operation_setting.NormalizeEpayGateway(callbackGateway) {
 			return ErrInvoiceCallbackMismatch
 		}
@@ -767,8 +853,11 @@ func CompleteInvoiceTaxPayment(tradeNo string, paidMoney string, callbackGateway
 
 		// The application no longer waits for this attempt: it was cancelled,
 		// or another attempt paid it. Return this payment to the wallet.
-		quota, err := creditInvoiceTaxRefund(tx, invoice.UserId, payment.Amount)
+		quota, err := invoiceTaxQuota(payment.Amount)
 		if err != nil {
+			return err
+		}
+		if err := creditInvoiceTaxRefund(tx, invoice.UserId, quota, 0); err != nil {
 			return err
 		}
 		if err := settleInvoiceTaxPayment(tx, payment.Id, InvoiceTaxPaymentRefunded, quota, now); err != nil {
@@ -845,8 +934,20 @@ func RejectInvoice(id int, reason string) (*RejectInvoiceResult, error) {
 		if err := tx.Where("invoice_id = ?", id).Delete(&InvoiceOrderLock{}).Error; err != nil {
 			return err
 		}
-		quota, err := creditInvoiceTaxRefund(tx, invoice.UserId, invoice.TaxAmount)
+		quota, err := invoiceTaxQuota(invoice.TaxAmount)
 		if err != nil {
+			return err
+		}
+		gift := 0
+		// A balance payment gets back the quota it took, the gift part as gift.
+		if invoice.TaxPaymentMethod == PaymentMethodBalance && invoice.TaxTradeNo != nil {
+			var paid InvoiceTaxPayment
+			if err := tx.Select("charged_quota", "gift_quota").Where("trade_no = ?", *invoice.TaxTradeNo).First(&paid).Error; err != nil {
+				return err
+			}
+			quota, gift = paid.ChargedQuota, paid.GiftQuota
+		}
+		if err := creditInvoiceTaxRefund(tx, invoice.UserId, quota, gift); err != nil {
 			return err
 		}
 		result.OldFileKey = invoice.FileKey
@@ -985,6 +1086,63 @@ func NewInvoiceTaxPaymentAttempt(userId int, id int, method string, gateway stri
 	if err != nil {
 		return nil, err
 	}
+	return invoice, nil
+}
+
+// PayInvoiceTaxWithBalance pays the tax of an application that waits for
+// payment from the wallet and sends it to review. An Epay attempt started
+// earlier and paid later is returned to the wallet by its callback.
+func PayInvoiceTaxWithBalance(userId int, id int) (*Invoice, error) {
+	invoice := &Invoice{}
+	var payment *InvoiceTaxPayment
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockForUpdate(tx).Where("id = ? AND user_id = ?", id, userId).First(invoice).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrInvoiceNotFound
+			}
+			return err
+		}
+		if invoice.Status != InvoiceStatusPendingPayment {
+			return ErrInvoiceAlreadyProcessed
+		}
+		now := common.GetTimestamp()
+		var err error
+		payment, err = chargeInvoiceTaxFromBalance(tx, userId, invoice.TaxAmount, now)
+		if err != nil {
+			return err
+		}
+		payment.InvoiceId = invoice.Id
+		if err := tx.Create(payment).Error; err != nil {
+			return err
+		}
+		moved := tx.Model(&Invoice{}).
+			Where("id = ? AND status = ?", id, InvoiceStatusPendingPayment).
+			Updates(map[string]any{
+				"status":             InvoiceStatusPendingReview,
+				"tax_trade_no":       payment.TradeNo,
+				"tax_payment_method": payment.PaymentMethod,
+				"tax_gateway":        "",
+				"tax_paid_time":      now,
+				"update_time":        now,
+			})
+		if moved.Error != nil {
+			return moved.Error
+		}
+		if moved.RowsAffected == 0 {
+			return ErrInvoiceAlreadyProcessed
+		}
+		invoice.Status = InvoiceStatusPendingReview
+		invoice.TaxTradeNo = &payment.TradeNo
+		invoice.TaxPaymentMethod = payment.PaymentMethod
+		invoice.TaxGateway = ""
+		invoice.TaxPaidTime = now
+		invoice.UpdateTime = now
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	recordInvoiceBalanceTax(invoice, payment)
 	return invoice, nil
 }
 
