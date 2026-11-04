@@ -936,4 +936,5 @@ export const STATIC_I18N_KEYS = [
   'Enter at least one product category',
   'Enter at most 50 product categories',
   'Each product category can have at most 100 characters',
+  'Open at least one invoice type',
 ] as const
