@@ -44,67 +44,78 @@ function rangedNumber(
  * Messages are locale keys; FormMessage translates them. The server checks
  * the same ranges again when each option is saved.
  */
-export const invoiceSettingsSchema = z.object({
-  invoice_setting: z.object({
-    enabled: z.boolean(),
-    special_enabled: z.boolean(),
-    tax_rate: rangedNumber(
-      INVOICE_SETTING_LIMITS.taxRate,
-      'Enter a tax rate between 0 and 100',
-      false
-    ),
-    special_tax_rate: rangedNumber(
-      INVOICE_SETTING_LIMITS.taxRate,
-      'Enter a tax rate between 0 and 100',
-      false
-    ),
-    order_days: rangedNumber(
-      INVOICE_SETTING_LIMITS.orderDays,
-      'Enter a whole number of days between 1 and 3650',
-      true
-    ),
-    payment_timeout_minutes: rangedNumber(
-      INVOICE_SETTING_LIMITS.paymentTimeoutMinutes,
-      'Enter a whole number of minutes between 5 and 1440',
-      true
-    ),
-    file_max_kb: rangedNumber(
-      INVOICE_SETTING_LIMITS.fileMaxKB,
-      'Enter a whole number of KB between 10 and 20480',
-      true
-    ),
-    categories: z.string().superRefine((value, ctx) => {
-      // Non-blank, trimmed lines, the same way the server reads them.
-      const categories = value
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line !== '')
-      if (categories.length === 0) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Enter at least one product category',
-        })
-        return
-      }
-      if (categories.length > INVOICE_SETTING_LIMITS.maxCategories) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Enter at most 50 product categories',
-        })
-      }
-      if (
-        categories.some(
-          (category) =>
-            [...category].length > INVOICE_SETTING_LIMITS.maxCategoryLength
-        )
-      ) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Each product category can have at most 100 characters',
-        })
-      }
+export const invoiceSettingsSchema = z
+  .object({
+    invoice_setting: z.object({
+      enabled: z.boolean(),
+      normal_enabled: z.boolean(),
+      special_enabled: z.boolean(),
+      tax_rate: rangedNumber(
+        INVOICE_SETTING_LIMITS.taxRate,
+        'Enter a tax rate between 0 and 100',
+        false
+      ),
+      special_tax_rate: rangedNumber(
+        INVOICE_SETTING_LIMITS.taxRate,
+        'Enter a tax rate between 0 and 100',
+        false
+      ),
+      order_days: rangedNumber(
+        INVOICE_SETTING_LIMITS.orderDays,
+        'Enter a whole number of days between 1 and 3650',
+        true
+      ),
+      payment_timeout_minutes: rangedNumber(
+        INVOICE_SETTING_LIMITS.paymentTimeoutMinutes,
+        'Enter a whole number of minutes between 5 and 1440',
+        true
+      ),
+      file_max_kb: rangedNumber(
+        INVOICE_SETTING_LIMITS.fileMaxKB,
+        'Enter a whole number of KB between 10 and 20480',
+        true
+      ),
+      categories: z.string().superRefine((value, ctx) => {
+        // Non-blank, trimmed lines, the same way the server reads them.
+        const categories = value
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line !== '')
+        if (categories.length === 0) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Enter at least one product category',
+          })
+          return
+        }
+        if (categories.length > INVOICE_SETTING_LIMITS.maxCategories) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Enter at most 50 product categories',
+          })
+        }
+        if (
+          categories.some(
+            (category) =>
+              [...category].length > INVOICE_SETTING_LIMITS.maxCategoryLength
+          )
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Each product category can have at most 100 characters',
+          })
+        }
+      }),
     }),
-  }),
-})
+  })
+  .superRefine((value, ctx) => {
+    const types = value.invoice_setting
+    if (types.normal_enabled || types.special_enabled) return
+    ctx.addIssue({
+      code: 'custom',
+      path: ['invoice_setting', 'special_enabled'],
+      message: 'Open at least one invoice type',
+    })
+  })
 
 export type InvoiceSettingsValues = z.infer<typeof invoiceSettingsSchema>
