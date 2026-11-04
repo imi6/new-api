@@ -7689,7 +7689,6 @@
     "Amount and tax payment": "Montant et paiement de la taxe",
     "Application rejected": "Demande refusée",
     "Applications whose tax is not paid in time are cancelled and their orders released.": "Les demandes dont la taxe n'est pas payée à temps sont annulées et leurs commandes libérées.",
-    "Charged on top of the order amount when a user applies. 0 means no tax.": "Ajoutée au montant des commandes lors de la demande. 0 signifie aucune taxe.",
     "Confirm issued": "Confirmer l'émission",
     "Each product category can have at most 100 characters": "Chaque catégorie de produit peut contenir au maximum 100 caractères",
     "Enable invoicing": "Activer la facturation",
@@ -7727,11 +7726,14 @@
     "Tax": "Taxe",
     "Tax order number": "Numéro de commande de la taxe",
     "Tax payment timeout (minutes)": "Délai de paiement de la taxe (minutes)",
-    "Tax rate (%)": "Taux de taxe (%)",
     "The orders become invoiceable again.": "Les commandes redeviennent facturables.",
     "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.": "La taxe de ¥{{amount}} est restituée au solde de l'utilisateur et les commandes redeviennent facturables.",
     "The user is notified by email and can download the uploaded file. This cannot be undone.": "L'utilisateur est averti par e-mail et peut télécharger le fichier envoyé. Cette action est irréversible.",
     "The user sees this reason in the invoice center and the email.": "L'utilisateur voit ce motif dans la facturation et dans l'e-mail.",
-    "{{count}} orders": "{{count}} commandes"
+    "{{count}} orders": "{{count}} commandes",
+    "General invoice tax rate (%)": "Taux de taxe de la facture ordinaire (%)",
+    "Special invoice tax rate (%)": "Taux de taxe de la facture spéciale (%)",
+    "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA ordinaire. 0 signifie aucune taxe.",
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA spéciale. 0 signifie aucune taxe."
   }
 }
