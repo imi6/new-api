@@ -149,9 +149,12 @@ export function InvoiceForm(props: InvoiceFormProps) {
   const special = invoiceType === 'special'
   const needsTaxNo = special || titleType === 'company'
 
+  const taxRate = special
+    ? props.config.special_tax_rate
+    : props.config.tax_rate
   const preview = previewInvoiceAmounts(
     props.orders.map((order) => order.amount),
-    props.config.tax_rate
+    taxRate
   )
   const needsTax = preview.taxCents > 0
   const payMethod = props.config.pay_methods.find(
@@ -385,7 +388,7 @@ export function InvoiceForm(props: InvoiceFormProps) {
               </div>
               <div className='flex justify-between'>
                 <dt className='text-muted-foreground'>
-                  {t('Tax ({{rate}}%)', { rate: props.config.tax_rate })}
+                  {t('Tax ({{rate}}%)', { rate: taxRate })}
                 </dt>
                 <dd className='tabular-nums'>
                   ¥{formatCents(preview.taxCents)}
