@@ -366,6 +366,7 @@ export type BillingSettings = {
   'invoice_setting.special_tax_rate': number
   'invoice_setting.order_days': number
   'invoice_setting.categories': string
+  'invoice_setting.normal_enabled': boolean
   'invoice_setting.special_enabled': boolean
   'invoice_setting.payment_timeout_minutes': number
   'invoice_setting.file_max_kb': number
