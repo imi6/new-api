@@ -7744,6 +7744,10 @@
     "Special invoice tax rate (%)": "專用發票稅率（%）",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "申請增值稅普通發票時在訂單金額之外另收的稅費比例，0 表示不收稅費。",
     "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "申請增值稅專用發票時在訂單金額之外另收的稅費比例，0 表示不收稅費。",
-    "Amount to pay": "本次需支付"
+    "Amount to pay": "本次需支付",
+    "Pay with balance": "餘額支付",
+    "The tax was paid with your balance": "稅費已從餘額扣除",
+    "Deducts {{quota}} from your balance of {{balance}}.": "將從餘額 {{balance}} 中扣除 {{quota}}。",
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "開票申請 {{id}} 的稅費 ¥{{amount}} 已使用餘額支付，扣除 {{quota}}"
   }
 }
