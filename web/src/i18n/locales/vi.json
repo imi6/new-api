@@ -7726,6 +7726,10 @@
     "Special invoice tax rate (%)": "Thuế suất hóa đơn đặc biệt (%)",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT thông thường. 0 nghĩa là không thu thuế.",
     "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT đặc biệt. 0 nghĩa là không thu thuế.",
-    "Amount to pay": "Số tiền cần thanh toán"
+    "Amount to pay": "Số tiền cần thanh toán",
+    "Pay with balance": "Thanh toán bằng số dư",
+    "The tax was paid with your balance": "Đã thanh toán thuế bằng số dư",
+    "Deducts {{quota}} from your balance of {{balance}}.": "Trừ {{quota}} từ số dư {{balance}} của bạn.",
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "Thuế ¥{{amount}} của đơn xuất hóa đơn {{id}} đã được thanh toán bằng {{quota}} số dư"
   }
 }

@@ -7726,6 +7726,10 @@
     "Special invoice tax rate (%)": "専用発票の税率（%）",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "増値税普通発票の申請時に注文金額に上乗せされます。0 は税額なしです。",
     "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "増値税専用発票の申請時に注文金額に上乗せされます。0 は税額なしです。",
-    "Amount to pay": "今回のお支払い額"
+    "Amount to pay": "今回のお支払い額",
+    "Pay with balance": "残高で支払う",
+    "The tax was paid with your balance": "税額を残高から支払いました",
+    "Deducts {{quota}} from your balance of {{balance}}.": "残高 {{balance}} から {{quota}} を差し引きます。",
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "請求書申請 {{id}} の税額 ¥{{amount}} を残高 {{quota}} で支払いました"
   }
 }
