@@ -158,10 +158,10 @@ export const INVOICE_STATUS_META: Record<
   cancelled: { labelKey: 'Cancelled', variant: 'neutral' },
 }
 
-export const INVOICE_STATUS_FILTERS: InvoiceStatus[] = [
+export const INVOICE_STATUS_FILTERS = [
   'pending_payment',
   'pending_review',
   'issued',
   'rejected',
   'cancelled',
-]
+] as const satisfies readonly InvoiceStatus[]
