@@ -7736,6 +7736,7 @@
     "General invoice tax rate (%)": "Thuế suất hóa đơn thông thường (%)",
     "Special invoice tax rate (%)": "Thuế suất hóa đơn đặc biệt (%)",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT thông thường. 0 nghĩa là không thu thuế.",
-    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT đặc biệt. 0 nghĩa là không thu thuế."
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Cộng thêm vào số tiền đơn hàng khi xuất hóa đơn VAT đặc biệt. 0 nghĩa là không thu thuế.",
+    "Amount to pay": "Số tiền cần thanh toán"
   }
 }
