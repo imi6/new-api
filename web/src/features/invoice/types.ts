@@ -49,6 +49,7 @@ export interface InvoiceConfig {
   special_tax_rate: number
   order_days: number
   categories: string[]
+  normal_enabled: boolean
   special_enabled: boolean
   payment_timeout: number
   max_orders: number
