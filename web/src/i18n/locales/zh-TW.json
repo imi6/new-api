@@ -7725,6 +7725,7 @@
     "General invoice tax rate (%)": "普通發票稅率（%）",
     "Special invoice tax rate (%)": "專用發票稅率（%）",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "申請增值稅普通發票時在訂單金額之外另收的稅費比例，0 表示不收稅費。",
-    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "申請增值稅專用發票時在訂單金額之外另收的稅費比例，0 表示不收稅費。"
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "申請增值稅專用發票時在訂單金額之外另收的稅費比例，0 表示不收稅費。",
+    "Amount to pay": "本次需支付"
   }
 }
