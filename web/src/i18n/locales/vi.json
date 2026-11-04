@@ -7748,6 +7748,11 @@
     "Pay with balance": "Thanh toán bằng số dư",
     "The tax was paid with your balance": "Đã thanh toán thuế bằng số dư",
     "Deducts {{quota}} from your balance of {{balance}}.": "Trừ {{quota}} từ số dư {{balance}} của bạn.",
-    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "Thuế ¥{{amount}} của đơn xuất hóa đơn {{id}} đã được thanh toán bằng {{quota}} số dư"
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "Thuế ¥{{amount}} của đơn xuất hóa đơn {{id}} đã được thanh toán bằng {{quota}} số dư",
+    "Allow general VAT invoices": "Cho phép hóa đơn VAT thông thường",
+    "Users can apply for a general VAT invoice as a company or an individual.": "Người dùng có thể yêu cầu hóa đơn VAT thông thường với tư cách doanh nghiệp hoặc cá nhân.",
+    "Open at least one invoice type": "Bật ít nhất một loại hóa đơn",
+    "No invoice type is available. Contact the administrator.": "Không có loại hóa đơn nào khả dụng. Hãy liên hệ quản trị viên.",
+    "General VAT invoices are not available": "Hóa đơn VAT thông thường không khả dụng"
   }
 }
