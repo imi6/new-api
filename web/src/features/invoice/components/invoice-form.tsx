@@ -381,9 +381,11 @@ export function InvoiceForm(props: InvoiceFormProps) {
 
             <dl className='flex flex-col gap-1.5 text-sm'>
               <div className='flex justify-between'>
-                <dt className='text-muted-foreground'>{t('Order amount')}</dt>
+                <dt className='text-muted-foreground'>
+                  {t('Invoice amount')}
+                </dt>
                 <dd className='tabular-nums'>
-                  ¥{formatCents(preview.orderCents)}
+                  ¥{formatCents(preview.invoiceCents)}
                 </dd>
               </div>
               <div className='flex justify-between'>
@@ -395,9 +397,9 @@ export function InvoiceForm(props: InvoiceFormProps) {
                 </dd>
               </div>
               <div className='flex justify-between font-semibold'>
-                <dt>{t('Invoice amount')}</dt>
+                <dt>{t('Amount to pay')}</dt>
                 <dd className='tabular-nums'>
-                  ¥{formatCents(preview.invoiceCents)}
+                  ¥{formatCents(preview.taxCents)}
                 </dd>
               </div>
             </dl>
