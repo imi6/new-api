@@ -7689,7 +7689,6 @@
     "Amount and tax payment": "Amount and tax payment",
     "Application rejected": "Application rejected",
     "Applications whose tax is not paid in time are cancelled and their orders released.": "Applications whose tax is not paid in time are cancelled and their orders released.",
-    "Charged on top of the order amount when a user applies. 0 means no tax.": "Charged on top of the order amount when a user applies. 0 means no tax.",
     "Confirm issued": "Confirm issued",
     "Each product category can have at most 100 characters": "Each product category can have at most 100 characters",
     "Enable invoicing": "Enable invoicing",
@@ -7727,11 +7726,14 @@
     "Tax": "Tax",
     "Tax order number": "Tax order number",
     "Tax payment timeout (minutes)": "Tax payment timeout (minutes)",
-    "Tax rate (%)": "Tax rate (%)",
     "The orders become invoiceable again.": "The orders become invoiceable again.",
     "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.": "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.",
     "The user is notified by email and can download the uploaded file. This cannot be undone.": "The user is notified by email and can download the uploaded file. This cannot be undone.",
     "The user sees this reason in the invoice center and the email.": "The user sees this reason in the invoice center and the email.",
-    "{{count}} orders": "{{count}} orders"
+    "{{count}} orders": "{{count}} orders",
+    "General invoice tax rate (%)": "General invoice tax rate (%)",
+    "Special invoice tax rate (%)": "Special invoice tax rate (%)",
+    "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Charged on top of the order amount for a general VAT invoice. 0 means no tax.",
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Charged on top of the order amount for a special VAT invoice. 0 means no tax."
   }
 }
