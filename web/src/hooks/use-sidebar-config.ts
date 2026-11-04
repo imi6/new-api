@@ -110,6 +110,7 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/usage-logs/task': { section: 'console', module: 'task' },
   '/wallet': { section: 'personal', module: 'topup' },
   '/referral': { section: 'personal', module: 'topup' },
+  '/invoice': { section: 'personal', module: 'topup' },
   '/profile': { section: 'personal', module: 'personal' },
   '/security': { section: 'personal', module: 'security' },
   '/channels': { section: 'admin', module: 'channel' },
