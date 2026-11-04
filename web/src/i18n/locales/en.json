@@ -584,6 +584,7 @@
     "Amount the user pays to purchase this plan (USD).": "Amount the user pays to purchase this plan (USD).",
     "Amount the user pays to purchase this plan; the actual currency depends on the payment gateway.": "Amount the user pays to purchase this plan; the actual currency depends on the payment gateway.",
     "Amount to claim": "Amount to claim",
+    "Amount to pay": "Amount to pay",
     "Amount to pay:": "Amount to pay:",
     "An application can include at most {{max}} orders": "An application can include at most {{max}} orders",
     "An empty field uses the system website address. If Passkeys already work, keep the existing domain.": "An empty field uses the system website address. If Passkeys already work, keep the existing domain.",

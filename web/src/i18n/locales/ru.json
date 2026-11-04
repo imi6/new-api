@@ -584,6 +584,7 @@
     "Amount the user pays to purchase this plan (USD).": "Сумма, которую пользователь платит за покупку этого тарифа (USD).",
     "Amount the user pays to purchase this plan; the actual currency depends on the payment gateway.": "Сумма, которую пользователь платит за покупку тарифа; фактическая валюта зависит от платёжного шлюза.",
     "Amount to claim": "Сумма к получению",
+    "Amount to pay": "К оплате",
     "Amount to pay:": "Сумма к оплате:",
     "An application can include at most {{max}} orders": "Заявка может включать не более {{max}} заказов",
     "An empty field uses the system website address. If Passkeys already work, keep the existing domain.": "Если поле пустое, используется адрес сайта системы. Если ключи доступа уже работают, сохраните текущий домен.",
