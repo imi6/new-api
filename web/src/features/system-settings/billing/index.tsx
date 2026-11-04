@@ -118,6 +118,7 @@ const defaultBillingSettings: BillingSettings = {
   'checkin_setting.max_quota': 10000,
   'invoice_setting.enabled': false,
   'invoice_setting.tax_rate': 6,
+  'invoice_setting.special_tax_rate': 6,
   'invoice_setting.order_days': 30,
   'invoice_setting.categories': '*生产生活服务*软件开发服务',
   'invoice_setting.special_enabled': true,
