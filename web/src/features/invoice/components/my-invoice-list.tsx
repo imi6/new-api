@@ -202,6 +202,7 @@ export function MyInvoiceList(props: MyInvoiceListProps) {
                     <StatusBadge
                       label={t(meta.labelKey)}
                       variant={meta.variant}
+                      copyable={false}
                       size='sm'
                     />
                     <span className='min-w-0 flex-1 truncate text-sm'>
