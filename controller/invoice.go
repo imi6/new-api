@@ -61,14 +61,15 @@ func invoiceIdParam(c *gin.Context) (int, bool) {
 func GetInvoiceConfig(c *gin.Context) {
 	setting := operation_setting.GetInvoiceSetting()
 	common.ApiSuccess(c, gin.H{
-		"enabled":         setting.Enabled,
-		"tax_rate":        operation_setting.InvoiceTaxRate(),
-		"order_days":      operation_setting.InvoiceOrderDays(),
-		"categories":      operation_setting.InvoiceCategories(),
-		"special_enabled": setting.SpecialEnabled,
-		"payment_timeout": operation_setting.InvoicePaymentTimeoutMinutes(),
-		"max_orders":      model.InvoiceMaxOrders,
-		"pay_methods":     invoicePayMethods(),
+		"enabled":          setting.Enabled,
+		"tax_rate":         operation_setting.InvoiceTaxRate(),
+		"special_tax_rate": operation_setting.InvoiceSpecialTaxRate(),
+		"order_days":       operation_setting.InvoiceOrderDays(),
+		"categories":       operation_setting.InvoiceCategories(),
+		"special_enabled":  setting.SpecialEnabled,
+		"payment_timeout":  operation_setting.InvoicePaymentTimeoutMinutes(),
+		"max_orders":       model.InvoiceMaxOrders,
+		"pay_methods":      invoicePayMethods(),
 	})
 }
 
@@ -199,7 +200,7 @@ func CreateInvoice(c *gin.Context) {
 	}
 	userId := c.GetInt("id")
 	model.ExpireStaleInvoices()
-	quote, err := model.QuoteInvoice(userId, input.Orders)
+	quote, err := model.QuoteInvoice(userId, input.Orders, input.InvoiceType)
 	if err != nil {
 		common.ApiError(c, err)
 		return

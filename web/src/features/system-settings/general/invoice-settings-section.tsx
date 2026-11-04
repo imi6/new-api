@@ -58,6 +58,7 @@ interface InvoiceSettingsSectionProps {
 
 type NumberFieldName =
   | 'invoice_setting.tax_rate'
+  | 'invoice_setting.special_tax_rate'
   | 'invoice_setting.order_days'
   | 'invoice_setting.payment_timeout_minutes'
   | 'invoice_setting.file_max_kb'
@@ -94,9 +95,18 @@ export function InvoiceSettingsSection(props: InvoiceSettingsSectionProps) {
   }[] = [
     {
       name: 'invoice_setting.tax_rate',
-      label: t('Tax rate (%)'),
+      label: t('General invoice tax rate (%)'),
       description: t(
-        'Charged on top of the order amount when a user applies. 0 means no tax.'
+        'Charged on top of the order amount for a general VAT invoice. 0 means no tax.'
+      ),
+      ...INVOICE_SETTING_LIMITS.taxRate,
+      step: '0.01',
+    },
+    {
+      name: 'invoice_setting.special_tax_rate',
+      label: t('Special invoice tax rate (%)'),
+      description: t(
+        'Charged on top of the order amount for a special VAT invoice. 0 means no tax.'
       ),
       ...INVOICE_SETTING_LIMITS.taxRate,
       step: '0.01',
