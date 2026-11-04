@@ -176,6 +176,30 @@ export function InvoiceSettingsSection(props: InvoiceSettingsSectionProps) {
 
             <FormField
               control={form.control}
+              name='invoice_setting.normal_enabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('Allow general VAT invoices')}</FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Users can apply for a general VAT invoice as a company or an individual.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={saving}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name='invoice_setting.special_enabled'
               render={({ field }) => (
                 <SettingsSwitchItem>
@@ -186,6 +210,7 @@ export function InvoiceSettingsSection(props: InvoiceSettingsSectionProps) {
                         'Special VAT invoices require the company bank details.'
                       )}
                     </FormDescription>
+                    <FormMessage />
                   </SettingsSwitchContent>
                   <FormControl>
                     <Switch
