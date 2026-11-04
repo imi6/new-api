@@ -7691,7 +7691,6 @@
     "Amount and tax payment": "金額と税額の支払い",
     "Application rejected": "申請を却下しました",
     "Applications whose tax is not paid in time are cancelled and their orders released.": "期限内に税額が支払われない申請は取り消され、注文は再び申請できるようになります。",
-    "Charged on top of the order amount when a user applies. 0 means no tax.": "申請時に注文金額に上乗せされます。0 は税額なしです。",
     "Confirm issued": "発行を確定",
     "Each product category can have at most 100 characters": "各品目は 100 文字以内で入力してください",
     "Enable invoicing": "請求書の発行を有効にする",
@@ -7729,11 +7728,14 @@
     "Tax": "税額",
     "Tax order number": "税額の注文番号",
     "Tax payment timeout (minutes)": "税額の支払い期限（分）",
-    "Tax rate (%)": "税率（%）",
     "The orders become invoiceable again.": "注文は再び申請できるようになります。",
     "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.": "税額 ¥{{amount}} はユーザーの残高に返金され、注文は再び申請できるようになります。",
     "The user is notified by email and can download the uploaded file. This cannot be undone.": "ユーザーにメールで通知され、アップロードしたファイルをダウンロードできます。この操作は取り消せません。",
     "The user sees this reason in the invoice center and the email.": "ユーザーは請求書センターとメールでこの理由を確認できます。",
-    "{{count}} orders": "{{count}} 件の注文"
+    "{{count}} orders": "{{count}} 件の注文",
+    "General invoice tax rate (%)": "普通発票の税率（%）",
+    "Special invoice tax rate (%)": "専用発票の税率（%）",
+    "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "増値税普通発票の申請時に注文金額に上乗せされます。0 は税額なしです。",
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "増値税専用発票の申請時に注文金額に上乗せされます。0 は税額なしです。"
   }
 }

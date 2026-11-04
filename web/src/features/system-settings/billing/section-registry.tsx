@@ -219,6 +219,7 @@ const BILLING_SECTIONS = [
             enabled: settings['invoice_setting.enabled'],
             special_enabled: settings['invoice_setting.special_enabled'],
             tax_rate: settings['invoice_setting.tax_rate'],
+            special_tax_rate: settings['invoice_setting.special_tax_rate'],
             order_days: settings['invoice_setting.order_days'],
             payment_timeout_minutes:
               settings['invoice_setting.payment_timeout_minutes'],
