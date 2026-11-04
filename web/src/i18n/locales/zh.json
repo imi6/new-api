@@ -7662,7 +7662,6 @@
     "Amount and tax payment": "金额与税费支付",
     "Application rejected": "申请已驳回",
     "Applications whose tax is not paid in time are cancelled and their orders released.": "超时未支付税费的申请会被取消，订单可重新申请。",
-    "Charged on top of the order amount when a user applies. 0 means no tax.": "用户申请时在订单金额之外另收的税费比例，0 表示不收税费。",
     "Confirm issued": "确认开票",
     "Each product category can have at most 100 characters": "每个开票类目最多 100 个字符",
     "Enable invoicing": "启用开票功能",
@@ -7700,11 +7699,14 @@
     "Tax": "税费",
     "Tax order number": "税费订单号",
     "Tax payment timeout (minutes)": "税费支付超时（分钟）",
-    "Tax rate (%)": "税率（%）",
     "The orders become invoiceable again.": "订单可以重新申请开票。",
     "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.": "税费 ¥{{amount}} 会退回用户余额，订单可以重新申请开票。",
     "The user is notified by email and can download the uploaded file. This cannot be undone.": "用户会收到邮件通知并可下载已上传的文件。此操作不可撤销。",
     "The user sees this reason in the invoice center and the email.": "用户会在开票中心和邮件中看到此原因。",
-    "{{count}} orders": "共 {{count}} 笔订单"
+    "{{count}} orders": "共 {{count}} 笔订单",
+    "General invoice tax rate (%)": "普通发票税率（%）",
+    "Special invoice tax rate (%)": "专用发票税率（%）",
+    "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "申请增值税普通发票时在订单金额之外另收的税费比例，0 表示不收税费。",
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "申请增值税专用发票时在订单金额之外另收的税费比例，0 表示不收税费。"
   }
 }

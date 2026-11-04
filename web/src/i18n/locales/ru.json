@@ -7662,7 +7662,6 @@
     "Amount and tax payment": "Сумма и оплата налога",
     "Application rejected": "Заявка отклонена",
     "Applications whose tax is not paid in time are cancelled and their orders released.": "Заявки без своевременной оплаты налога отменяются, а их заказы освобождаются.",
-    "Charged on top of the order amount when a user applies. 0 means no tax.": "Добавляется к сумме заказов при подаче заявки. 0 — без налога.",
     "Confirm issued": "Подтвердить выставление",
     "Each product category can have at most 100 characters": "Каждая категория может содержать не более 100 символов",
     "Enable invoicing": "Включить выставление счетов",
@@ -7700,11 +7699,14 @@
     "Tax": "Налог",
     "Tax order number": "Номер заказа налога",
     "Tax payment timeout (minutes)": "Срок оплаты налога (минуты)",
-    "Tax rate (%)": "Ставка налога (%)",
     "The orders become invoiceable again.": "Заказы снова станут доступны для выставления счёта.",
     "The tax of ¥{{amount}} is returned to the user balance and the orders become invoiceable again.": "Налог ¥{{amount}} вернётся на баланс пользователя, а заказы снова станут доступны для выставления счёта.",
     "The user is notified by email and can download the uploaded file. This cannot be undone.": "Пользователь получит письмо и сможет скачать загруженный файл. Действие нельзя отменить.",
     "The user sees this reason in the invoice center and the email.": "Пользователь увидит причину в разделе счетов и в письме.",
-    "{{count}} orders": "Заказов: {{count}}"
+    "{{count}} orders": "Заказов: {{count}}",
+    "General invoice tax rate (%)": "Ставка налога для обычного счёта (%)",
+    "Special invoice tax rate (%)": "Ставка налога для специального счёта (%)",
+    "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Добавляется к сумме заказов для обычного счёта-фактуры НДС. 0 — без налога.",
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Добавляется к сумме заказов для специального счёта-фактуры НДС. 0 — без налога."
   }
 }
