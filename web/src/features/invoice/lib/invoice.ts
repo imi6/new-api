@@ -137,6 +137,20 @@ export function toOrderRef(order: InvoiceOrder): InvoiceOrderRef {
   return { order_type: order.order_type, order_id: order.order_id }
 }
 
+/** Pay method key for paying the tax from the wallet balance. */
+export const BALANCE_PAY_KEY = 'balance'
+
+/**
+ * Wallet quota a balance payment takes for the tax, at 1 CNY = 1 unit of
+ * balance, rounded the way model.invoiceTaxQuota rounds it.
+ */
+export function taxCentsToQuota(
+  taxCents: number,
+  quotaPerUnit: number
+): number {
+  return Math.round((taxCents * quotaPerUnit) / 100)
+}
+
 /** Pay methods of different Epay gateways can share a type, so key by both. */
 export function payMethodKey(method: InvoicePayMethod): string {
   return `${method.gateway}:${method.type}`
