@@ -8061,6 +8061,7 @@
     "General invoice tax rate (%)": "Ставка налога для обычного счёта (%)",
     "Special invoice tax rate (%)": "Ставка налога для специального счёта (%)",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Добавляется к сумме заказов для обычного счёта-фактуры НДС. 0 — без налога.",
-    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Добавляется к сумме заказов для специального счёта-фактуры НДС. 0 — без налога."
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Добавляется к сумме заказов для специального счёта-фактуры НДС. 0 — без налога.",
+    "Amount to pay": "К оплате"
   }
 }
