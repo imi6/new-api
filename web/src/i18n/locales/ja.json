@@ -8066,6 +8066,11 @@
     "Pay with balance": "残高で支払う",
     "The tax was paid with your balance": "税額を残高から支払いました",
     "Deducts {{quota}} from your balance of {{balance}}.": "残高 {{balance}} から {{quota}} を差し引きます。",
-    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "請求書申請 {{id}} の税額 ¥{{amount}} を残高 {{quota}} で支払いました"
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "請求書申請 {{id}} の税額 ¥{{amount}} を残高 {{quota}} で支払いました",
+    "Allow general VAT invoices": "増値税普通発票を許可する",
+    "Users can apply for a general VAT invoice as a company or an individual.": "ユーザーは法人または個人として増値税普通発票を申請できます。",
+    "Open at least one invoice type": "請求書の種類を 1 つ以上有効にしてください",
+    "No invoice type is available. Contact the administrator.": "申請できる請求書の種類がありません。管理者にお問い合わせください。",
+    "General VAT invoices are not available": "増値税普通発票は利用できません"
   }
 }

@@ -8066,6 +8066,11 @@
     "Pay with balance": "Payer avec le solde",
     "The tax was paid with your balance": "La taxe a été payée avec votre solde",
     "Deducts {{quota}} from your balance of {{balance}}.": "{{quota}} sera déduit de votre solde de {{balance}}.",
-    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "La taxe de ¥{{amount}} de la demande de facture {{id}} a été payée avec {{quota}} de solde"
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "La taxe de ¥{{amount}} de la demande de facture {{id}} a été payée avec {{quota}} de solde",
+    "Allow general VAT invoices": "Autoriser les factures TVA ordinaires",
+    "Users can apply for a general VAT invoice as a company or an individual.": "Les utilisateurs peuvent demander une facture TVA ordinaire au nom d'une entreprise ou d'un particulier.",
+    "Open at least one invoice type": "Activez au moins un type de facture",
+    "No invoice type is available. Contact the administrator.": "Aucun type de facture n'est disponible. Contactez l'administrateur.",
+    "General VAT invoices are not available": "Les factures TVA ordinaires ne sont pas disponibles"
   }
 }
