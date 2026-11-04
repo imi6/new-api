@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -51,11 +51,16 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { getPaymentIcon, submitPaymentForm } from '@/features/wallet/lib'
+import { getCurrencyDisplay } from '@/lib/currency'
+import { formatQuota } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import { createServerError } from '@/lib/server-error-message'
+import { cn } from '@/lib/utils'
 
 import { createInvoice } from '../api'
+import { useInvoiceWalletQuota } from '../hooks/use-invoice'
 import {
+  BALANCE_PAY_KEY,
   formatCents,
   INVOICE_BANK_ACCOUNT_MAX,
   INVOICE_BANK_NAME_MAX,
@@ -68,6 +73,7 @@ import {
   type InvoiceFormValues,
   payMethodKey,
   previewInvoiceAmounts,
+  taxCentsToQuota,
   toOrderRef,
 } from '../lib/invoice'
 import type {
@@ -122,11 +128,9 @@ const SPECIAL_FIELDS: SpecialField[] = [
 export function InvoiceForm(props: InvoiceFormProps) {
   const { t } = useTranslation()
   const [submitting, setSubmitting] = useState(false)
-  const [payKey, setPayKey] = useState(() =>
-    props.config.pay_methods.length > 0
-      ? payMethodKey(props.config.pay_methods[0])
-      : ''
-  )
+  // Balance comes first: it has no gateway fee.
+  const [payKey, setPayKey] = useState(BALANCE_PAY_KEY)
+  const walletQuota = useInvoiceWalletQuota()
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
@@ -157,11 +161,25 @@ export function InvoiceForm(props: InvoiceFormProps) {
     taxRate
   )
   const needsTax = preview.taxCents > 0
+  const payWithBalance = payKey === BALANCE_PAY_KEY
   const payMethod = props.config.pay_methods.find(
     (method) => payMethodKey(method) === payKey
   )
-  const noPayMethod = needsTax && !payMethod
-  const canSubmit = props.orders.length > 0 && !submitting && !noPayMethod
+  const taxQuota = taxCentsToQuota(
+    preview.taxCents,
+    getCurrencyDisplay().config.quotaPerUnit
+  )
+  const balanceShort = payWithBalance && (walletQuota.data ?? 0) < taxQuota
+  const noPayMethod = needsTax && !payWithBalance && !payMethod
+  const canSubmit =
+    props.orders.length > 0 &&
+    !submitting &&
+    !noPayMethod &&
+    !(needsTax && balanceShort)
+
+  let paymentMethodValue = ''
+  if (needsTax && payWithBalance) paymentMethodValue = BALANCE_PAY_KEY
+  if (needsTax && !payWithBalance) paymentMethodValue = payMethod?.type ?? ''
 
   const setInvoiceType = (next: InvoiceType) => {
     form.setValue('invoice_type', next, { shouldValidate: false })
@@ -179,8 +197,9 @@ export function InvoiceForm(props: InvoiceFormProps) {
       const res = await createInvoice({
         ...values,
         orders: props.orders.map(toOrderRef),
-        payment_method: needsTax ? (payMethod?.type ?? '') : '',
-        gateway: needsTax ? (payMethod?.gateway ?? '') : '',
+        payment_method: paymentMethodValue,
+        gateway:
+          needsTax && !payWithBalance ? (payMethod?.gateway ?? '') : '',
       })
       if (!res.success) {
         handleServerError(
@@ -409,49 +428,62 @@ export function InvoiceForm(props: InvoiceFormProps) {
                 <span className='text-sm font-medium'>
                   {t('Pay the tax with')}
                 </span>
-                {props.config.pay_methods.length === 0 && (
-                  <p className='text-destructive text-xs'>
+                <ToggleGroup
+                  value={[payKey]}
+                  onValueChange={(values) => {
+                    const next = values.find((value) => value !== payKey)
+                    if (next) setPayKey(next)
+                  }}
+                  aria-label={t('Pay the tax with')}
+                  variant='outline'
+                  size='sm'
+                  spacing={2}
+                  className='grid w-full grid-cols-2 gap-2'
+                >
+                  <ToggleGroupItem value={BALANCE_PAY_KEY} className='w-full'>
+                    <Wallet aria-hidden='true' />
+                    <span className='truncate'>{t('Balance')}</span>
+                  </ToggleGroupItem>
+                  {props.config.pay_methods.map((method) => (
+                    <ToggleGroupItem
+                      key={payMethodKey(method)}
+                      value={payMethodKey(method)}
+                      className='w-full'
+                    >
+                      {getPaymentIcon(
+                        method.type,
+                        'h-4 w-4',
+                        undefined,
+                        method.name
+                      )}
+                      <span className='truncate'>{method.name}</span>
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+                {payWithBalance && (
+                  <p
+                    className={cn(
+                      'text-xs',
+                      balanceShort
+                        ? 'text-destructive'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {t('Deducts {{quota}} from your balance of {{balance}}.', {
+                      quota: formatQuota(taxQuota),
+                      balance: formatQuota(walletQuota.data ?? 0),
+                    })}
+                    {balanceShort && ` ${t('Insufficient balance')}`}
+                  </p>
+                )}
+                {!payWithBalance && (
+                  <p className='text-muted-foreground text-xs'>
                     {t(
-                      'No payment method is available for the tax. Contact the administrator.'
+                      'The application goes to review after the tax is paid. Unpaid applications are cancelled after {{minutes}} minutes.',
+                      { minutes: props.config.payment_timeout }
                     )}
                   </p>
                 )}
-                {props.config.pay_methods.length > 0 && (
-                  <ToggleGroup
-                    value={[payKey]}
-                    onValueChange={(values) => {
-                      const next = values.find((value) => value !== payKey)
-                      if (next) setPayKey(next)
-                    }}
-                    aria-label={t('Pay the tax with')}
-                    variant='outline'
-                    size='sm'
-                    spacing={2}
-                    className='grid w-full grid-cols-2 gap-2'
-                  >
-                    {props.config.pay_methods.map((method) => (
-                      <ToggleGroupItem
-                        key={payMethodKey(method)}
-                        value={payMethodKey(method)}
-                        className='w-full'
-                      >
-                        {getPaymentIcon(
-                          method.type,
-                          'h-4 w-4',
-                          undefined,
-                          method.name
-                        )}
-                        <span className='truncate'>{method.name}</span>
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                )}
-                <p className='text-muted-foreground text-xs'>
-                  {t(
-                    'The application goes to review after the tax is paid. Unpaid applications are cancelled after {{minutes}} minutes.',
-                    { minutes: props.config.payment_timeout }
-                  )}
-                </p>
               </div>
             )}
 
