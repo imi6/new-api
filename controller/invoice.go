@@ -209,12 +209,18 @@ func CreateInvoice(c *gin.Context) {
 		if !requirePaymentCompliance(c) {
 			return
 		}
-		method, site, err := resolveInvoicePayMethod(input.PaymentMethod, input.Gateway)
-		if err != nil {
-			common.ApiError(c, err)
-			return
+		// Balance is taken from the wallet inside CreateInvoice, with no
+		// Epay checkout and no gateway fee.
+		if input.PaymentMethod == model.PaymentMethodBalance {
+			input.TaxPaymentMethod = model.PaymentMethodBalance
+		} else {
+			method, site, err := resolveInvoicePayMethod(input.PaymentMethod, input.Gateway)
+			if err != nil {
+				common.ApiError(c, err)
+				return
+			}
+			input.TaxPaymentMethod, input.TaxGateway = method, site
 		}
-		input.TaxPaymentMethod, input.TaxGateway = method, site
 	}
 
 	invoice, items, err := model.CreateInvoice(userId, &input)
@@ -275,6 +281,14 @@ func PayInvoice(c *gin.Context) {
 	paymentMethod, gateway := req.PaymentMethod, req.Gateway
 	if paymentMethod == "" {
 		paymentMethod, gateway = invoice.TaxPaymentMethod, invoice.TaxGateway
+	}
+	if paymentMethod == model.PaymentMethodBalance {
+		if invoice, err = model.PayInvoiceTaxWithBalance(userId, id); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		common.ApiSuccess(c, gin.H{"invoice": invoice})
+		return
 	}
 	method, site, err := resolveInvoicePayMethod(paymentMethod, gateway)
 	if err != nil {
