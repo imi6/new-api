@@ -36,7 +36,7 @@ func setupInvoiceTest(t *testing.T) *gorm.DB {
 	// Every connection to :memory: is a new database, so keep one.
 	sqlDB.SetMaxOpenConns(1)
 	require.NoError(t, db.AutoMigrate(&model.User{}, &model.Log{}, &model.TopUp{}, &model.SubscriptionOrder{},
-		&model.Redemption{}, &model.Invoice{}, &model.InvoiceItem{}, &model.InvoiceOrderLock{}))
+		&model.Redemption{}, &model.Invoice{}, &model.InvoiceItem{}, &model.InvoiceOrderLock{}, &model.InvoiceTaxPayment{}))
 
 	previousDB, previousLogDB := model.DB, model.LOG_DB
 	previousMain, previousLog := common.MainDatabaseType(), common.LogDatabaseType()
@@ -290,6 +290,44 @@ func TestInvoiceTaxCallbackAfterCancelRefundsOnce(t *testing.T) {
 	// The order was released by the cancel and is not claimed again.
 	_, _, err = model.CreateInvoice(user.Id, invoiceTestInput(ref))
 	assert.NoError(t, err)
+}
+
+func TestInvoiceRepayUsesNewTradeNoAndRefundsTheLatePayment(t *testing.T) {
+	db := setupInvoiceTest(t)
+	user := createInvoiceUser(t, db, "invoice-repay", 0)
+	topUp := createInvoiceTopUp(t, db, user.Id, "USR-REPAY", 150, model.PaymentProviderEpay, common.TopUpStatusSuccess, time.Now().Unix())
+	invoice, _, err := model.CreateInvoice(user.Id, invoiceTestInput(model.InvoiceOrderRef{OrderType: model.InvoiceOrderTopUp, OrderId: topUp.Id}))
+	require.NoError(t, err)
+	firstTradeNo := *invoice.TaxTradeNo
+
+	retried, err := model.NewInvoiceTaxPaymentAttempt(user.Id, invoice.Id, "wxpay", operation_setting.EpayGatewayPrimary)
+	require.NoError(t, err)
+	secondTradeNo := *retried.TaxTradeNo
+	assert.NotEqual(t, firstTradeNo, secondTradeNo, "Epay sites refuse a repeated order number")
+	_, err = model.NewInvoiceTaxPaymentAttempt(user.Id+1, invoice.Id, "wxpay", operation_setting.EpayGatewayPrimary)
+	assert.ErrorIs(t, err, model.ErrInvoiceNotFound, "another user cannot start a payment")
+
+	paid, err := model.CompleteInvoiceTaxPayment(secondTradeNo, "9.00", operation_setting.EpayGatewayPrimary)
+	require.NoError(t, err)
+	assert.False(t, paid.Refunded)
+	stored, err := model.GetInvoiceById(invoice.Id)
+	require.NoError(t, err)
+	assert.Equal(t, model.InvoiceStatusPendingReview, stored.Status)
+	assert.Equal(t, secondTradeNo, *stored.TaxTradeNo, "the application records the attempt that paid")
+
+	late, err := model.CompleteInvoiceTaxPayment(firstTradeNo, "9.00", operation_setting.EpayGatewayPrimary)
+	require.NoError(t, err)
+	assert.True(t, late.Refunded, "a second paid attempt goes back to the wallet")
+	again, err := model.CompleteInvoiceTaxPayment(firstTradeNo, "9.00", operation_setting.EpayGatewayPrimary)
+	require.NoError(t, err)
+	assert.True(t, again.AlreadyDone)
+	_, err = model.NewInvoiceTaxPaymentAttempt(user.Id, invoice.Id, "alipay", operation_setting.EpayGatewayPrimary)
+	assert.ErrorIs(t, err, model.ErrInvoiceAlreadyProcessed, "a paid application takes no new attempt")
+
+	quota, unpaid := invoiceUserQuota(t, db, user.Id)
+	assert.Equal(t, 4500000, quota, "only the extra payment is refunded, once")
+	assert.Equal(t, 0, unpaid)
+	assert.Equal(t, model.InvoiceStatusPendingReview, invoiceStatus(t, db, invoice.Id))
 }
 
 func TestRejectInvoiceRefundsTaxOnce(t *testing.T) {
