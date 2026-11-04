@@ -222,6 +222,7 @@ const BILLING_SECTIONS = [
         defaultValues={{
           invoice_setting: {
             enabled: settings['invoice_setting.enabled'],
+            normal_enabled: settings['invoice_setting.normal_enabled'],
             special_enabled: settings['invoice_setting.special_enabled'],
             tax_rate: settings['invoice_setting.tax_rate'],
             special_tax_rate: settings['invoice_setting.special_tax_rate'],

@@ -8066,6 +8066,11 @@
     "Pay with balance": "餘額支付",
     "The tax was paid with your balance": "稅費已從餘額扣除",
     "Deducts {{quota}} from your balance of {{balance}}.": "將從餘額 {{balance}} 中扣除 {{quota}}。",
-    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "開票申請 {{id}} 的稅費 ¥{{amount}} 已使用餘額支付，扣除 {{quota}}"
+    "The tax of ¥{{amount}} for invoice application {{id}} was paid with {{quota}} of balance": "開票申請 {{id}} 的稅費 ¥{{amount}} 已使用餘額支付，扣除 {{quota}}",
+    "Allow general VAT invoices": "允許開立增值稅普通發票",
+    "Users can apply for a general VAT invoice as a company or an individual.": "使用者可以以企業或個人名義申請增值稅普通發票。",
+    "Open at least one invoice type": "至少開啟一種發票類型",
+    "No invoice type is available. Contact the administrator.": "暫無可申請的發票類型，請聯絡管理員。",
+    "General VAT invoices are not available": "暫不支援開立增值稅普通發票"
   }
 }

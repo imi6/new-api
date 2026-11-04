@@ -66,6 +66,7 @@ func GetInvoiceConfig(c *gin.Context) {
 		"special_tax_rate": operation_setting.InvoiceSpecialTaxRate(),
 		"order_days":       operation_setting.InvoiceOrderDays(),
 		"categories":       operation_setting.InvoiceCategories(),
+		"normal_enabled":   setting.NormalEnabled,
 		"special_enabled":  setting.SpecialEnabled,
 		"payment_timeout":  operation_setting.InvoicePaymentTimeoutMinutes(),
 		"max_orders":       model.InvoiceMaxOrders,
