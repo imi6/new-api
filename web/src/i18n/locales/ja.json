@@ -7734,6 +7734,7 @@
     "General invoice tax rate (%)": "普通発票の税率（%）",
     "Special invoice tax rate (%)": "専用発票の税率（%）",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "増値税普通発票の申請時に注文金額に上乗せされます。0 は税額なしです。",
-    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "増値税専用発票の申請時に注文金額に上乗せされます。0 は税額なしです。"
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "増値税専用発票の申請時に注文金額に上乗せされます。0 は税額なしです。",
+    "Amount to pay": "今回のお支払い額"
   }
 }
