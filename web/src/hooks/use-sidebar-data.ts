@@ -30,6 +30,7 @@ import {
   MessageSquare,
   PlugZap,
   Radio,
+  Receipt,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -41,6 +42,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import type { SidebarBadges, SidebarData } from '@/components/layout/types'
+import { useStatus } from '@/hooks/use-status'
 import { ROLE } from '@/lib/roles'
 
 /**
@@ -51,6 +53,8 @@ import { ROLE } from '@/lib/roles'
  */
 export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const invoiceEnabled = status?.invoice_enabled === true
 
   return {
     navGroups: [
@@ -122,6 +126,15 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             url: '/referral',
             icon: Gift,
           },
+          ...(invoiceEnabled
+            ? [
+                {
+                  title: t('Invoice center'),
+                  url: '/invoice',
+                  icon: Receipt,
+                },
+              ]
+            : []),
           {
             title: t('Profile'),
             url: '/profile',
