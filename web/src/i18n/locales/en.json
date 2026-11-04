@@ -7734,6 +7734,7 @@
     "General invoice tax rate (%)": "General invoice tax rate (%)",
     "Special invoice tax rate (%)": "Special invoice tax rate (%)",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Charged on top of the order amount for a general VAT invoice. 0 means no tax.",
-    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Charged on top of the order amount for a special VAT invoice. 0 means no tax."
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Charged on top of the order amount for a special VAT invoice. 0 means no tax.",
+    "Amount to pay": "Amount to pay"
   }
 }

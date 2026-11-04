@@ -7734,6 +7734,7 @@
     "General invoice tax rate (%)": "Taux de taxe de la facture ordinaire (%)",
     "Special invoice tax rate (%)": "Taux de taxe de la facture spéciale (%)",
     "Charged on top of the order amount for a general VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA ordinaire. 0 signifie aucune taxe.",
-    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA spéciale. 0 signifie aucune taxe."
+    "Charged on top of the order amount for a special VAT invoice. 0 means no tax.": "Ajoutée au montant des commandes pour une facture TVA spéciale. 0 signifie aucune taxe.",
+    "Amount to pay": "Montant à payer"
   }
 }
