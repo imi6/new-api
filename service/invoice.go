@@ -174,8 +174,13 @@ func NotifyInvoiceIssued(lang string, invoice *model.Invoice) {
 	sendInvoiceEmail(lang, invoice, i18n.MsgEmailInvoiceIssuedSubject, content)
 }
 
-// NotifyInvoiceRejected mails the applicant the rejection reason.
-func NotifyInvoiceRejected(lang string, invoice *model.Invoice) {
-	content := i18n.Translate(lang, i18n.MsgEmailInvoiceRejectedContent, map[string]any{"Id": invoice.Id, "Reason": html.EscapeString(invoice.RejectReason)})
+// NotifyInvoiceRejected mails the applicant the rejection reason. It mentions
+// a tax refund only when one was made; with a zero tax rate nothing was paid.
+func NotifyInvoiceRejected(lang string, invoice *model.Invoice, refunded bool) {
+	key := i18n.MsgEmailInvoiceRejectedContent
+	if refunded {
+		key = i18n.MsgEmailInvoiceRejectedRefundContent
+	}
+	content := i18n.Translate(lang, key, map[string]any{"Id": invoice.Id, "Reason": html.EscapeString(invoice.RejectReason), "Tax": invoice.TaxAmount})
 	sendInvoiceEmail(lang, invoice, i18n.MsgEmailInvoiceRejectedSubject, content)
 }
