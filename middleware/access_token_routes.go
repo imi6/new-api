@@ -145,6 +145,22 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/subscription/admin/user_subscriptions/:id/invalidate": accessTokenScopeRule("billing:write"),
 	"DELETE /api/subscription/admin/user_subscriptions/:id":          accessTokenScopeRule("billing:write"),
 
+	// router/api-router.go: /api/invoice
+	"GET /api/invoice/config":            accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/summary":           accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/orders":            accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/self":              accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/self/:id":          accessTokenScopeRule("wallet:read"),
+	"POST /api/invoice":                  accessTokenScopeRule("wallet:write"),
+	"POST /api/invoice/:id/pay":          accessTokenScopeRule("wallet:write"),
+	"POST /api/invoice/:id/cancel":       accessTokenScopeRule("wallet:write"),
+	"GET /api/invoice/:id/file":          accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/admin":             accessTokenScopeRule("billing:read"),
+	"GET /api/invoice/admin/:id":         accessTokenScopeRule("billing:read"),
+	"POST /api/invoice/admin/:id/file":   accessTokenScopeRule("billing:write"),
+	"POST /api/invoice/admin/:id/issue":  accessTokenScopeRule("billing:write"),
+	"POST /api/invoice/admin/:id/reject": accessTokenScopeRule("billing:write"),
+
 	// router/api-router.go: /api/option
 	"GET /api/option/":                                           accessTokenScopeRule("option:read"),
 	"GET /api/option/request_policy":                             accessTokenScopeRule("option:read"),
