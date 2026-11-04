@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 
+import { getSelf } from '@/lib/api'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import {
@@ -50,6 +51,19 @@ export function useInvoiceableOrders() {
     queryKey: [...INVOICE_QUERY_KEY, 'orders'],
     queryFn: async () =>
       requireServerSuccess(await getInvoiceableOrders()).data ?? [],
+  })
+}
+
+/** Current wallet quota, refetched with the other invoice queries. */
+export function useInvoiceWalletQuota() {
+  return useQuery({
+    queryKey: [...INVOICE_QUERY_KEY, 'wallet'],
+    queryFn: async () => {
+      const res = requireServerSuccess(await getSelf()) as {
+        data?: { quota?: number }
+      }
+      return Number(res.data?.quota ?? 0)
+    },
   })
 }
 
