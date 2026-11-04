@@ -21,6 +21,7 @@ import {
   Box,
   ClipboardList,
   CreditCard,
+  FileCheck,
   FileText,
   FlaskConical,
   Gift,
@@ -176,6 +177,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Invoice management'),
+            url: '/invoice-management',
+            icon: FileCheck,
           },
           {
             title: t('System Info'),
