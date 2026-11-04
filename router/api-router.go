@@ -218,6 +218,36 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/gateway/:id/notify", controller.SubscriptionEpayNotifyByGateway)
 		apiRouter.GET("/subscription/epay/gateway/:id/return", controller.SubscriptionEpayReturnByGateway)
 		apiRouter.POST("/subscription/epay/gateway/:id/return", anonymousRequestBodyLimit, controller.SubscriptionEpayReturnByGateway)
+
+		// Invoice center
+		invoiceRoute := apiRouter.Group("/invoice")
+		invoiceRoute.Use(middleware.UserAuth())
+		{
+			invoiceRoute.GET("/config", controller.GetInvoiceConfig)
+			invoiceRoute.GET("/summary", controller.GetInvoiceSummary)
+			invoiceRoute.GET("/orders", controller.GetInvoiceableOrders)
+			invoiceRoute.GET("/self", controller.GetUserInvoices)
+			invoiceRoute.GET("/self/:id", controller.GetUserInvoice)
+			invoiceRoute.POST("", middleware.CriticalRateLimit(), controller.CreateInvoice)
+			invoiceRoute.POST("/:id/pay", middleware.CriticalRateLimit(), controller.PayInvoice)
+			invoiceRoute.POST("/:id/cancel", controller.CancelInvoice)
+			invoiceRoute.GET("/:id/file", controller.DownloadInvoiceFile)
+		}
+		invoiceAdminRoute := apiRouter.Group("/invoice/admin")
+		invoiceAdminRoute.Use(middleware.AdminAuth())
+		{
+			invoiceAdminRoute.GET("", controller.AdminListInvoices)
+			invoiceAdminRoute.GET("/:id", controller.AdminGetInvoice)
+			invoiceAdminRoute.POST("/:id/file", controller.AdminUploadInvoiceFile)
+			invoiceAdminRoute.POST("/:id/issue", controller.AdminIssueInvoice)
+			invoiceAdminRoute.POST("/:id/reject", controller.AdminRejectInvoice)
+		}
+		// Invoice tax payment callbacks (no auth)
+		apiRouter.POST("/invoice/epay/notify", anonymousRequestBodyLimit, controller.InvoiceEpayNotify)
+		apiRouter.GET("/invoice/epay/notify", controller.InvoiceEpayNotify)
+		apiRouter.POST("/invoice/epay/gateway/:id/notify", anonymousRequestBodyLimit, controller.InvoiceEpayNotifyByGateway)
+		apiRouter.GET("/invoice/epay/gateway/:id/notify", controller.InvoiceEpayNotifyByGateway)
+
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{
