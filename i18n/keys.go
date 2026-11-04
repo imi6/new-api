@@ -73,6 +73,12 @@ const (
 	MsgEmailBindingNewValidity = "email.binding.new_validity"
 	MsgEmailBindingOldValidity = "email.binding.old_validity"
 
+	MsgEmailInvoiceIssuedSubject   = "email.invoice.issued_subject"
+	MsgEmailInvoiceIssuedContent   = "email.invoice.issued_content"
+	MsgEmailInvoiceRejectedSubject = "email.invoice.rejected_subject"
+	MsgEmailInvoiceRejectedContent = "email.invoice.rejected_content"
+	MsgEmailInvoiceLink            = "email.invoice.link"
+
 	MsgEmailSecurityNoticeSubject = "email.security_notice.subject"
 	MsgEmailSecurityNoticeChanged = "email.security_notice.changed"
 	MsgEmailSecurityNoticeAdvice  = "email.security_notice.advice"
