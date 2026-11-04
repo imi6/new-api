@@ -584,6 +584,7 @@
     "Amount the user pays to purchase this plan (USD).": "ユーザーがこのプランを購入する際に支払う金額（USD）。",
     "Amount the user pays to purchase this plan; the actual currency depends on the payment gateway.": "ユーザーがこのプランを購入する際に支払う金額。実際の通貨は決済ゲートウェイによって異なります。",
     "Amount to claim": "受け取る金額",
+    "Amount to pay": "今回のお支払い額",
     "Amount to pay:": "支払い金額:",
     "An application can include at most {{max}} orders": "1 回の申請に含められる注文は最大 {{max}} 件です",
     "An empty field uses the system website address. If Passkeys already work, keep the existing domain.": "空欄の場合はシステムのサイトアドレスが使われます。パスキーが正常に使えている場合は、既存のドメインを維持してください。",

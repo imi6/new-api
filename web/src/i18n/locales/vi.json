@@ -584,6 +584,7 @@
     "Amount the user pays to purchase this plan (USD).": "Số tiền người dùng trả để mua gói này (USD).",
     "Amount the user pays to purchase this plan; the actual currency depends on the payment gateway.": "Số tiền người dùng trả để mua gói này; loại tiền tệ thực tế tùy thuộc vào cổng thanh toán.",
     "Amount to claim": "Số tiền nhận",
+    "Amount to pay": "Số tiền cần thanh toán",
     "Amount to pay:": "Amount due:",
     "An application can include at most {{max}} orders": "Mỗi yêu cầu chỉ được gồm tối đa {{max}} đơn hàng",
     "An empty field uses the system website address. If Passkeys already work, keep the existing domain.": "Nếu để trống, địa chỉ trang web của hệ thống sẽ được sử dụng. Nếu khóa truy cập đang hoạt động, hãy giữ tên miền hiện tại.",

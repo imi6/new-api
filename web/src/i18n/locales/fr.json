@@ -584,6 +584,7 @@
     "Amount the user pays to purchase this plan (USD).": "Montant que l'utilisateur paie pour acheter ce forfait (USD).",
     "Amount the user pays to purchase this plan; the actual currency depends on the payment gateway.": "Montant que l'utilisateur paie pour acheter ce forfait ; la devise réelle dépend de la passerelle de paiement.",
     "Amount to claim": "Montant à retirer",
+    "Amount to pay": "Montant à payer",
     "Amount to pay:": "Montant à payer :",
     "An application can include at most {{max}} orders": "Une demande peut contenir au plus {{max}} commandes",
     "An empty field uses the system website address. If Passkeys already work, keep the existing domain.": "Si ce champ est vide, l’adresse du site système est utilisée. Si les clés d’accès fonctionnent déjà, conservez le domaine actuel.",
