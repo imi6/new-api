@@ -125,7 +125,7 @@ export async function downloadInvoiceFile(
 }
 
 /** Reads the file name Go's mime.FormatMediaType writes, plain or RFC 5987. */
-export function parseDispositionFilename(header: unknown): string {
+function parseDispositionFilename(header: unknown): string {
   if (typeof header !== 'string') return ''
   const extended = /filename\*=(?:UTF-8|utf-8)''([^;]+)/.exec(header)
   if (extended) {
