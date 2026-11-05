@@ -7850,6 +7850,14 @@
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "Les {{count}} derniers dessins complets · comparaison en grille · sélectionnez-en un pour le lire en grand",
     "The last {{count}} answers · final answers compared with the expected one": "Les {{count}} dernières réponses · réponses finales comparées à la réponse attendue",
     "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Seul un aperçu de l'état du service est affiché. Le nombre de requêtes du site, le détail des requêtes et les informations internes des canaux ne sont pas publiés.",
-    "Cache hit rate": "Taux de succès du cache"
+    "Cache hit rate": "Taux de succès du cache",
+    "Channel status page": "Page d’état des canaux",
+    "What the channel status page shows. Changes appear within a minute.": "Ce qu’affiche la page d’état des canaux. Les changements apparaissent en moins d’une minute.",
+    "Show the cache hit rate": "Afficher le taux de succès du cache",
+    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "Chaque carte de groupe affiche la part des jetons d’entrée lus depuis le cache amont, sur les requêtes réelles des utilisateurs. Désactivé, les comptes ne sont pas conservés.",
+    "Cache hit rate window (minutes)": "Période du taux de succès du cache (minutes)",
+    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "La carte affiche le taux sur ce nombre de minutes récentes. Les comptes plus anciens sont supprimés, une période plus longue se remplit donc avec le temps.",
+    "Enter a whole number from 5 to 1440": "Saisissez un nombre entier entre 5 et 1440",
+    "Last {{count}} minutes": "{{count}} dernières minutes"
   }
 }
