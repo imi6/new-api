@@ -14,9 +14,13 @@ type headerNavAccess struct {
 	RequireAuth bool
 }
 
+// HeaderNavModuleGroupHealth is the group health page. Unlike the model
+// square and rankings it stays closed until an administrator opens it.
+const HeaderNavModuleGroupHealth = "groupHealth"
+
 func getHeaderNavAccess(module string) headerNavAccess {
 	fallback := headerNavAccess{
-		Enabled:     true,
+		Enabled:     module != HeaderNavModuleGroupHealth,
 		RequireAuth: false,
 	}
 
