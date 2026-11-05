@@ -52,6 +52,11 @@ export interface GroupHealthGroup {
   top_model: string
   /** The configured price ratio of the group, as on the pricing page. */
   group_ratio: number
+  /**
+   * Share of input tokens read from the upstream cache over the last
+   * `cache_hit_rate_minutes`, in percent; -1 when there is none.
+   */
+  cache_hit_rate: number
   last_sample_at: number
   total: GroupHealthBar
   bars: GroupHealthBar[]
@@ -109,6 +114,10 @@ export interface GroupHealthData {
   range: GroupHealthRange
   real_traffic_enabled: boolean
   probe_enabled: boolean
+  /** The administrator shows cache hit rates on the page. */
+  cache_hit_rate_enabled: boolean
+  /** The window of each card's cache hit rate. */
+  cache_hit_rate_minutes: number
   total: GroupHealthBar
   groups: GroupHealthGroup[]
 }

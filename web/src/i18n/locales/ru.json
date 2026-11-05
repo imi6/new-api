@@ -8204,6 +8204,14 @@
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "Последние {{count}} готовых рисунков · сравнение сеткой · выберите рисунок, чтобы открыть его крупно",
     "The last {{count}} answers · final answers compared with the expected one": "Последние {{count}} ответов · итоговые ответы сравниваются с ожидаемым",
     "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Показывается только общая картина работоспособности сервиса. Количество запросов сайта, отдельные запросы и внутренние данные каналов не публикуются.",
-    "Cache hit rate": "Доля попаданий в кэш"
+    "Cache hit rate": "Доля попаданий в кэш",
+    "Channel status page": "Страница состояния каналов",
+    "What the channel status page shows. Changes appear within a minute.": "Что показывает страница состояния каналов. Изменения появляются в течение минуты.",
+    "Show the cache hit rate": "Показывать долю попаданий в кэш",
+    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "Каждая карточка группы показывает долю входных токенов, прочитанных из кэша провайдера, по реальным запросам пользователей. При выключении счётчики не сохраняются.",
+    "Cache hit rate window (minutes)": "Период доли попаданий в кэш (минуты)",
+    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "Карточка показывает долю за это число последних минут. Более старые счётчики удаляются, поэтому больший период заполняется со временем.",
+    "Enter a whole number from 5 to 1440": "Введите целое число от 5 до 1440",
+    "Last {{count}} minutes": "Последние {{count}} мин"
   }
 }

@@ -8204,6 +8204,14 @@
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宫格对比 · 点击作品放大播放",
     "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最终答案与标准答案比对",
     "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "仅展示服务健康概况，不公开站点请求数量、逐请求记录或内部渠道信息。",
-    "Cache hit rate": "缓存命中率"
+    "Cache hit rate": "缓存命中率",
+    "Channel status page": "渠道状态页",
+    "What the channel status page shows. Changes appear within a minute.": "渠道状态页显示的内容。保存后一分钟内生效。",
+    "Show the cache hit rate": "显示缓存命中率",
+    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "每个分组卡片显示真实用户请求中，从上游缓存读取的输入 token 占比。关闭后不再记录。",
+    "Cache hit rate window (minutes)": "缓存命中率统计时长（分钟）",
+    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "卡片显示最近这么多分钟的命中率。超过这个时长的记录会被删除，所以调大后需要时间重新积累。",
+    "Enter a whole number from 5 to 1440": "请输入 5 到 1440 之间的整数",
+    "Last {{count}} minutes": "近 {{count}} 分钟"
   }
 }
