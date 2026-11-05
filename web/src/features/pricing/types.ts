@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { GroupRatioChange } from '@/components/ratio-change-badge'
+
 // ----------------------------------------------------------------------------
 // Pricing Types
 // ----------------------------------------------------------------------------
@@ -127,6 +129,8 @@ export type PricingData = {
   data: PricingModel[]
   vendors: PricingVendor[]
   group_ratio: Record<string, number>
+  /** Recent ratio changes of the shown groups, or new groups. */
+  group_ratio_changes?: Record<string, GroupRatioChange>
   usable_group: Record<string, { desc: string; ratio: number }>
   supported_endpoint: Record<string, string>
   auto_groups: string[]

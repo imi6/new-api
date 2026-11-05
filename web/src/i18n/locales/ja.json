@@ -7885,6 +7885,16 @@
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "カードには直近この分数のヒット率を表示します。これより古い記録は削除されるため、期間を長くすると再び蓄積されるまで時間がかかります。",
     "Enter a whole number from 5 to 1440": "5 から 1440 までの整数を入力してください",
     "Last {{count}} minutes": "直近 {{count}} 分",
-    "Check this group now": "このグループを今すぐ検査"
+    "Check this group now": "このグループを今すぐ検査",
+    "New": "新規",
+    "New group, added on {{date}}": "新しいグループ、{{date}} に追加",
+    "Ratio changed from {{from}}x to {{to}}x on {{date}}": "{{date}} に倍率が {{from}}x から {{to}}x に変更されました",
+    "Ratio change notice": "倍率変更の通知",
+    "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.": "グループ倍率が新しい値で保存されると、キーの作成時、料金ページ、チャネル状態ページの倍率の横に変化の幅が表示されます。",
+    "Show ratio changes": "倍率の変化を表示",
+    "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "値下げは緑の下向き矢印、値上げはオレンジの上向き矢印、新しいグループは「新規」で示します。グループに専用倍率があるユーザーには、そのグループのマークは表示されません。",
+    "Days a change stays marked": "変化マークの表示日数",
+    "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "この期間内の複数回の変更はまとめて表示します：最初の変更前の倍率から現在の倍率まで。この機能の追加前の変更は分かりません。",
+    "Enter a whole number from 1 to 30": "1 から 30 までの整数を入力してください"
   }
 }
