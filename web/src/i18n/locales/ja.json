@@ -7856,6 +7856,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "1 問の回答に 1〜数分かかり、絵はさらに長くかかります。このページを離れてもチェックは続きます。",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "完了：合格 {{passed}} 問、不合格 {{failed}} 問、判定不能または失敗 {{other}} 問。",
     "See the answers on the channel status page": "チャネルステータスページで回答を見る",
-    "The check run failed.": "チェックの実行に失敗しました。"
+    "The check run failed.": "チェックの実行に失敗しました。",
+    "Cut off at the max output tokens": "最大出力トークンで打ち切られた",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "回答が最大出力トークンで止まりました。設定で上限を上げてください。",
+    "{{count}} tokens": "{{count}} トークン"
   }
 }
