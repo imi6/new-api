@@ -7752,7 +7752,6 @@
     "Avg latency · {{range}}": "Avg latency · {{range}}",
     "Channel checks": "Channel checks",
     "Check latency": "Check latency",
-    "Click a card to see details": "Click a card to see details",
     "Groups that users can choose appear here.": "Groups that users can choose appear here.",
     "Last 12 weeks": "Last 12 weeks",
     "Last 24 hours": "Last 24 hours",
@@ -7773,7 +7772,6 @@
     "User requests": "User requests",
     "User requests {{real}}, channel checks {{probe}}": "User requests {{real}}, channel checks {{probe}}",
     "View details of {{name}}": "View details of {{name}}",
-    "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} groups are healthy",
     "Require login to view channel status": "Require login to view channel status",
     "Visitors must authenticate before accessing the channel status page.": "Visitors must authenticate before accessing the channel status page.",
     "Unable to load channel status": "Unable to load channel status",
@@ -7879,6 +7877,7 @@
     "Stored results": "Stored results",
     "What to delete": "What to delete",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "The last {{count}} complete drawings · grid comparison · select one to play it large",
-    "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one"
+    "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one",
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published."
   }
 }
