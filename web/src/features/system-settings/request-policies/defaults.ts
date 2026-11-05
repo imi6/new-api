@@ -92,7 +92,7 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
   'intelligence_check_setting.pelican_enabled': true,
   'intelligence_check_setting.pelican_interval_hours': 24,
   'intelligence_check_setting.pelican_prompt': '',
-  'intelligence_check_setting.pelican_max_tokens': 16384,
+  'intelligence_check_setting.pelican_max_tokens': 32000,
   'channel_affinity_setting.enabled': false,
   'channel_affinity_setting.session_mode': '',
   'channel_affinity_setting.switch_on_success': true,
