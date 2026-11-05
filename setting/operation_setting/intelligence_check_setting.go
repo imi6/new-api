@@ -59,7 +59,8 @@ const (
 	defaultCandyIntervalHours   = 6
 	defaultCandyMaxTokens       = 8192
 	defaultPelicanIntervalHours = 24
-	defaultPelicanMaxTokens     = 16384
+	// A thinking model spends part of the limit before writing the page.
+	defaultPelicanMaxTokens = 32000
 
 	// DefaultCandyAnswer is the answer to DefaultCandyPrompt: draw 9 round and
 	// 12 star candies, since shape can be told apart by touch.
