@@ -83,7 +83,7 @@ export function useTopNavLinks(): TopNavLink[] {
   if (groupHealth && typeof groupHealth === 'object' && groupHealth.enabled) {
     const requiresAuth = groupHealth.requireAuth && !isAuthed
     links.push({
-      title: t('Group health'),
+      title: t('Channel Status'),
       href: '/group-health',
       requiresAuth,
     })
