@@ -7892,6 +7892,16 @@
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "Карточка показывает долю за это число последних минут. Более старые счётчики удаляются, поэтому больший период заполняется со временем.",
     "Enter a whole number from 5 to 1440": "Введите целое число от 5 до 1440",
     "Last {{count}} minutes": "Последние {{count}} мин",
-    "Check this group now": "Проверить эту группу сейчас"
+    "Check this group now": "Проверить эту группу сейчас",
+    "New": "Новая",
+    "New group, added on {{date}}": "Новая группа, добавлена {{date}}",
+    "Ratio changed from {{from}}x to {{to}}x on {{date}}": "Коэффициент изменён с {{from}}x на {{to}}x {{date}}",
+    "Ratio change notice": "Уведомление об изменении коэффициента",
+    "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.": "Когда коэффициент группы сохраняется с новым значением, пользователи видят, насколько он изменился, рядом с коэффициентом: при создании ключа, на странице цен и на странице состояния каналов.",
+    "Show ratio changes": "Показывать изменения коэффициента",
+    "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "Снижение отмечается зелёной стрелкой вниз, повышение — оранжевой стрелкой вверх, новая группа — меткой «Новая». Пользователи со специальным коэффициентом для группы не видят метку на ней.",
+    "Days a change stays marked": "Сколько дней показывать изменение",
+    "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Несколько изменений за это время показываются как одно: от коэффициента до первого изменения до текущего. Изменения до появления этой функции неизвестны.",
+    "Enter a whole number from 1 to 30": "Введите целое число от 1 до 30"
   }
 }

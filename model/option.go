@@ -321,7 +321,16 @@ func UpdateOption(key string, value string) error {
 	// otherwise it will execute Update (with all fields).
 	DB.Save(&option)
 	// Update OptionMap
-	return updateOptionMap(key, value)
+	if !groupRatioOptionKeys[key] {
+		return updateOptionMap(key, value)
+	}
+	// Record what the save changed, so users see recent ratio changes.
+	before := ratio_setting.GetGroupRatioCopy()
+	if err := updateOptionMap(key, value); err != nil {
+		return err
+	}
+	recordGroupRatioChanges(before, ratio_setting.GetGroupRatioCopy())
+	return nil
 }
 
 // UpdateOptionsBulk persists multiple key/value pairs in a single database

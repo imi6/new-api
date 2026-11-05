@@ -116,6 +116,8 @@ const defaultBillingSettings: BillingSettings = {
   'checkin_setting.enabled': false,
   'checkin_setting.min_quota': 1000,
   'checkin_setting.max_quota': 10000,
+  'ratio_change_setting.enabled': true,
+  'ratio_change_setting.days': 3,
   'invoice_setting.enabled': false,
   'invoice_setting.tax_rate': 6,
   'invoice_setting.special_tax_rate': 6,

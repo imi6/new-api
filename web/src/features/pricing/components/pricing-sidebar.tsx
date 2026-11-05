@@ -20,6 +20,10 @@ import { ChevronDown, RotateCcw } from 'lucide-react'
 import { memo, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import {
+  type GroupRatioChange,
+  RatioChangeBadge,
+} from '@/components/ratio-change-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,6 +50,8 @@ type FilterOption = {
   count?: number
   suffix?: string
   icon?: ReactNode
+  /** Shown after the suffix, such as a group's recent ratio change. */
+  badge?: ReactNode
 }
 
 type FilterSectionProps = {
@@ -69,6 +75,8 @@ export interface PricingSidebarProps {
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
+  /** Recent ratio changes, marked on each group's chip. */
+  groupRatioChanges?: Record<string, GroupRatioChange>
   tags: string[]
   models: PricingModel[]
   hasActiveFilters: boolean
@@ -115,6 +123,7 @@ function FilterChip(props: {
           {props.option.suffix ?? props.option.count}
         </span>
       )}
+      {props.option.badge}
     </Button>
   )
 }
@@ -204,6 +213,7 @@ export const PricingSidebar = memo(function PricingSidebar(
       value: group,
       label: group,
       suffix: formatGroupRatio(props.groupRatios?.[group]),
+      badge: <RatioChangeBadge change={props.groupRatioChanges?.[group]} />,
     })),
   ]
 
