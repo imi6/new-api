@@ -7761,7 +7761,6 @@
     "Avg latency · {{range}}": "平均遅延 · {{range}}",
     "Channel checks": "チャネルテスト",
     "Check latency": "テスト遅延",
-    "Click a card to see details": "カードをクリックすると詳細を表示します",
     "Groups that users can choose appear here.": "ユーザーが選べるグループがここに表示されます。",
     "Last 12 weeks": "直近 12 週間",
     "Last 24 hours": "直近 24 時間",
@@ -7782,7 +7781,6 @@
     "User requests": "ユーザーのリクエスト",
     "User requests {{real}}, channel checks {{probe}}": "ユーザーのリクエスト {{real}} 件、チャネルテスト {{probe}} 件",
     "View details of {{name}}": "{{name}} の詳細を表示",
-    "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} 個のグループが正常です",
     "Require login to view channel status": "チャネルステータスの閲覧にログインを必須にする",
     "Visitors must authenticate before accessing the channel status page.": "訪問者はチャネルステータスページにアクセスする前にログインする必要があります。",
     "Unable to load channel status": "チャネルステータスを読み込めません",
@@ -7888,6 +7886,7 @@
     "Stored results": "チェック記録",
     "What to delete": "削除する範囲",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "直近 {{count}} 件の完成作品 · グリッドで比較 · 作品を選ぶと拡大して再生",
-    "The last {{count}} answers · final answers compared with the expected one": "直近 {{count}} 件の回答 · 最終回答を正解と照合"
+    "The last {{count}} answers · final answers compared with the expected one": "直近 {{count}} 件の回答 · 最終回答を正解と照合",
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "サービスの稼働概況のみを表示します。サイトのリクエスト数、個々のリクエスト記録、内部チャネル情報は公開しません。"
   }
 }
