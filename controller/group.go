@@ -36,6 +36,7 @@ func GetUserGroups(c *gin.Context) {
 	if common.GroupPlatformMap != "" {
 		_ = common.UnmarshalJsonStr(common.GroupPlatformMap, &groupPlatforms)
 	}
+	ratioChanges := model.RecentGroupRatioChanges()
 	for groupName := range ratio_setting.GetGroupRatioCopy() {
 		// UserUsableGroups contains the groups that the user can use
 		if desc, ok := userUsableGroups[groupName]; ok {
@@ -45,6 +46,13 @@ func GetUserGroups(c *gin.Context) {
 			}
 			if platform := groupPlatforms[groupName]; platform != "" {
 				info["platform"] = platform
+			}
+			// A user with a special ratio for the group does not pay the
+			// group ratio, so its change would mislead them.
+			if change, ok := ratioChanges[groupName]; ok {
+				if _, special := ratio_setting.GetGroupGroupRatio(userGroup, groupName); !special {
+					info["ratio_change"] = change
+				}
 			}
 			usableGroups[groupName] = info
 		}

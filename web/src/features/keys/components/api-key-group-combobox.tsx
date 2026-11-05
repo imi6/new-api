@@ -20,6 +20,7 @@ import { Check, ChevronsUpDown } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import type { GroupRatioChange } from '@/components/ratio-change-badge'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -49,6 +50,8 @@ export type ApiKeyGroupOption = {
   label: string
   desc?: string
   ratio?: number | string
+  /** The group ratio's recent change, or that the group is new. */
+  ratioChange?: GroupRatioChange
 }
 
 type ApiKeyGroupComboboxProps = {
