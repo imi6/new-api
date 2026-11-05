@@ -177,6 +177,31 @@ func GetGroupHealth(c *gin.Context) {
 	common.ApiSuccess(c, data)
 }
 
+type channelStatusCacheClearRequest struct {
+	// Before deletes the cache counts from before this time; zero deletes all.
+	Before int64 `json:"before"`
+}
+
+// ClearChannelStatusCache deletes the stored cache hit rate counts of every
+// group, all of them or those older than a time.
+func ClearChannelStatusCache(c *gin.Context) {
+	var req channelStatusCacheClearRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil || req.Before < 0 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	deleted, err := perfmetrics.ClearCacheStats(req.Before)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	// The page shows the cleared rates at once instead of after a minute.
+	groupHealthCacheMu.Lock()
+	groupHealthCache = map[string]groupHealthCacheEntry{}
+	groupHealthCacheMu.Unlock()
+	common.ApiSuccess(c, gin.H{"deleted": deleted})
+}
+
 // groupHealthBarStarts returns the start of every bar of the range, oldest
 // first, in the server's time zone.
 func groupHealthBarStarts(rangeName string, now time.Time) []int64 {

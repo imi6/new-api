@@ -962,6 +962,13 @@ export const STATIC_I18N_KEYS = [
   'Intelligence checks',
   'Channel status page',
   'Ratio change notice',
+  // Quick picks of the record clearing forms, passed through t().
+  '24 hours ago',
+  '7 days ago',
+  '30 days ago',
+  '10 minutes ago',
+  '30 minutes ago',
+  '1 hour ago',
   'Check at most 50 groups',
   'Enter a whole number of hours between 1 and 168',
   'Enter a whole number between 256 and 65536',
