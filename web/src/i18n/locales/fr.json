@@ -7877,6 +7877,8 @@
     "Results before a time": "Avant une date",
     "Results kept per group and question": "Résultats conservés par groupe et question",
     "Stored results": "Résultats stockés",
-    "What to delete": "Quoi supprimer"
+    "What to delete": "Quoi supprimer",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "Les {{count}} derniers dessins complets · comparaison en grille · sélectionnez-en un pour le lire en grand",
+    "The last {{count}} answers · final answers compared with the expected one": "Les {{count}} dernières réponses · réponses finales comparées à la réponse attendue"
   }
 }
