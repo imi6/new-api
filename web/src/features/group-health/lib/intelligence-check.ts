@@ -74,9 +74,14 @@ export function safeDrawingDocument(text: string): string {
   const csp =
     "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:\">"
   const page = stripCodeFence(text)
-  const head = /<head[^>]*>/i.exec(page)
-  if (head) {
-    const at = head.index + head[0].length
+  // After <head>, or else after <html> or the doctype: anything before the
+  // doctype would put the page in quirks mode.
+  const anchor =
+    /<head[^>]*>/i.exec(page) ??
+    /<html[^>]*>/i.exec(page) ??
+    /<!doctype[^>]*>/i.exec(page)
+  if (anchor) {
+    const at = anchor.index + anchor[0].length
     return page.slice(0, at) + csp + page.slice(at)
   }
   return csp + page
