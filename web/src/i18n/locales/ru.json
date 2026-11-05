@@ -7865,6 +7865,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "Каждый ответ может занять от одной до нескольких минут, рисунок дольше. Можно уйти со страницы — проверка продолжится.",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "Готово: пройдено {{passed}}, не пройдено {{failed}}, не оценено {{other}}.",
     "See the answers on the channel status page": "Ответы на странице статуса каналов",
-    "The check run failed.": "Проверка завершилась с ошибкой."
+    "The check run failed.": "Проверка завершилась с ошибкой.",
+    "Cut off at the max output tokens": "Обрезано на лимите выходных токенов",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "Ответ оборвался на лимите выходных токенов. Увеличьте лимит в настройках.",
+    "{{count}} tokens": "{{count}} токенов"
   }
 }
