@@ -31,6 +31,7 @@ const recentSuccessHistoryHours = 7 * 24
 
 func Init() {
 	go flushLoop()
+	go cacheStatLoop()
 }
 
 // RecordRelayResult samples one finished relay exactly once, at the request
@@ -57,6 +58,8 @@ func RecordRelayResult(ctx context.Context, info *relaycommon.RelayInfo, apiErr 
 	if generationMs <= 0 {
 		generationMs = latencyMs
 	}
+	// Kept apart from Record: the cache hit rate has its own switch.
+	recordCacheStat(info.UsingGroup, info.PerformanceInputTokens, info.PerformanceCacheReadTokens)
 	Record(Sample{
 		Model:           info.OriginModelName,
 		Group:           info.UsingGroup,
