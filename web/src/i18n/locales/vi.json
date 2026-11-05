@@ -7873,6 +7873,7 @@
     "Cache hit rate window (minutes)": "Khoảng thời gian tính tỷ lệ trúng bộ nhớ đệm (phút)",
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "Thẻ hiển thị tỷ lệ trong số phút gần nhất này. Số liệu cũ hơn sẽ bị xóa, nên khoảng dài hơn cần thời gian để tích lũy lại.",
     "Enter a whole number from 5 to 1440": "Nhập số nguyên từ 5 đến 1440",
-    "Last {{count}} minutes": "{{count}} phút gần nhất"
+    "Last {{count}} minutes": "{{count}} phút gần nhất",
+    "Check this group now": "Kiểm tra nhóm này ngay"
   }
 }
