@@ -63,6 +63,18 @@ export async function clearIntelligenceChecks(before: number) {
   return requireServerSuccess(response.data).data
 }
 
+/**
+ * Deletes the stored cache hit rate counts from before the time, or all of
+ * them when before is zero.
+ */
+export async function clearChannelStatusCache(before: number) {
+  const response = await api.post<Response<{ deleted: number }>>(
+    '/api/option/channel_status/cache/clear',
+    { before }
+  )
+  return requireServerSuccess(response.data).data
+}
+
 /** The intelligence check run in progress, if any. */
 export async function getActiveIntelligenceCheckRun() {
   const response = await api.get<Response<IntelligenceCheckRun | null>>(

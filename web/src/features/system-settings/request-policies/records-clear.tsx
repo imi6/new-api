@@ -29,43 +29,54 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { formatTimestampToDate } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 
-import { clearIntelligenceChecks } from './api'
-
 type ClearScope = 'before' | 'all'
 
-const DAY_MS = 24 * 3600 * 1000
+/** A button that sets the time to this many minutes ago. */
+export type ClearQuickPick = { labelKey: string; minutes: number }
 
-const QUICK_PICKS = [
-  { labelKey: '24 hours ago', days: 1 },
-  { labelKey: '7 days ago', days: 7 },
-  { labelKey: '30 days ago', days: 30 },
-] as const
+interface RecordsClearProps {
+  /** Heading and confirm dialog title. */
+  title: string
+  /** Deletes the records before the Unix time, or all when it is zero. */
+  clear: (before: number) => Promise<{ deleted: number }>
+  /** Queries that show the records, refreshed after a clear. */
+  invalidateKeys: string[][]
+  quickPicks: readonly ClearQuickPick[]
+  /** Minutes ago the time starts at. */
+  defaultMinutes: number
+  /** The confirm text for deleting all records. */
+  allDescription: string
+  /** The confirm text for deleting records before the formatted time. */
+  beforeDescription: (time: string) => string
+  /** The toast after a clear. */
+  successMessage: (deleted: number) => string
+}
 
 /**
- * Deletes stored intelligence check results: those older than a chosen time,
- * or all of them. A check still running is left alone, and the next
- * scheduled check still waits its interval.
+ * Deletes stored records: those older than a chosen time, or all of them,
+ * after a confirmation. Scope, time, quick picks and the button share one
+ * row and wrap only when it is too narrow.
  */
-export function IntelligenceCheckClear() {
+export function RecordsClear(props: RecordsClearProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [scope, setScope] = useState<ClearScope>('before')
   const [before, setBefore] = useState<Date | undefined>(
-    () => new Date(Date.now() - 7 * DAY_MS)
+    () => new Date(Date.now() - props.defaultMinutes * 60_000)
   )
   const [confirming, setConfirming] = useState(false)
 
   const clear = useMutation({
     mutationFn: () =>
-      clearIntelligenceChecks(
+      props.clear(
         scope === 'all' || !before ? 0 : Math.floor(before.getTime() / 1000)
       ),
     onSuccess: (data) => {
       setConfirming(false)
-      toast.success(
-        t('Deleted {{count}} check results.', { count: data.deleted })
-      )
-      void queryClient.invalidateQueries({ queryKey: ['intelligence-checks'] })
+      toast.success(props.successMessage(data.deleted))
+      for (const queryKey of props.invalidateKeys) {
+        void queryClient.invalidateQueries({ queryKey })
+      }
     },
     onError: (error) => handleServerError(error),
     meta: { errorToast: false },
@@ -74,23 +85,14 @@ export function IntelligenceCheckClear() {
   const canClear = scope === 'all' || before !== undefined
   const description =
     scope === 'all'
-      ? t(
-          'All stored check results are deleted, for every group. This cannot be undone.'
-        )
-      : t(
-          'Check results from before {{time}} are deleted, for every group. This cannot be undone.',
-          {
-            time: before
-              ? formatTimestampToDate(before.getTime(), 'milliseconds')
-              : '',
-          }
+      ? props.allDescription
+      : props.beforeDescription(
+          before ? formatTimestampToDate(before.getTime(), 'milliseconds') : ''
         )
 
   return (
     <div className='flex flex-col gap-2'>
-      <span className='text-sm font-medium'>{t('Clear check results')}</span>
-      {/* Scope, time, quick picks and the button share one row and wrap
-          only when the column is too narrow. */}
+      <span className='text-sm font-medium'>{props.title}</span>
       <div className='flex flex-wrap items-center gap-2'>
         <ToggleGroup
           value={[scope]}
@@ -116,14 +118,14 @@ export function IntelligenceCheckClear() {
           />
         )}
         {scope === 'before' &&
-          QUICK_PICKS.map((pick) => (
+          props.quickPicks.map((pick) => (
             <Button
               key={pick.labelKey}
               type='button'
               variant='outline'
               size='sm'
               onClick={() =>
-                setBefore(new Date(Date.now() - pick.days * DAY_MS))
+                setBefore(new Date(Date.now() - pick.minutes * 60_000))
               }
             >
               {t(pick.labelKey)}
@@ -146,7 +148,7 @@ export function IntelligenceCheckClear() {
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title={t('Clear check results')}
+        title={props.title}
         desc={description}
         handleConfirm={() => clear.mutate()}
         isLoading={clear.isPending}
