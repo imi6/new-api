@@ -54,6 +54,9 @@ type groupHealthGroup struct {
 	LastSampleAt int64            `json:"last_sample_at"`
 	Total        groupHealthBar   `json:"total"`
 	Bars         []groupHealthBar `json:"bars"`
+	// IntelligenceCheck is set when the group is listed for intelligence
+	// checks, which shows the check button on its card.
+	IntelligenceCheck bool `json:"intelligence_check"`
 }
 
 type groupHealthResponse struct {
@@ -313,14 +316,15 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 		}
 
 		response.Groups = append(response.Groups, groupHealthGroup{
-			Name:         group,
-			Desc:         usable[group],
-			Platform:     platforms[group],
-			Status:       status,
-			TopModel:     topModel,
-			LastSampleAt: lastSample[group],
-			Total:        total.bar(windowStart),
-			Bars:         bars,
+			Name:              group,
+			Desc:              usable[group],
+			Platform:          platforms[group],
+			Status:            status,
+			TopModel:          topModel,
+			LastSampleAt:      lastSample[group],
+			Total:             total.bar(windowStart),
+			Bars:              bars,
+			IntelligenceCheck: operation_setting.IntelligenceCheckTargetModel(group) != "",
 		})
 	}
 	response.Total = overall.bar(windowStart)
