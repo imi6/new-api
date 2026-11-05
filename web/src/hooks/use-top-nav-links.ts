@@ -84,7 +84,7 @@ export function useTopNavLinks(): TopNavLink[] {
     const requiresAuth = groupHealth.requireAuth && !isAuthed
     links.push({
       title: t('Channel Status'),
-      href: '/group-health',
+      href: '/health',
       requiresAuth,
     })
   }
