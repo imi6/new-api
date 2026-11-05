@@ -7835,7 +7835,6 @@
     "Save the settings first.": "请先保存设置。",
     "Sent as the user message.": "作为用户消息发送。",
     "Show full answer": "展开完整回答",
-    "Source code": "源码",
     "The answer format can have at most {{max}} characters": "答案格式要求最多 {{max}} 个字符",
     "The answer was too long and is shown cut short.": "回答过长，只显示了前面一部分。",
     "The expected answer can have at most {{max}} characters": "标准答案最多 {{max}} 个字符",
@@ -7861,6 +7860,13 @@
     "The check run failed.": "本次检测运行失败。",
     "Cut off at the max output tokens": "达到最大输出 token，被截断",
     "The answer stopped at the max output tokens. Raise the limit in the settings.": "回答在最大输出 token 处被截断，请在设置里调大上限。",
-    "{{count}} tokens": "{{count}} tokens"
+    "{{count}} tokens": "{{count}} tokens",
+    "Back to all drawings": "返回作品列表",
+    "Stop preview": "停止预览",
+    "Play preview": "播放预览",
+    "Preview stopped": "预览已停止",
+    "View source": "查看源码",
+    "View drawing": "查看作品",
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "作品是模型输出的原样内容，运行在沙箱里，无法访问本站。"
   }
 }
