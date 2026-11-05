@@ -270,6 +270,10 @@ func UpdateOption(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err := operation_setting.ValidateRatioChangeSettingOption(option.Key, option.Value.(string)); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	if option.Key == "TaskPublicAddress" && option.Value.(string) != "" {
 		if err := service.ValidateTaskArtifactBaseURL(option.Value.(string)); err != nil {
 			common.ApiError(c, err)

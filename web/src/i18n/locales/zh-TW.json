@@ -7883,6 +7883,16 @@
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "卡片顯示最近這麼多分鐘的命中率。超過這個時長的記錄會被刪除，所以調大後需要時間重新累積。",
     "Enter a whole number from 5 to 1440": "請輸入 5 到 1440 之間的整數",
     "Last {{count}} minutes": "近 {{count}} 分鐘",
-    "Check this group now": "立即檢測這個分組"
+    "Check this group now": "立即檢測這個分組",
+    "New": "新",
+    "New group, added on {{date}}": "新分組，{{date}} 上線",
+    "Ratio changed from {{from}}x to {{to}}x on {{date}}": "{{date}} 倍率由 {{from}}x 調整為 {{to}}x",
+    "Ratio change notice": "倍率變動提示",
+    "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.": "分組倍率儲存為新值後，使用者在建立金鑰、模型廣場和渠道狀態頁的倍率旁能看到變化幅度。",
+    "Show ratio changes": "顯示倍率變化",
+    "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "降價顯示綠色向下箭頭，漲價顯示橙色向上箭頭，新分組顯示「新」。對某個分組享有專屬倍率的使用者，不會在該分組上看到標記。",
+    "Days a change stays marked": "變化標記顯示天數",
+    "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "這段時間內的多次調整合併顯示：從第一次調整前的倍率到現在的倍率。功能上線前的調整無法得知。",
+    "Enter a whole number from 1 to 30": "請輸入 1 到 30 之間的整數"
   }
 }
