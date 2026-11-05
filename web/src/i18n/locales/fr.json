@@ -7892,6 +7892,16 @@
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "La carte affiche le taux sur ce nombre de minutes récentes. Les comptes plus anciens sont supprimés, une période plus longue se remplit donc avec le temps.",
     "Enter a whole number from 5 to 1440": "Saisissez un nombre entier entre 5 et 1440",
     "Last {{count}} minutes": "{{count}} dernières minutes",
-    "Check this group now": "Vérifier ce groupe maintenant"
+    "Check this group now": "Vérifier ce groupe maintenant",
+    "New": "Nouveau",
+    "New group, added on {{date}}": "Nouveau groupe, ajouté le {{date}}",
+    "Ratio changed from {{from}}x to {{to}}x on {{date}}": "Coefficient passé de {{from}}x à {{to}}x le {{date}}",
+    "Ratio change notice": "Avis de changement de coefficient",
+    "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.": "Lorsqu’un coefficient de groupe est enregistré avec une nouvelle valeur, les utilisateurs voient de combien il a changé à côté du coefficient, lors de la création d’une clé, sur la page des tarifs et sur la page d’état des canaux.",
+    "Show ratio changes": "Afficher les changements de coefficient",
+    "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "Un coefficient moins cher est marqué en vert avec une flèche vers le bas, un plus cher en orange avec une flèche vers le haut, et un nouveau groupe avec Nouveau. Les utilisateurs ayant un coefficient spécial pour un groupe n’y voient aucune marque.",
+    "Days a change stays marked": "Jours pendant lesquels un changement reste marqué",
+    "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Plusieurs changements pendant cette période s’affichent comme un seul : du coefficient avant le premier au coefficient actuel. Les changements antérieurs à cette fonction ne sont pas connus.",
+    "Enter a whole number from 1 to 30": "Saisissez un nombre entier entre 1 et 30"
   }
 }
