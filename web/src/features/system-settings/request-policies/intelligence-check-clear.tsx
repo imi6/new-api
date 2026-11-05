@@ -89,34 +89,32 @@ export function IntelligenceCheckClear() {
   return (
     <div className='flex flex-col gap-2'>
       <span className='text-sm font-medium'>{t('Clear check results')}</span>
-      <ToggleGroup
-        value={[scope]}
-        onValueChange={(values) => {
-          const next = values.find((value) => value !== scope)
-          if (next) setScope(next as ClearScope)
-        }}
-        aria-label={t('What to delete')}
-        variant='outline'
-        size='sm'
-        spacing={2}
-        className='self-start'
-      >
-        <ToggleGroupItem value='before'>
-          {t('Results before a time')}
-        </ToggleGroupItem>
-        <ToggleGroupItem value='all'>{t('All results')}</ToggleGroupItem>
-      </ToggleGroup>
-
-      {scope === 'before' && (
-        <DateTimePicker
-          value={before}
-          onChange={setBefore}
-          className='w-full max-w-sm'
-        />
-      )}
-
-      {/* The quick picks and the button share a row to keep it short. */}
+      {/* Scope, time, quick picks and the button share one row and wrap
+          only when the column is too narrow. */}
       <div className='flex flex-wrap items-center gap-2'>
+        <ToggleGroup
+          value={[scope]}
+          onValueChange={(values) => {
+            const next = values.find((value) => value !== scope)
+            if (next) setScope(next as ClearScope)
+          }}
+          aria-label={t('What to delete')}
+          variant='outline'
+          size='sm'
+          spacing={2}
+        >
+          <ToggleGroupItem value='before'>
+            {t('Results before a time')}
+          </ToggleGroupItem>
+          <ToggleGroupItem value='all'>{t('All results')}</ToggleGroupItem>
+        </ToggleGroup>
+        {scope === 'before' && (
+          <DateTimePicker
+            value={before}
+            onChange={setBefore}
+            className='w-full sm:w-80'
+          />
+        )}
         {scope === 'before' &&
           QUICK_PICKS.map((pick) => (
             <Button
