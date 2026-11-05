@@ -7882,6 +7882,7 @@
     "Cache hit rate window (minutes)": "Cache hit rate window (minutes)",
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.",
     "Enter a whole number from 5 to 1440": "Enter a whole number from 5 to 1440",
-    "Last {{count}} minutes": "Last {{count}} minutes"
+    "Last {{count}} minutes": "Last {{count}} minutes",
+    "Check this group now": "Check this group now"
   }
 }
