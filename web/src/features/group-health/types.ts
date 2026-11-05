@@ -36,6 +36,11 @@ export interface GroupHealthBar {
   has_data: boolean
   avg_latency_ms: number
   latency_source: GroupHealthLatencySource
+  /**
+   * Share of input tokens read from the upstream cache, in percent, over
+   * real requests; -1 when none reported input tokens.
+   */
+  cache_hit_rate: number
 }
 
 export interface GroupHealthGroup {
