@@ -25,17 +25,14 @@ import type { GroupHealthRange } from '../types'
 
 /**
  * Group health for a range. The server caches each range for 60 seconds, so
- * refetching faster than that returns the same numbers.
+ * refetching faster than that returns the same numbers. The page refreshes it
+ * on its own countdown.
  */
-export function useGroupHealth(
-  range: GroupHealthRange,
-  options: { refetchIntervalMs?: number; enabled?: boolean } = {}
-) {
+export function useGroupHealth(range: GroupHealthRange, enabled = true) {
   return useQuery({
     queryKey: ['group-health', range],
     queryFn: async () => requireServerSuccess(await getGroupHealth(range)).data,
-    refetchInterval: options.refetchIntervalMs ?? false,
-    enabled: options.enabled ?? true,
+    enabled,
     placeholderData: (previous) => previous,
   })
 }
