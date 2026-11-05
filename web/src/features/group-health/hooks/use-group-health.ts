@@ -44,5 +44,13 @@ export function useIntelligenceChecks(group: string | null) {
     queryFn: async () =>
       requireServerSuccess(await getIntelligenceChecks(group ?? '')).data,
     enabled: group !== null,
+    // While a check runs, poll so "checking now" turns into its result.
+    refetchInterval: (query) => {
+      const data = query.state.data
+      const checks = [...(data?.candy ?? []), ...(data?.pelican ?? [])]
+      return checks.some((check) => check.status === 'running')
+        ? 15_000
+        : false
+    },
   })
 }
