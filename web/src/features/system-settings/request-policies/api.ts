@@ -1,6 +1,8 @@
 import { api } from '@/lib/api'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
+import type { SystemTask } from '../types'
+
 export type PolicyConfig = {
   options: Record<string, string>
 }
@@ -31,10 +33,35 @@ export async function getIntelligenceCheckModels() {
   )
   return requireServerSuccess(response.data).data
 }
-/** Queues a run of every enabled intelligence check. */
+/**
+ * Queues a run of every enabled intelligence check, or returns the run
+ * already going.
+ */
 export async function runIntelligenceChecksNow() {
-  const response = await api.post<Response<{ task_id: string }>>(
-    '/api/option/intelligence_check/run'
+  const response = await api.post<
+    Response<{ task_id: string; already_running: boolean }>
+  >('/api/option/intelligence_check/run')
+  return requireServerSuccess(response.data).data
+}
+
+export type IntelligenceCheckRun = SystemTask<
+  Record<string, unknown>,
+  { total: number; processed: number; progress: number },
+  { checked: number; passed: number; failed: number; other: number }
+>
+
+/** The intelligence check run in progress, if any. */
+export async function getActiveIntelligenceCheckRun() {
+  const response = await api.get<Response<IntelligenceCheckRun | null>>(
+    '/api/system-task/current',
+    { params: { type: 'intelligence_check' } }
+  )
+  return requireServerSuccess(response.data).data
+}
+
+export async function getIntelligenceCheckRun(taskId: string) {
+  const response = await api.get<Response<IntelligenceCheckRun>>(
+    `/api/system-task/${taskId}`
   )
   return requireServerSuccess(response.data).data
 }
