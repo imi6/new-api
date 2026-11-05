@@ -9,12 +9,21 @@ import (
 	"github.com/QuantumNous/new-api/setting/config"
 )
 
-// IntelligenceCheckTarget names the model checked in one group. A group
-// appears at most once.
+// IntelligenceCheckTarget names the model checked in one group and the
+// questions it is asked. A group appears at most once. A question left unset
+// is asked, so targets saved before the choice existed keep both.
 type IntelligenceCheckTarget struct {
-	Group string `json:"group"`
-	Model string `json:"model"`
+	Group   string `json:"group"`
+	Model   string `json:"model"`
+	Candy   *bool  `json:"candy,omitempty"`
+	Pelican *bool  `json:"pelican,omitempty"`
 }
+
+// RunsCandy reports whether the group is asked the candy question.
+func (t IntelligenceCheckTarget) RunsCandy() bool { return t.Candy == nil || *t.Candy }
+
+// RunsPelican reports whether the group is asked for the pelican drawing.
+func (t IntelligenceCheckTarget) RunsPelican() bool { return t.Pelican == nil || *t.Pelican }
 
 // IntelligenceCheckSetting holds the scheduled "dumbed-down model" checks
 // shown on the channel status page. They are stored as
@@ -91,15 +100,22 @@ func GetIntelligenceCheckSetting() *IntelligenceCheckSetting {
 	return &intelligenceCheckSetting
 }
 
+// IntelligenceCheckTargetFor returns the check settings of the group, if it
+// is checked.
+func IntelligenceCheckTargetFor(group string) (IntelligenceCheckTarget, bool) {
+	for _, target := range intelligenceCheckSetting.Targets {
+		if target.Group == group {
+			return target, true
+		}
+	}
+	return IntelligenceCheckTarget{}, false
+}
+
 // IntelligenceCheckTargetModel returns the model checked in the group, or
 // empty when the group is not checked.
 func IntelligenceCheckTargetModel(group string) string {
-	for _, target := range intelligenceCheckSetting.Targets {
-		if target.Group == group {
-			return target.Model
-		}
-	}
-	return ""
+	target, _ := IntelligenceCheckTargetFor(group)
+	return target.Model
 }
 
 // IntelligenceCheckInterval clamps a stored interval to the allowed range.
@@ -163,6 +179,9 @@ func ValidateIntelligenceCheckSettingOption(key, value string) error {
 			}
 			if seen[target.Group] {
 				return common.NewMessage("Each group can be checked only once")
+			}
+			if !target.RunsCandy() && !target.RunsPelican() {
+				return common.NewMessage("Choose at least one question for every group")
 			}
 			seen[target.Group] = true
 		}
