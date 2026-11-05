@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
 import { MultiSelect } from '@/components/multi-select'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Collapsible,
@@ -100,6 +101,19 @@ function PlatformIcon(props: { name: string }) {
     <span aria-hidden='true' className='flex size-4 shrink-0 items-center justify-center'>
       <ChannelTypeLogo type={Number(props.name)} size={16} />
     </span>
+  )
+}
+
+/**
+ * A group's ratio, highlighted like the channel status cards: it is what a
+ * user compares when choosing a group.
+ */
+function GroupRatioBadge(props: { ratio: number | string }) {
+  const { t } = useTranslation()
+  return (
+    <Badge variant='warning' className='shrink-0 tabular-nums'>
+      {formatApiKeyGroupRatio(props.ratio)} {t('Ratio')}
+    </Badge>
   )
 }
 
@@ -655,8 +669,13 @@ export function ApiKeyCreateDialog({
                         )}
                       >
                         <span className='min-w-0 flex-1'>
-                          <span className='block truncate text-sm font-medium'>
-                            {group.label}
+                          <span className='flex min-w-0 items-center gap-1.5'>
+                            <PlatformIcon
+                              name={apiKeyGroupPlatform(group.label, platformMap)}
+                            />
+                            <span className='truncate text-sm font-medium'>
+                              {group.label}
+                            </span>
                           </span>
                           {group.desc && group.desc !== group.label ? (
                             <span className='text-muted-foreground mt-1 line-clamp-2 block text-xs leading-5'>
@@ -664,9 +683,7 @@ export function ApiKeyCreateDialog({
                             </span>
                           ) : null}
                         </span>
-                        <span className='shrink-0 text-sm font-medium tabular-nums'>
-                          {formatApiKeyGroupRatio(group.ratio)}
-                        </span>
+                        <GroupRatioBadge ratio={group.ratio} />
                       </button>
                     )
                   })}
@@ -869,11 +886,9 @@ function SmartRouteOrder(props: {
                     </p>
                   ) : null}
                 </div>
-                <span className='shrink-0 text-sm font-medium tabular-nums'>
-                  {option?.ratio !== undefined
-                    ? formatApiKeyGroupRatio(option.ratio)
-                    : ''}
-                </span>
+                {option?.ratio !== undefined && (
+                  <GroupRatioBadge ratio={option.ratio} />
+                )}
                 <div className='flex shrink-0 flex-col'>
                   <Button
                     type='button'
