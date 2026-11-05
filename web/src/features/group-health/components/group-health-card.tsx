@@ -149,8 +149,8 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
       </div>
 
       <div className='flex flex-col gap-2 border-t pt-3'>
-        <div className='flex items-start justify-between gap-2'>
-          <div className='text-muted-foreground pointer-events-none flex flex-col text-xs'>
+        <div className='pointer-events-none flex items-start justify-between gap-2'>
+          <div className='text-muted-foreground flex flex-col text-xs'>
             <span>{props.rangeLabel}</span>
             <span className='tabular-nums'>
               {group.last_sample_at > 0
@@ -164,7 +164,7 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
               type='button'
               variant='outline'
               size='sm'
-              className='relative shrink-0 rounded-full'
+              className='pointer-events-auto relative shrink-0 rounded-full'
               onClick={() => props.onOpenIntelligenceCheck(group)}
             >
               <Feather aria-hidden='true' />
