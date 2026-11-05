@@ -8192,6 +8192,18 @@
     "Preview stopped": "Просмотр остановлен",
     "View source": "Посмотреть исходный код",
     "View drawing": "Посмотреть рисунок",
-    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Рисунок — вывод модели как есть; он работает в песочнице без доступа к этому сайту."
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Рисунок — вывод модели как есть; он работает в песочнице без доступа к этому сайту.",
+    "All stored check results are deleted, for every group. This cannot be undone.": "Будут удалены все сохранённые результаты всех групп. Действие нельзя отменить.",
+    "Check results from before {{time}} are deleted, for every group. This cannot be undone.": "Будут удалены результаты всех групп до {{time}}. Действие нельзя отменить.",
+    "Clear all results": "Удалить все результаты",
+    "Clear check results": "Удалить результаты проверки",
+    "Clear older results": "Удалить более ранние результаты",
+    "Deleted {{count}} check results.": "Удалено результатов: {{count}}.",
+    "Enter a whole number between 1 and 100": "Введите целое число от 1 до 100",
+    "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.": "Старые результаты удаляются по мере поступления новых, чтобы база не росла. В окне показывается не более 10.",
+    "Results before a time": "До определённого времени",
+    "Results kept per group and question": "Хранить результатов на группу и вопрос",
+    "Stored results": "Сохранённые результаты",
+    "What to delete": "Что удалить"
   }
 }
