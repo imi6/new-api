@@ -7754,7 +7754,6 @@
     "Avg latency · {{range}}": "平均延遲 · {{range}}",
     "Channel checks": "渠道測試",
     "Check latency": "測試延遲",
-    "Click a card to see details": "點擊卡片查看詳情",
     "Groups that users can choose appear here.": "使用者可選的分組會顯示在這裡。",
     "Last 12 weeks": "近 12 週",
     "Last 24 hours": "近 24 小時",
@@ -7775,7 +7774,6 @@
     "User requests": "使用者請求",
     "User requests {{real}}, channel checks {{probe}}": "使用者請求 {{real}} 次，渠道測試 {{probe}} 次",
     "View details of {{name}}": "查看 {{name}} 的詳情",
-    "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} 個分組運行正常",
     "Require login to view channel status": "登入後才能查看渠道狀態",
     "Visitors must authenticate before accessing the channel status page.": "訪客必須登入後才能存取渠道狀態頁面。",
     "Unable to load channel status": "無法載入渠道狀態",
@@ -7881,6 +7879,7 @@
     "Stored results": "檢測記錄",
     "What to delete": "清理範圍",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宮格對比 · 點擊作品放大播放",
-    "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最終答案與標準答案比對"
+    "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最終答案與標準答案比對",
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "僅展示服務健康概況，不公開站點請求數量、逐請求記錄或內部渠道資訊。"
   }
 }
