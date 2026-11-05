@@ -5,8 +5,14 @@ on:
     branches:
       - local/billing
 
+# Creating the release and its tag needs write access to the repository.
 permissions:
-  contents: read
+  contents: write
+
+# A newer push replaces a build that is still running.
+concurrency:
+  group: billing-build
+  cancel-in-progress: true
 
 jobs:
   linux:
@@ -23,7 +29,10 @@ jobs:
         run: |
           git fetch --force https://github.com/QuantumNous/new-api.git '+refs/tags/*:refs/tags/*'
           VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*')
+          BUILD_TIME=$(TZ=Asia/Shanghai date '+%Y%m%d-%H%M%S')
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=zzs-$VERSION-$BUILD_TIME-$SHORT_SHA" >> "$GITHUB_ENV"
           echo "official version: $VERSION"
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -47,6 +56,7 @@ jobs:
         run: |
           go mod download
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOWORK=off go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$VERSION'" -o new-api-zzs
+          sha256sum new-api-zzs > checksums.txt
 
       - name: Upload new-api-zzs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -54,3 +64,29 @@ jobs:
           name: new-api-zzs
           path: new-api-zzs
           if-no-files-found: error
+
+      # The notes come from git, not from the workflow expression, so a commit
+      # message cannot inject shell commands.
+      - name: Write Release Notes
+        run: |
+          {
+            echo "Official version: $VERSION"
+            echo "Commit: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+            echo
+            git log -1 --format='%s%n%n%b'
+          } > release-notes.md
+
+      - name: Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          body_path: release-notes.md
+          make_latest: true
+          fail_on_unmatched_files: true
+          files: |
+            new-api-zzs
+            checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
