@@ -48,7 +48,7 @@ interface GroupHealthDetailDialogProps {
 export function GroupHealthDetailDialog(props: GroupHealthDetailDialogProps) {
   const { t } = useTranslation()
   const [range, setRange] = useState<GroupHealthRange>('hour')
-  const query = useGroupHealth(range, { enabled: props.groupName !== null })
+  const query = useGroupHealth(range, props.groupName !== null)
   const group = query.data?.groups.find((item) => item.name === props.groupName)
   const rows = (group?.bars ?? []).filter((bar) => bar.has_data).reverse()
 
