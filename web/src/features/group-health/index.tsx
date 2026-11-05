@@ -31,7 +31,7 @@ export function GroupHealth() {
       <PageTransition className='mx-auto w-full max-w-[1600px] px-3 pt-20 pb-10 sm:px-6 xl:px-8'>
         <GroupHealthBoard
           title={
-            <h1 className='text-2xl font-semibold'>{t('Group health')}</h1>
+            <h1 className='text-2xl font-semibold'>{t('Channel Status')}</h1>
           }
         />
       </PageTransition>

@@ -7753,7 +7753,6 @@
     "Channel checks": "Проверки каналов",
     "Check latency": "Задержка проверки",
     "Click a card to see details": "Нажмите на карточку, чтобы увидеть подробности",
-    "Group health": "Состояние групп",
     "Groups that users can choose appear here.": "Здесь появятся группы, доступные пользователям.",
     "Last 12 weeks": "Последние 12 недель",
     "Last 24 hours": "Последние 24 часа",
@@ -7764,7 +7763,6 @@
     "Now": "Сейчас",
     "Partial outage": "Частичный сбой",
     "Past": "Прошлое",
-    "Require login to view group health": "Для просмотра состояния групп нужен вход",
     "Skip channels that just served users": "Пропускать каналы, которые только что обслужили пользователей",
     "Success rate and latency of each group, from user requests and channel checks.": "Доля успешных запросов и задержка каждой группы по запросам пользователей и проверкам каналов.",
     "Success rate · {{range}}": "Доля успешных · {{range}}",
@@ -7772,12 +7770,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "Администратору нужно включить метрики производительности или плановые проверки каналов.",
     "Time to first token": "Время до первого токена",
     "Try again later.": "Повторите попытку позже.",
-    "Unable to load group health": "Не удалось загрузить состояние групп",
     "User requests": "Запросы пользователей",
     "User requests {{real}}, channel checks {{probe}}": "Запросов пользователей: {{real}}, проверок каналов: {{probe}}",
     "View details of {{name}}": "Подробнее о {{name}}",
-    "Visitors must authenticate before accessing the group health page.": "Посетители должны войти, чтобы открыть страницу состояния групп.",
     "{{healthy}}/{{total}} groups are healthy": "Работают {{healthy}} из {{total}} групп",
-    "Failed to load group health": "Не удалось загрузить состояние групп"
+    "Require login to view channel status": "Для просмотра статуса каналов нужен вход",
+    "Visitors must authenticate before accessing the channel status page.": "Посетители должны войти, чтобы открыть страницу статуса каналов.",
+    "Unable to load channel status": "Не удалось загрузить статус каналов",
+    "Failed to load channel status": "Не удалось загрузить статус каналов",
+    "Abnormal": "Сбой"
   }
 }

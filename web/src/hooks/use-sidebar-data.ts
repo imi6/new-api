@@ -58,7 +58,7 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
   const { status } = useStatus()
   const invoiceEnabled = status?.invoice_enabled === true
-  // Channel status follows the "group health" top navigation switch.
+  // Follows the "channel status" switch in the top navigation settings.
   const channelStatusEnabled = parseHeaderNavModulesFromStatus(
     status as Record<string, unknown> | null
   ).groupHealth.enabled

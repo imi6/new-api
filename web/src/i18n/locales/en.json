@@ -7753,7 +7753,6 @@
     "Channel checks": "Channel checks",
     "Check latency": "Check latency",
     "Click a card to see details": "Click a card to see details",
-    "Group health": "Group health",
     "Groups that users can choose appear here.": "Groups that users can choose appear here.",
     "Last 12 weeks": "Last 12 weeks",
     "Last 24 hours": "Last 24 hours",
@@ -7764,7 +7763,6 @@
     "Now": "Now",
     "Partial outage": "Partial outage",
     "Past": "Past",
-    "Require login to view group health": "Require login to view group health",
     "Skip channels that just served users": "Skip channels that just served users",
     "Success rate and latency of each group, from user requests and channel checks.": "Success rate and latency of each group, from user requests and channel checks.",
     "Success rate · {{range}}": "Success rate · {{range}}",
@@ -7772,12 +7770,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "The administrator needs to turn on performance metrics or scheduled channel tests.",
     "Time to first token": "Time to first token",
     "Try again later.": "Try again later.",
-    "Unable to load group health": "Unable to load group health",
     "User requests": "User requests",
     "User requests {{real}}, channel checks {{probe}}": "User requests {{real}}, channel checks {{probe}}",
     "View details of {{name}}": "View details of {{name}}",
-    "Visitors must authenticate before accessing the group health page.": "Visitors must authenticate before accessing the group health page.",
     "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} groups are healthy",
-    "Failed to load group health": "Failed to load group health"
+    "Require login to view channel status": "Require login to view channel status",
+    "Visitors must authenticate before accessing the channel status page.": "Visitors must authenticate before accessing the channel status page.",
+    "Unable to load channel status": "Unable to load channel status",
+    "Failed to load channel status": "Failed to load channel status",
+    "Abnormal": "Abnormal"
   }
 }
