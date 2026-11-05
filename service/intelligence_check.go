@@ -105,6 +105,10 @@ func TruncateIntelligenceError(text string) string {
 
 // Names of the drawing checks, as stored in failed_checks.
 const (
+	// IntelligenceCheckTokenLimit marks an answer the max output tokens cut
+	// short, for either question.
+	IntelligenceCheckTokenLimit = "token_limit"
+
 	DrawingCheckComplete = "incomplete"
 	DrawingCheckSVG      = "no_svg"
 	DrawingCheckAnimated = "no_animation"
@@ -169,8 +173,9 @@ func TruncateIntelligenceResponse(text string) (string, bool) {
 
 // IntelligenceAnswerFromStream joins the answer text of a client-facing
 // stream: Chat Completions content deltas or Responses output_text deltas.
-// Reasoning text is left out.
-func IntelligenceAnswerFromStream(body []byte) string {
+// Reasoning text is left out. cutAtLimit is set when the stream says the
+// output token limit ended the answer.
+func IntelligenceAnswerFromStream(body []byte) (answerText string, cutAtLimit bool) {
 	var answer strings.Builder
 	for line := range bytes.SplitSeq(body, []byte{'\n'}) {
 		line = bytes.TrimSpace(line)
@@ -183,8 +188,13 @@ func IntelligenceAnswerFromStream(body []byte) string {
 			continue
 		}
 		var event struct {
-			Type    string `json:"type"`
-			Delta   any    `json:"delta"`
+			Type     string `json:"type"`
+			Delta    any    `json:"delta"`
+			Response struct {
+				IncompleteDetails struct {
+					Reason string `json:"reason"`
+				} `json:"incomplete_details"`
+			} `json:"response"`
 			Choices []struct {
 				Delta struct {
 					Content string `json:"content"`
@@ -192,6 +202,7 @@ func IntelligenceAnswerFromStream(body []byte) string {
 				Message struct {
 					Content string `json:"content"`
 				} `json:"message"`
+				FinishReason string `json:"finish_reason"`
 			} `json:"choices"`
 		}
 		if err := common.Unmarshal(payload, &event); err != nil {
@@ -203,10 +214,16 @@ func IntelligenceAnswerFromStream(body []byte) string {
 			}
 			continue
 		}
+		if event.Response.IncompleteDetails.Reason == "max_output_tokens" {
+			cutAtLimit = true
+		}
 		for _, choice := range event.Choices {
 			answer.WriteString(choice.Delta.Content)
 			answer.WriteString(choice.Message.Content)
+			if choice.FinishReason == "length" {
+				cutAtLimit = true
+			}
 		}
 	}
-	return answer.String()
+	return answer.String(), cutAtLimit
 }
