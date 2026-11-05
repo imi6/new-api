@@ -257,6 +257,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.GET("/request_policy", controller.GetRequestPolicy)
 			optionRoute.GET("/intelligence_check/models", controller.GetIntelligenceCheckModels)
 			optionRoute.POST("/intelligence_check/run", controller.RunIntelligenceChecksNow)
+			optionRoute.POST("/intelligence_check/clear", controller.ClearIntelligenceChecks)
 			optionRoute.PATCH("/request_policy", controller.UpdateRequestPolicy)
 			optionRoute.PUT("/", controller.UpdateOption)
 			optionRoute.PUT("/passkey/domains", controller.UpdatePasskeyDomains)
