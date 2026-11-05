@@ -53,7 +53,8 @@ interface IntelligenceCheckDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-function TabHeader(props: {
+/** The pass count of the open tab, at the right end of the tab row. */
+function PassSummary(props: {
   checks: IntelligenceCheck[]
   fetching: boolean
   onRefresh: () => void
@@ -62,22 +63,22 @@ function TabHeader(props: {
   const count = intelligencePassCount(props.checks)
   const running = props.checks.some((check) => check.status === 'running')
   return (
-    <div className='flex flex-wrap items-center justify-between gap-2'>
-      <div className='flex items-center gap-2 text-sm'>
-        <span className='text-muted-foreground'>
+    <div className='flex items-center gap-2 text-sm'>
+      {running && (
+        <StatusBadge
+          label={t('Checking now')}
+          variant='info'
+          copyable={false}
+          showDot
+          pulse
+          size='sm'
+        />
+      )}
+      {count.total > 0 && (
+        <span className='text-muted-foreground tabular-nums'>
           {t('Passed {{passed}} of the last {{total}}', count)}
         </span>
-        {running && (
-          <StatusBadge
-            label={t('Checking now')}
-            variant='info'
-            copyable={false}
-            showDot
-            pulse
-            size='sm'
-          />
-        )}
-      </div>
+      )}
       <Button
         variant='ghost'
         size='icon-sm'
@@ -240,27 +241,37 @@ export function IntelligenceCheckDialog(props: IntelligenceCheckDialogProps) {
       )
     }
     return (
-      <div className='flex flex-col gap-3'>
-        <TabHeader
-          checks={checks}
-          fetching={query.isFetching}
-          onRefresh={refresh}
-        />
-        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-          {checks.map((check) =>
-            kind === 'candy' ? (
-              <CandyCheckCard key={check.id} check={check} />
-            ) : (
-              <PelicanCheckCard
-                key={check.id}
-                check={check}
-                onOpen={(item) => setViewingId(item.id)}
-              />
-            )
-          )}
-        </div>
+      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+        {checks.map((check) =>
+          kind === 'candy' ? (
+            <CandyCheckCard key={check.id} check={check} />
+          ) : (
+            <PelicanCheckCard
+              key={check.id}
+              check={check}
+              onOpen={(item) => setViewingId(item.id)}
+            />
+          )
+        )}
       </div>
     )
+  }
+
+  const activeChecks =
+    (activeTab === 'candy' ? data?.candy : data?.pelican) ?? []
+  const finishedCount = intelligencePassCount(activeChecks).total
+  let description: string | undefined
+  if (finishedCount > 0) {
+    description =
+      activeTab === 'pelican'
+        ? t(
+            'The last {{count}} complete drawings · grid comparison · select one to play it large',
+            { count: finishedCount }
+          )
+        : t(
+            'The last {{count}} answers · final answers compared with the expected one',
+            { count: finishedCount }
+          )
   }
 
   return (
@@ -285,6 +296,7 @@ export function IntelligenceCheckDialog(props: IntelligenceCheckDialogProps) {
           </span>
         </span>
       }
+      description={description}
       contentClassName='sm:max-w-6xl'
     >
       {data && !data.enabled && (
@@ -310,16 +322,25 @@ export function IntelligenceCheckDialog(props: IntelligenceCheckDialogProps) {
             setViewingId(null)
           }}
         >
-          <TabsList>
-            {showCandy && (
-              <TabsTrigger value='candy'>{t('Candy question')}</TabsTrigger>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <TabsList>
+              {showCandy && (
+                <TabsTrigger value='candy'>{t('Candy question')}</TabsTrigger>
+              )}
+              {showPelican && (
+                <TabsTrigger value='pelican'>
+                  {t('Pelican drawing')}
+                </TabsTrigger>
+              )}
+            </TabsList>
+            {data && (
+              <PassSummary
+                checks={activeChecks}
+                fetching={query.isFetching}
+                onRefresh={refresh}
+              />
             )}
-            {showPelican && (
-              <TabsTrigger value='pelican'>
-                {t('Pelican drawing')}
-              </TabsTrigger>
-            )}
-          </TabsList>
+          </div>
           {showCandy && (
             <TabsContent value='candy' className='pt-3'>
               {renderList(data?.candy ?? [], 'candy')}
