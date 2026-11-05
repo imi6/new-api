@@ -91,6 +91,13 @@ export function GroupHealthBars(props: GroupHealthBarsProps) {
                       {formatLatency(bar.avg_latency_ms)}
                     </span>
                   )}
+                  {bar.cache_hit_rate >= 0 && (
+                    <span>
+                      {t('Cache hit rate')}
+                      {': '}
+                      {formatUptimePct(bar.cache_hit_rate)}
+                    </span>
+                  )}
                 </div>
               )}
             </TooltipContent>
