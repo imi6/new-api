@@ -60,6 +60,7 @@ import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
 import { getIntelligenceCheckModels } from './api'
 import type { IntelligenceCheckSettings } from './defaults'
+import { IntelligenceCheckClear } from './intelligence-check-clear'
 import { IntelligenceCheckRunNow } from './intelligence-check-run'
 import {
   changedIntelligenceCheckOptions,
@@ -75,6 +76,7 @@ interface IntelligenceCheckSectionProps {
 }
 
 type NumberField =
+  | 'keep_results'
   | 'candy_interval_hours'
   | 'candy_max_tokens'
   | 'pelican_interval_hours'
@@ -377,6 +379,22 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
           />
 
           <IntelligenceCheckRunNow dirty={isDirty} />
+
+          <Separator />
+          <h4 className='text-sm font-medium'>{t('Stored results')}</h4>
+          <SettingsFormGrid>
+            {renderNumber(
+              'keep_results',
+              t('Results kept per group and question'),
+              INTELLIGENCE_CHECK_LIMITS.keepResults
+            )}
+          </SettingsFormGrid>
+          <p className='text-muted-foreground -mt-2 text-xs'>
+            {t(
+              'Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.'
+            )}
+          </p>
+          <IntelligenceCheckClear />
 
           <Separator />
           <h4 className='text-sm font-medium'>{t('Candy question')}</h4>
