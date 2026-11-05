@@ -217,6 +217,11 @@ type RelayInfo struct {
 	// the request boundary, independently of billing success or failure.
 	PerformanceOutputTokens      int64
 	PerformanceBusinessRejection bool
+	// PerformanceInputTokens and PerformanceCacheReadTokens are copied from
+	// settlement for the cache hit rate of the channel status page. Billing
+	// never reads them.
+	PerformanceInputTokens     int64
+	PerformanceCacheReadTokens int64
 
 	// convOptions caches the converter settings snapshot (see ConvOptions).
 	convOptions *convmeta.Options

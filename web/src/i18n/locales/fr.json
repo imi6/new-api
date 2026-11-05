@@ -7749,7 +7749,6 @@
     "All healthy": "Tout fonctionne",
     "Auto refresh interval": "Intervalle d'actualisation automatique",
     "Avg latency": "Latence moyenne",
-    "Avg latency · {{range}}": "Latence moyenne · {{range}}",
     "Channel checks": "Tests de canal",
     "Check latency": "Latence du test",
     "Groups that users can choose appear here.": "Les groupes que les utilisateurs peuvent choisir apparaissent ici.",
@@ -7764,7 +7763,6 @@
     "Past": "Passé",
     "Skip channels that just served users": "Ignorer les canaux qui viennent de servir des utilisateurs",
     "Success rate and latency of each group, from user requests and channel checks.": "Taux de réussite et latence de chaque groupe, d'après les requêtes utilisateurs et les tests de canal.",
-    "Success rate · {{range}}": "Taux de réussite · {{range}}",
     "Success rate: {{rate}}": "Taux de réussite : {{rate}}",
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "L'administrateur doit activer les métriques de performance ou les tests de canal planifiés.",
     "Time to first token": "Délai du premier jeton",
@@ -7878,6 +7876,7 @@
     "What to delete": "Quoi supprimer",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "Les {{count}} derniers dessins complets · comparaison en grille · sélectionnez-en un pour le lire en grand",
     "The last {{count}} answers · final answers compared with the expected one": "Les {{count}} dernières réponses · réponses finales comparées à la réponse attendue",
-    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Seul un aperçu de l'état du service est affiché. Le nombre de requêtes du site, le détail des requêtes et les informations internes des canaux ne sont pas publiés."
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Seul un aperçu de l'état du service est affiché. Le nombre de requêtes du site, le détail des requêtes et les informations internes des canaux ne sont pas publiés.",
+    "Cache hit rate": "Taux de succès du cache"
   }
 }

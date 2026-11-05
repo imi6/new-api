@@ -42,6 +42,9 @@ type groupHealthBar struct {
 	HasData       bool    `json:"has_data"`
 	AvgLatencyMs  int64   `json:"avg_latency_ms"`
 	LatencySource string  `json:"latency_source"`
+	// CacheHitRate is the share of input tokens read from the upstream cache,
+	// in percent, over real requests; -1 when none reported input tokens.
+	CacheHitRate float64 `json:"cache_hit_rate"`
 }
 
 type groupHealthGroup struct {
@@ -74,13 +77,15 @@ type groupHealthResponse struct {
 
 // healthCounters sums real requests and checks over any span of hours.
 type healthCounters struct {
-	realRequests   int64
-	realSuccesses  int64
-	ttftSumMs      int64
-	ttftCount      int64
-	probeSamples   int64
-	probeSuccesses int64
-	probeLatencyMs int64
+	realRequests    int64
+	realSuccesses   int64
+	ttftSumMs       int64
+	ttftCount       int64
+	probeSamples    int64
+	probeSuccesses  int64
+	probeLatencyMs  int64
+	inputTokens     int64
+	cacheReadTokens int64
 }
 
 func (h *healthCounters) add(other healthCounters) {
@@ -91,18 +96,25 @@ func (h *healthCounters) add(other healthCounters) {
 	h.probeSamples += other.probeSamples
 	h.probeSuccesses += other.probeSuccesses
 	h.probeLatencyMs += other.probeLatencyMs
+	h.inputTokens += other.inputTokens
+	h.cacheReadTokens += other.cacheReadTokens
 }
 
 // bar turns counters into the shape the page draws. The success rate counts
 // real requests and checks together. The latency is the time to first token
 // of real streaming requests, or the check round trip when there is none.
+// The cache hit rate counts real requests only.
 func (h healthCounters) bar(start int64) groupHealthBar {
-	bar := groupHealthBar{Start: start, RealRequests: h.realRequests, ProbeSamples: h.probeSamples}
+	bar := groupHealthBar{Start: start, RealRequests: h.realRequests, ProbeSamples: h.probeSamples, CacheHitRate: -1}
 	total := h.realRequests + h.probeSamples
 	if total > 0 {
 		bar.HasData = true
 		rate := float64(h.realSuccesses+h.probeSuccesses) / float64(total) * 100
 		bar.SuccessRate = math.Round(rate*100) / 100
+	}
+	if h.inputTokens > 0 {
+		rate := float64(min(h.cacheReadTokens, h.inputTokens)) / float64(h.inputTokens) * 100
+		bar.CacheHitRate = math.Round(rate*100) / 100
 	}
 	switch {
 	case h.ttftCount > 0:
@@ -249,6 +261,8 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 			counters.realSuccesses += value.SuccessCount
 			counters.ttftSumMs += value.TtftSumMs
 			counters.ttftCount += value.TtftCount
+			counters.inputTokens += value.InputTokens
+			counters.cacheReadTokens += value.CacheReadTokens
 			lastSample[group] = max(lastSample[group], ts)
 		}
 	}
