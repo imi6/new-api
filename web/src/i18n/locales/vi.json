@@ -7755,7 +7755,6 @@
     "Channel checks": "Kiểm tra kênh",
     "Check latency": "Độ trễ kiểm tra",
     "Click a card to see details": "Nhấn vào thẻ để xem chi tiết",
-    "Group health": "Tình trạng nhóm",
     "Groups that users can choose appear here.": "Các nhóm người dùng có thể chọn sẽ hiển thị ở đây.",
     "Last 12 weeks": "12 tuần gần đây",
     "Last 24 hours": "24 giờ gần đây",
@@ -7766,7 +7765,6 @@
     "Now": "Hiện tại",
     "Partial outage": "Sự cố một phần",
     "Past": "Trước đây",
-    "Require login to view group health": "Yêu cầu đăng nhập để xem tình trạng nhóm",
     "Skip channels that just served users": "Bỏ qua kênh vừa phục vụ người dùng",
     "Success rate and latency of each group, from user requests and channel checks.": "Tỷ lệ thành công và độ trễ của từng nhóm, dựa trên yêu cầu của người dùng và kiểm tra kênh.",
     "Success rate · {{range}}": "Tỷ lệ thành công · {{range}}",
@@ -7774,12 +7772,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "Quản trị viên cần bật số liệu hiệu suất hoặc kiểm tra kênh định kỳ.",
     "Time to first token": "Thời gian đến token đầu tiên",
     "Try again later.": "Vui lòng thử lại sau.",
-    "Unable to load group health": "Không thể tải tình trạng nhóm",
     "User requests": "Yêu cầu của người dùng",
     "User requests {{real}}, channel checks {{probe}}": "Yêu cầu người dùng {{real}}, kiểm tra kênh {{probe}}",
     "View details of {{name}}": "Xem chi tiết {{name}}",
-    "Visitors must authenticate before accessing the group health page.": "Khách truy cập phải đăng nhập trước khi vào trang tình trạng nhóm.",
     "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} nhóm hoạt động bình thường",
-    "Failed to load group health": "Tải tình trạng nhóm thất bại"
+    "Require login to view channel status": "Yêu cầu đăng nhập để xem trạng thái kênh",
+    "Visitors must authenticate before accessing the channel status page.": "Khách truy cập phải đăng nhập trước khi vào trang trạng thái kênh.",
+    "Unable to load channel status": "Không thể tải trạng thái kênh",
+    "Failed to load channel status": "Tải trạng thái kênh thất bại",
+    "Abnormal": "Bất thường"
   }
 }
