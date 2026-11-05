@@ -1,6 +1,8 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/QuantumNous/new-api/common"
 
 	"gorm.io/gorm"
@@ -132,13 +134,24 @@ type GroupHealthChannel struct {
 	Group     string  `gorm:"column:group_name"`
 	Status    int     `gorm:"column:status"`
 	TestModel *string `gorm:"column:test_model"`
+	Models    string  `gorm:"column:models"`
+}
+
+// CheckModel is the model a channel test uses: the test model when set,
+// otherwise the first model of the channel.
+func (c GroupHealthChannel) CheckModel() string {
+	if c.TestModel != nil && strings.TrimSpace(*c.TestModel) != "" {
+		return strings.TrimSpace(*c.TestModel)
+	}
+	first, _, _ := strings.Cut(strings.Trim(c.Models, ","), ",")
+	return strings.TrimSpace(first)
 }
 
 // GetGroupHealthChannels lists every channel that is not manually disabled.
 func GetGroupHealthChannels() ([]GroupHealthChannel, error) {
 	var rows []GroupHealthChannel
 	err := DB.Model(&Channel{}).
-		Select("id, "+commonGroupCol+" AS group_name, status, test_model").
+		Select("id, "+commonGroupCol+" AS group_name, status, test_model, models").
 		Where("status <> ?", common.ChannelStatusManuallyDisabled).
 		Find(&rows).Error
 	return rows, err
