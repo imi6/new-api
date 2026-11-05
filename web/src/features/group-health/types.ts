@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { GroupRatioChange } from '@/components/ratio-change-badge'
 
 export type GroupHealthRange = 'hour' | 'day' | 'week'
 
@@ -53,6 +54,8 @@ export interface GroupHealthGroup {
   top_model: string
   /** The configured price ratio of the group, as on the pricing page. */
   group_ratio: number
+  /** The ratio's recent change, or that the group is new. */
+  ratio_change?: GroupRatioChange
   /**
    * Share of input tokens read from the upstream cache over the last
    * `cache_hit_rate_minutes`, in percent; -1 when there is none.
