@@ -63,16 +63,29 @@ func GetPricing(c *gin.Context) {
 			delete(groupRatio, group)
 		}
 	}
+	// Recent changes of the shown groups; a special ratio of the user's own
+	// group hides the change of the group ratio it replaces.
+	groupRatioChanges := map[string]model.GroupRatioChangeInfo{}
+	for name, change := range model.RecentGroupRatioChanges() {
+		if _, ok := groupRatio[name]; !ok {
+			continue
+		}
+		if _, special := ratio_setting.GetGroupGroupRatio(group, name); special {
+			continue
+		}
+		groupRatioChanges[name] = change
+	}
 
 	c.JSON(200, gin.H{
-		"success":            true,
-		"data":               pricing,
-		"vendors":            model.GetVendors(),
-		"group_ratio":        groupRatio,
-		"usable_group":       usableGroup,
-		"supported_endpoint": model.GetSupportedEndpointMap(),
-		"auto_groups":        service.GetUserAutoGroup(group),
-		"pricing_version":    "a42d372ccf0b5dd13ecf71203521f9d2",
+		"success":             true,
+		"data":                pricing,
+		"vendors":             model.GetVendors(),
+		"group_ratio":         groupRatio,
+		"group_ratio_changes": groupRatioChanges,
+		"usable_group":        usableGroup,
+		"supported_endpoint":  model.GetSupportedEndpointMap(),
+		"auto_groups":         service.GetUserAutoGroup(group),
+		"pricing_version":     "a42d372ccf0b5dd13ecf71203521f9d2",
 	})
 }
 
