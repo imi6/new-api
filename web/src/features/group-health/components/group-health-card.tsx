@@ -81,6 +81,10 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
   )
   const status = GROUP_HEALTH_STATUS_META[group.status]
   const total = group.total
+  // Up to three decimals without trailing zeros, as on the pricing page.
+  const ratioText = Number.isInteger(group.group_ratio)
+    ? String(group.group_ratio)
+    : group.group_ratio.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
   let rateClass = 'text-muted-foreground'
   if (total.has_data) {
     rateClass = total.success_rate > 0 ? 'text-success' : 'text-destructive'
@@ -122,6 +126,9 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
                 {apiKeyPlatformLabel(platform, t)}
               </Badge>
             )}
+            <Badge variant='secondary' className='shrink-0 tabular-nums'>
+              {`${t('Group Ratio')} x${ratioText}`}
+            </Badge>
             {group.top_model && (
               <Badge
                 variant='outline'
