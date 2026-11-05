@@ -16,12 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, Clock } from 'lucide-react'
+import { Activity, Clock, Feather } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { ChannelTypeLogo } from '@/features/channels/components/channel-type-badge'
 import {
   apiKeyGroupPlatform,
@@ -44,6 +45,7 @@ interface GroupHealthCardProps {
   range: GroupHealthRange
   rangeLabel: string
   onOpen: (group: GroupHealthGroup) => void
+  onOpenIntelligenceCheck: (group: GroupHealthGroup) => void
 }
 
 function MetricBox(props: {
@@ -147,13 +149,28 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
       </div>
 
       <div className='flex flex-col gap-2 border-t pt-3'>
-        <div className='text-muted-foreground pointer-events-none flex flex-col text-xs'>
-          <span>{props.rangeLabel}</span>
-          <span className='tabular-nums'>
-            {group.last_sample_at > 0
-              ? formatTimestampToDate(group.last_sample_at)
-              : t('No data')}
-          </span>
+        <div className='flex items-start justify-between gap-2'>
+          <div className='text-muted-foreground pointer-events-none flex flex-col text-xs'>
+            <span>{props.rangeLabel}</span>
+            <span className='tabular-nums'>
+              {group.last_sample_at > 0
+                ? formatTimestampToDate(group.last_sample_at)
+                : t('No data')}
+            </span>
+          </div>
+          {/* Sits above the card overlay; the results are in its dialog. */}
+          {group.intelligence_check && (
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              className='relative shrink-0 rounded-full'
+              onClick={() => props.onOpenIntelligenceCheck(group)}
+            >
+              <Feather aria-hidden='true' />
+              {t('Intelligence check')}
+            </Button>
+          )}
         </div>
         <GroupHealthBars
           bars={group.bars}
