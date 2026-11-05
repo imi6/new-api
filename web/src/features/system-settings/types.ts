@@ -364,6 +364,9 @@ export type BillingSettings = {
   'checkin_setting.enabled': boolean
   'checkin_setting.min_quota': number
   'checkin_setting.max_quota': number
+  /** Marks recent group ratio changes and new groups for users. */
+  'ratio_change_setting.enabled': boolean
+  'ratio_change_setting.days': number
   'invoice_setting.enabled': boolean
   'invoice_setting.tax_rate': number
   'invoice_setting.special_tax_rate': number
