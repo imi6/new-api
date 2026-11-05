@@ -114,12 +114,6 @@ export function GroupHealthDetailDialog(props: GroupHealthDetailDialogProps) {
                         {t('Period')}
                       </th>
                       <th className='px-3 py-2 text-right font-medium'>
-                        {t('User requests')}
-                      </th>
-                      <th className='px-3 py-2 text-right font-medium'>
-                        {t('Channel checks')}
-                      </th>
-                      <th className='px-3 py-2 text-right font-medium'>
                         {t('Success rate')}
                       </th>
                       <th className='px-3 py-2 text-right font-medium'>
@@ -137,12 +131,6 @@ export function GroupHealthDetailDialog(props: GroupHealthDetailDialogProps) {
                       <tr key={bar.start}>
                         <td className='px-3 py-2 whitespace-nowrap'>
                           {formatGroupHealthBarTime(bar.start, range)}
-                        </td>
-                        <td className='px-3 py-2 text-right'>
-                          {bar.real_requests}
-                        </td>
-                        <td className='px-3 py-2 text-right'>
-                          {bar.probe_samples}
                         </td>
                         <td
                           className={
