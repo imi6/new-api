@@ -49,7 +49,9 @@ func GetGroupCacheTotals(groups []string, sinceTs int64) ([]GroupCacheTotal, err
 	return rows, err
 }
 
-// DeleteGroupCacheStatsBefore drops the minutes before the cutoff.
-func DeleteGroupCacheStatsBefore(cutoffTs int64) error {
-	return DB.Where("minute_ts < ?", cutoffTs).Delete(&GroupCacheStat{}).Error
+// DeleteGroupCacheStatsBefore drops the minutes before the cutoff and returns
+// how many rows it deleted.
+func DeleteGroupCacheStatsBefore(cutoffTs int64) (int64, error) {
+	result := DB.Where("minute_ts < ?", cutoffTs).Delete(&GroupCacheStat{})
+	return result.RowsAffected, result.Error
 }

@@ -7895,6 +7895,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "Снижение отмечается зелёной стрелкой вниз, повышение — оранжевой стрелкой вверх, новая группа — меткой «Новая». Пользователи со специальным коэффициентом для группы не видят метку на ней.",
     "Days a change stays marked": "Сколько дней показывать изменение",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Несколько изменений за это время показываются как одно: от коэффициента до первого изменения до текущего. Изменения до появления этой функции неизвестны.",
-    "Enter a whole number from 1 to 30": "Введите целое число от 1 до 30"
+    "Enter a whole number from 1 to 30": "Введите целое число от 1 до 30",
+    "Clear cache records": "Очистить данные кэша",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "Все сохранённые данные о попаданиях в кэш удаляются для всех групп. Доли снова накопятся по новым запросам. Это действие необратимо.",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Данные о попаданиях в кэш до {{time}} удаляются для всех групп. Это действие необратимо.",
+    "Cache records cleared.": "Данные кэша очищены.",
+    "10 minutes ago": "10 минут назад",
+    "30 minutes ago": "30 минут назад"
   }
 }
