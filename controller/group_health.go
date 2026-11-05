@@ -180,7 +180,10 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 		return nil, err
 	}
 	enabledChannels := map[string]int{}
+	// Without user traffic the card names the model the checks use: that of
+	// the first enabled channel, or of the first channel when none is enabled.
 	testModels := map[string]string{}
+	fallbackModels := map[string]string{}
 	present := map[string]bool{}
 	for _, channel := range channels {
 		for group := range strings.SplitSeq(strings.Trim(channel.Group, ","), ",") {
@@ -189,11 +192,14 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 				continue
 			}
 			present[group] = true
+			name := channel.CheckModel()
 			if channel.Status == common.ChannelStatusEnabled {
 				enabledChannels[group]++
-			}
-			if testModels[group] == "" && channel.TestModel != nil {
-				testModels[group] = strings.TrimSpace(*channel.TestModel)
+				if testModels[group] == "" {
+					testModels[group] = name
+				}
+			} else if fallbackModels[group] == "" {
+				fallbackModels[group] = name
 			}
 		}
 	}
@@ -296,6 +302,9 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 		}
 
 		topModel := testModels[group]
+		if topModel == "" {
+			topModel = fallbackModels[group]
+		}
 		var topRequests int64
 		for name, requests := range traffic.Models[group] {
 			if requests > topRequests || (requests == topRequests && name < topModel) {
