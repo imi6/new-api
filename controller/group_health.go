@@ -57,6 +57,9 @@ type groupHealthGroup struct {
 	// GroupRatio is the configured price ratio of the group, the one the
 	// pricing page also shows; a user's special ratio is not applied.
 	GroupRatio float64 `json:"group_ratio"`
+	// RatioChange is the group ratio's recent change, or that the group is
+	// new; absent when there is none or the notice is off.
+	RatioChange *model.GroupRatioChangeInfo `json:"ratio_change,omitempty"`
 	// CacheHitRate is the share of input tokens read from the upstream cache
 	// over the last CacheHitRateMinutes, in percent; -1 when there is none.
 	CacheHitRate float64 `json:"cache_hit_rate"`
@@ -304,6 +307,7 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 	}
 	currentHour := now.Unix() - now.Unix()%3600
 	groupRatios := ratio_setting.GetGroupRatioCopy()
+	ratioChanges := model.RecentGroupRatioChanges()
 	response := &groupHealthResponse{
 		UpdatedAt:           now.Unix(),
 		Range:               rangeName,
@@ -369,6 +373,10 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 		} else {
 			cacheHitRate = -1
 		}
+		var ratioChange *model.GroupRatioChangeInfo
+		if change, ok := ratioChanges[group]; ok {
+			ratioChange = &change
+		}
 		response.Groups = append(response.Groups, groupHealthGroup{
 			Name:              group,
 			Desc:              usable[group],
@@ -376,6 +384,7 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 			Status:            status,
 			TopModel:          topModel,
 			GroupRatio:        ratio,
+			RatioChange:       ratioChange,
 			CacheHitRate:      cacheHitRate,
 			LastSampleAt:      lastSample[group],
 			Total:             total.bar(windowStart),
