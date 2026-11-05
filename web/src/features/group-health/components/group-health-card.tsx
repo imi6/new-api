@@ -20,6 +20,7 @@ import { Activity, Clock, Database, Feather } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { RatioChangeBadge } from '@/components/ratio-change-badge'
 import { StatusBadge } from '@/components/status-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -135,6 +136,11 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
                 {apiKeyPlatformLabel(platform, t)}
               </Badge>
             )}
+            {/* Above the card overlay so its tooltip opens. */}
+            <RatioChangeBadge
+              change={group.ratio_change}
+              className='pointer-events-auto relative'
+            />
             {/* Stands out from the platform badge: the price is what a
                 visitor compares between groups. */}
             <Badge variant='warning' className='shrink-0 tabular-nums'>

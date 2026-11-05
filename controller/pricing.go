@@ -51,16 +51,28 @@ func GetPricing(c *gin.Context) {
 			}
 		}
 	}
+	// 只展示可用分组的近期变化；用户专属倍率会隐藏被替代的基础倍率变化。
+	groupRatioChanges := map[string]model.GroupRatioChangeInfo{}
+	for name, change := range model.RecentGroupRatioChanges() {
+		if _, ok := groupRatio[name]; !ok {
+			continue
+		}
+		if _, special := ratio_setting.GetGroupGroupRatio(userGroup, name); special {
+			continue
+		}
+		groupRatioChanges[name] = change
+	}
 
 	c.JSON(200, gin.H{
-		"success":            true,
-		"data":               pricing,
-		"vendors":            model.GetVendors(),
-		"group_ratio":        groupRatio,
-		"usable_group":       usableGroup,
-		"supported_endpoint": model.GetSupportedEndpointMap(),
-		"auto_groups":        service.GetUserAutoGroup(userGroup),
-		"pricing_version":    "a42d372ccf0b5dd13ecf71203521f9d2",
+		"success":             true,
+		"data":                pricing,
+		"vendors":             model.GetVendors(),
+		"group_ratio":         groupRatio,
+		"group_ratio_changes": groupRatioChanges,
+		"usable_group":        usableGroup,
+		"supported_endpoint":  model.GetSupportedEndpointMap(),
+		"auto_groups":         service.GetUserAutoGroup(userGroup),
+		"pricing_version":     "a42d372ccf0b5dd13ecf71203521f9d2",
 	})
 }
 
