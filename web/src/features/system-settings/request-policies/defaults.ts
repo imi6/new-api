@@ -56,6 +56,11 @@ export type IntelligenceCheckSettings = {
   'intelligence_check_setting.pelican_max_tokens': number
   'intelligence_check_setting.keep_results': number
 }
+/** Channel status page display options; stored as channel_status_setting.*. */
+export type ChannelStatusSettings = {
+  'channel_status_setting.cache_hit_rate_enabled': boolean
+  'channel_status_setting.cache_hit_rate_minutes': number
+}
 export type FilteringSettings = Pick<
   SecuritySettings,
   'CheckSensitiveEnabled' | 'CheckSensitiveOnPromptEnabled' | 'SensitiveWords'
@@ -63,6 +68,7 @@ export type FilteringSettings = Pick<
 export type RequestPolicySettings = RetrySettings &
   HealthSettings &
   IntelligenceCheckSettings &
+  ChannelStatusSettings &
   FilteringSettings &
   Pick<ChannelAffinitySettings, keyof ChannelAffinitySettings>
 
@@ -95,6 +101,8 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
   'intelligence_check_setting.pelican_prompt': '',
   'intelligence_check_setting.pelican_max_tokens': 32000,
   'intelligence_check_setting.keep_results': 10,
+  'channel_status_setting.cache_hit_rate_enabled': true,
+  'channel_status_setting.cache_hit_rate_minutes': 60,
   'channel_affinity_setting.enabled': false,
   'channel_affinity_setting.session_mode': '',
   'channel_affinity_setting.switch_on_success': true,
