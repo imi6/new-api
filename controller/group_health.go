@@ -138,7 +138,7 @@ func GetGroupHealth(c *gin.Context) {
 	data, err := buildGroupHealth(rangeName, time.Now())
 	if err != nil {
 		common.SysError(common.LogText("failed to build group health: %s", err.Error()))
-		common.ApiErrorT(c, "Failed to load group health")
+		common.ApiErrorT(c, "Failed to load channel status")
 		return
 	}
 	groupHealthCacheMu.Lock()

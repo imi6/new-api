@@ -21,7 +21,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ChannelStatus } from '@/features/group-health'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 
-// The console page follows the same "group health" switch as the public one;
+// The console page follows the same "channel status" switch as the public one;
 // a signed-in user always passes its login requirement.
 export const Route = createFileRoute('/_authenticated/channel-status/')({
   beforeLoad: async ({ context }) => {
