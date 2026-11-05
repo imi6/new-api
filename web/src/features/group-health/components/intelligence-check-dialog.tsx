@@ -167,6 +167,12 @@ export function IntelligenceCheckDialog(props: IntelligenceCheckDialogProps) {
   const query = useIntelligenceChecks(props.group)
   const data = query.data
   const refresh = () => void query.refetch()
+  // A question shows when the group is asked it or has results from before.
+  const showCandy = !data || data.candy_enabled || data.candy.length > 0
+  const showPelican = !data || data.pelican_enabled || data.pelican.length > 0
+  let activeTab = tab
+  if (activeTab === 'candy' && !showCandy) activeTab = 'pelican'
+  if (activeTab === 'pelican' && !showPelican) activeTab = 'candy'
 
   const renderList = (checks: IntelligenceCheck[], kind: CheckTab) => {
     if (query.isLoading) {
@@ -247,19 +253,29 @@ export function IntelligenceCheckDialog(props: IntelligenceCheckDialogProps) {
         )}
         {!query.isError && (
           <Tabs
-            value={tab}
+            value={activeTab}
             onValueChange={(value) => setTab(value as CheckTab)}
           >
             <TabsList>
-              <TabsTrigger value='candy'>{t('Candy question')}</TabsTrigger>
-              <TabsTrigger value='pelican'>{t('Pelican drawing')}</TabsTrigger>
+              {showCandy && (
+                <TabsTrigger value='candy'>{t('Candy question')}</TabsTrigger>
+              )}
+              {showPelican && (
+                <TabsTrigger value='pelican'>
+                  {t('Pelican drawing')}
+                </TabsTrigger>
+              )}
             </TabsList>
-            <TabsContent value='candy' className='pt-3'>
-              {renderList(data?.candy ?? [], 'candy')}
-            </TabsContent>
-            <TabsContent value='pelican' className='pt-3'>
-              {renderList(data?.pelican ?? [], 'pelican')}
-            </TabsContent>
+            {showCandy && (
+              <TabsContent value='candy' className='pt-3'>
+                {renderList(data?.candy ?? [], 'candy')}
+              </TabsContent>
+            )}
+            {showPelican && (
+              <TabsContent value='pelican' className='pt-3'>
+                {renderList(data?.pelican ?? [], 'pelican')}
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </Dialog>
