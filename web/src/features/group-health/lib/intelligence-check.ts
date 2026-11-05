@@ -20,6 +20,7 @@ import type { IntelligenceCheck } from '../types'
 
 /** Locale keys of the drawing checks stored in failed_checks. */
 export const DRAWING_CHECK_LABEL_KEYS: Record<string, string> = {
+  token_limit: 'Cut off at the max output tokens',
   incomplete: 'Page is incomplete',
   no_svg: 'No SVG',
   no_animation: 'No animation',

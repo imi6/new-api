@@ -199,6 +199,14 @@ export function CandyCheckCard(props: { check: IntelligenceCheck }) {
         )}
       </div>
 
+      {check.failed_checks.split(',').includes('token_limit') && (
+        <p className='text-warning text-xs'>
+          {t(
+            'The answer stopped at the max output tokens. Raise the limit in the settings.'
+          )}
+        </p>
+      )}
+
       <AdminDetails check={check} />
 
       <div className='text-muted-foreground mt-auto flex items-center justify-between gap-2 text-xs'>
@@ -285,6 +293,8 @@ export function PelicanCheckCard(props: PelicanCheckCardProps) {
           <span className='font-semibold tabular-nums'>{checkedAt(check)}</span>
           {check.latency_ms > 0 && (
             <span className='text-muted-foreground font-mono text-xs tabular-nums'>
+              {check.output_tokens > 0 &&
+                `${t('{{count}} tokens', { count: check.output_tokens })} · `}
               {formatLatency(check.latency_ms)}
             </span>
           )}
