@@ -7884,6 +7884,7 @@
     "Cache hit rate window (minutes)": "キャッシュヒット率の集計期間（分）",
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "カードには直近この分数のヒット率を表示します。これより古い記録は削除されるため、期間を長くすると再び蓄積されるまで時間がかかります。",
     "Enter a whole number from 5 to 1440": "5 から 1440 までの整数を入力してください",
-    "Last {{count}} minutes": "直近 {{count}} 分"
+    "Last {{count}} minutes": "直近 {{count}} 分",
+    "Check this group now": "このグループを今すぐ検査"
   }
 }

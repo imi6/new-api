@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +44,8 @@ type intelligenceCheckTaskPayload struct {
 	// Force runs every enabled check of every group now, as the admin's
 	// "check now" does; a scheduled run takes only the checks that are due.
 	Force bool `json:"force,omitempty"`
+	// Group limits a forced run to one group, for the per-group button.
+	Group string `json:"group,omitempty"`
 }
 
 type intelligenceCheckSummary struct {
@@ -53,7 +57,8 @@ type intelligenceCheckSummary struct {
 
 // dueIntelligenceChecks lists the checks to run now. A check is due when it
 // never ran in its group or its interval has passed since it last started.
-func dueIntelligenceChecks(force bool) ([]intelligenceCheckItem, error) {
+// A non-empty group keeps only that group's checks.
+func dueIntelligenceChecks(force bool, group string) ([]intelligenceCheckItem, error) {
 	setting := operation_setting.GetIntelligenceCheckSetting()
 	if !setting.Enabled || len(setting.Targets) == 0 {
 		return nil, nil
@@ -69,6 +74,9 @@ func dueIntelligenceChecks(force bool) ([]intelligenceCheckItem, error) {
 	now := common.GetTimestamp()
 	var items []intelligenceCheckItem
 	for _, target := range setting.Targets {
+		if group != "" && target.Group != group {
+			continue
+		}
 		// A question runs in a group when it is on and the group asks it.
 		checks := []struct {
 			key     string
@@ -235,7 +243,7 @@ type intelligenceCheckHandler struct{}
 func (intelligenceCheckHandler) Type() string { return model.SystemTaskTypeIntelligenceCheck }
 
 func (intelligenceCheckHandler) Enabled() bool {
-	items, err := dueIntelligenceChecks(false)
+	items, err := dueIntelligenceChecks(false, "")
 	return err == nil && len(items) > 0
 }
 
@@ -256,7 +264,7 @@ func (intelligenceCheckHandler) Run(ctx context.Context, task *model.SystemTask,
 	if err := model.TrimAllIntelligenceChecks(operation_setting.IntelligenceCheckKeepResults()); err != nil {
 		common.SysError(common.LogText("failed to trim intelligence checks: %s", err.Error()))
 	}
-	items, err := dueIntelligenceChecks(payload.Force)
+	items, err := dueIntelligenceChecks(payload.Force, payload.Group)
 	if err != nil {
 		finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusFailed, nil, err)
 		return
@@ -290,16 +298,42 @@ func (intelligenceCheckHandler) Run(ctx context.Context, task *model.SystemTask,
 	finishSystemTaskHandler(task, runnerID, model.SystemTaskStatusSucceeded, summary, nil)
 }
 
-// RunIntelligenceChecksNow queues a run of every enabled check, for an admin
-// who changed a question and wants to see it answered. When a run is already
-// going, it returns that run so the page follows it instead of failing.
+type intelligenceCheckRunRequest struct {
+	// Group runs only that listed group; empty runs every group.
+	Group string `json:"group"`
+}
+
+// RunIntelligenceChecksNow queues a run of every enabled check, or of one
+// group's, for an admin who changed a question and wants to see it answered.
+// When a run is already going, it returns that run so the page follows it
+// instead of failing.
 func RunIntelligenceChecksNow(c *gin.Context) {
+	var req intelligenceCheckRunRequest
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 4096))
+	if err != nil {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	// An empty body runs every group.
+	if len(bytes.TrimSpace(body)) > 0 {
+		if err := common.Unmarshal(body, &req); err != nil {
+			common.ApiErrorT(c, "Invalid parameters")
+			return
+		}
+	}
+	req.Group = strings.TrimSpace(req.Group)
 	setting := operation_setting.GetIntelligenceCheckSetting()
 	if !setting.Enabled || len(setting.Targets) == 0 {
 		common.ApiErrorT(c, "Turn on intelligence checks and add a group first")
 		return
 	}
-	task, created, err := service.EnqueueSystemTask(model.SystemTaskTypeIntelligenceCheck, intelligenceCheckTaskPayload{Force: true})
+	if req.Group != "" {
+		if _, ok := operation_setting.IntelligenceCheckTargetFor(req.Group); !ok {
+			common.ApiErrorT(c, "This group has no intelligence check")
+			return
+		}
+	}
+	task, created, err := service.EnqueueSystemTask(model.SystemTaskTypeIntelligenceCheck, intelligenceCheckTaskPayload{Force: true, Group: req.Group})
 	if err != nil {
 		common.ApiError(c, err)
 		return
