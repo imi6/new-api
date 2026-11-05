@@ -58,6 +58,9 @@ type channelTestOptions struct {
 	// maxBodyBytes caps how much of a stream response is kept; zero keeps the
 	// small amount a health check needs for its log line.
 	maxBodyBytes int64
+	// requireCompleteStream fails a stream that ended by timeout, a dropped
+	// connection or a read error, instead of returning the part received.
+	requireCompleteStream bool
 }
 
 func normalizeChannelTestEndpoint(channel *model.Channel, endpointType string) string {
@@ -500,6 +503,14 @@ func runChannelTest(ctx context.Context, channel *model.Channel, testUserID int,
 			context:     c,
 			localErr:    respErr,
 			newAPIError: respErr,
+		}
+	}
+	if opts.requireCompleteStream && isStream && info.StreamStatus != nil && !info.StreamStatus.IsNormalEnd() {
+		cutErr := fmt.Errorf("stream ended early: %s", info.StreamStatus.Summary())
+		return testResult{
+			context:     c,
+			localErr:    cutErr,
+			newAPIError: types.NewOpenAIError(cutErr, types.ErrorCodeBadResponseBody, http.StatusGatewayTimeout),
 		}
 	}
 	usage, usageErr := coerceTestUsage(usageA, isStream, info.GetEstimatePromptTokens())
