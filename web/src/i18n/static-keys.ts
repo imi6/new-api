@@ -971,6 +971,7 @@ export const STATIC_I18N_KEYS = [
   'Cut off at the max output tokens',
   'Intelligence check',
   'Intelligence checks',
+  'Channel status page',
   'Check at most 50 groups',
   'Enter a whole number of hours between 1 and 168',
   'Enter a whole number between 256 and 65536',
