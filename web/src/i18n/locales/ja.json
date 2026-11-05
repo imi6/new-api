@@ -7815,7 +7815,6 @@
     "Drawing from {{time}}": "{{time}} の作品",
     "Drawing...": "作品を生成中...",
     "Each group can be checked only once": "各グループは一度だけチェックできます",
-    "Each group is checked with one model. A group not listed shows no check button.": "各グループは 1 つのモデルでチェックします。リストにないグループにはチェックボタンが表示されません。",
     "Enable intelligence checks": "降格チェックを有効にする",
     "Enter a whole number between 256 and 65536": "256 から 65536 の整数を入力してください",
     "Enter a whole number of hours between 1 and 168": "1 から 168 の整数（時間）を入力してください",
@@ -7857,6 +7856,8 @@
     "Unable to load intelligence checks": "降格チェックの結果を読み込めません",
     "Undetermined": "判定不能",
     "Waiting for the answer...": "回答を待っています...",
-    "Wrong": "不正解"
+    "Wrong": "不正解",
+    "Choose at least one question for every group": "各グループで少なくとも 1 つの問題を選んでください",
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "各グループは 1 つのモデルでチェックし、その行でチェックした問題だけを出題します。リストにないグループにはチェックボタンが表示されません。"
   }
 }
