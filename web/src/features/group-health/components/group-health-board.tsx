@@ -72,7 +72,6 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
   const query = useGroupHealth('hour')
   const data = query.data
   const groups = data?.groups ?? []
-  const healthy = groups.filter((group) => group.status === 'ok').length
   const anyDown = groups.some((group) => group.status === 'down')
   const rangeLabel = t(GROUP_HEALTH_RANGE_LABEL_KEYS.hour)
 
@@ -151,80 +150,70 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
       <div className='flex flex-wrap items-start justify-between gap-3'>
         <div className='flex flex-col gap-1'>
           {props.title}
-          {groups.length > 0 && (
-            <p className='text-muted-foreground text-sm'>
-              {t('{{healthy}}/{{total}} groups are healthy', {
-                healthy,
-                total: groups.length,
-              })}
-            </p>
-          )}
-        </div>
-        <div className='flex flex-col items-end gap-1'>
-          <div className='flex items-center gap-2'>
-            {groups.length > 0 && (
-              <StatusBadge
-                label={anyDown ? t('Partial outage') : t('All healthy')}
-                variant={anyDown ? 'danger' : 'success'}
-                copyable={false}
-                showDot
-              />
+          <p className='text-muted-foreground text-sm'>
+            {t(
+              'Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.'
             )}
-            <Button
-              variant='outline'
-              size='icon-sm'
-              onClick={refresh}
-              disabled={query.isFetching}
-              aria-label={t('Refresh')}
-            >
-              <RefreshCw
-                className={query.isFetching ? 'animate-spin' : undefined}
-                aria-hidden='true'
-              />
-            </Button>
-            <Select
-              items={GROUP_HEALTH_REFRESH_OPTIONS.map((value) => ({
-                value: String(value),
-                label: `${value}s`,
-              }))}
-              value={String(refreshSeconds)}
-              onValueChange={(value) => {
-                if (value !== null) changeRefresh(Number(value))
-              }}
-            >
-              <SelectTrigger
-                className='h-8 w-20'
-                aria-label={t('Auto refresh interval')}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
-                <SelectGroup>
-                  {GROUP_HEALTH_REFRESH_OPTIONS.map((value) => (
-                    <SelectItem key={value} value={String(value)}>
-                      {`${value}s`}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <span className='text-muted-foreground w-9 text-right text-xs tabular-nums'>
-              <RefreshCountdown
-                lastFetchedAt={Math.max(
-                  query.dataUpdatedAt,
-                  query.errorUpdatedAt
-                )}
-                intervalSeconds={refreshSeconds}
-                fetching={query.isFetching}
-                onRefresh={refresh}
-              />
-            </span>
-          </div>
+          </p>
+        </div>
+        <div className='flex items-center gap-2'>
           {groups.length > 0 && (
-            <span className='text-muted-foreground text-xs'>
-              {t('Click a card to see details')}
-            </span>
+            <StatusBadge
+              label={anyDown ? t('Partial outage') : t('All healthy')}
+              variant={anyDown ? 'danger' : 'success'}
+              copyable={false}
+              showDot
+            />
           )}
+          <Button
+            variant='outline'
+            size='icon-sm'
+            onClick={refresh}
+            disabled={query.isFetching}
+            aria-label={t('Refresh')}
+          >
+            <RefreshCw
+              className={query.isFetching ? 'animate-spin' : undefined}
+              aria-hidden='true'
+            />
+          </Button>
+          <Select
+            items={GROUP_HEALTH_REFRESH_OPTIONS.map((value) => ({
+              value: String(value),
+              label: `${value}s`,
+            }))}
+            value={String(refreshSeconds)}
+            onValueChange={(value) => {
+              if (value !== null) changeRefresh(Number(value))
+            }}
+          >
+            <SelectTrigger
+              className='h-8 w-20'
+              aria-label={t('Auto refresh interval')}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              <SelectGroup>
+                {GROUP_HEALTH_REFRESH_OPTIONS.map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {`${value}s`}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <span className='text-muted-foreground w-9 text-right text-xs tabular-nums'>
+            <RefreshCountdown
+              lastFetchedAt={Math.max(
+                query.dataUpdatedAt,
+                query.errorUpdatedAt
+              )}
+              intervalSeconds={refreshSeconds}
+              fetching={query.isFetching}
+              onRefresh={refresh}
+            />
+          </span>
         </div>
       </div>
 
