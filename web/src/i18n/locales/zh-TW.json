@@ -8220,6 +8220,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "降價顯示綠色向下箭頭，漲價顯示橙色向上箭頭，新分組顯示「新」。對某個分組享有專屬倍率的使用者，不會在該分組上看到標記。",
     "Days a change stays marked": "變化標記顯示天數",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "這段時間內的多次調整合併顯示：從第一次調整前的倍率到現在的倍率。功能上線前的調整無法得知。",
-    "Enter a whole number from 1 to 30": "請輸入 1 到 30 之間的整數"
+    "Enter a whole number from 1 to 30": "請輸入 1 到 30 之間的整數",
+    "Clear cache records": "清理快取記錄",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "將刪除所有分組已儲存的快取命中率記錄，之後由新請求重新累積。此操作無法復原。",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "將刪除所有分組在 {{time}} 之前的快取命中率記錄。此操作無法復原。",
+    "Cache records cleared.": "快取記錄已清理。",
+    "10 minutes ago": "10 分鐘前",
+    "30 minutes ago": "30 分鐘前"
   }
 }

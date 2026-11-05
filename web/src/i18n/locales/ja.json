@@ -8220,6 +8220,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "値下げは緑の下向き矢印、値上げはオレンジの上向き矢印、新しいグループは「新規」で示します。グループに専用倍率があるユーザーには、そのグループのマークは表示されません。",
     "Days a change stays marked": "変化マークの表示日数",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "この期間内の複数回の変更はまとめて表示します：最初の変更前の倍率から現在の倍率まで。この機能の追加前の変更は分かりません。",
-    "Enter a whole number from 1 to 30": "1 から 30 までの整数を入力してください"
+    "Enter a whole number from 1 to 30": "1 から 30 までの整数を入力してください",
+    "Clear cache records": "キャッシュ記録を削除",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "すべてのグループの保存済みキャッシュヒット率の記録を削除します。新しいリクエストで再び蓄積されます。この操作は元に戻せません。",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "すべてのグループの {{time}} より前のキャッシュヒット率の記録を削除します。この操作は元に戻せません。",
+    "Cache records cleared.": "キャッシュ記録を削除しました。",
+    "10 minutes ago": "10 分前",
+    "30 minutes ago": "30 分前"
   }
 }
