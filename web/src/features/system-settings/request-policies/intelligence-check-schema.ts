@@ -23,6 +23,7 @@ import type { IntelligenceCheckSettings } from './defaults'
 // Ranges match operation_setting.ValidateIntelligenceCheckSettingOption.
 export const INTELLIGENCE_CHECK_LIMITS = {
   interval: { min: 1, max: 168 },
+  keepResults: { min: 1, max: 100 },
   maxTokens: { min: 256, max: 65536 },
   prompt: 8000,
   answer: 64,
@@ -95,6 +96,10 @@ export const intelligenceCheckSchema = z
     pelican_max_tokens: rangedInt(
       INTELLIGENCE_CHECK_LIMITS.maxTokens,
       'Enter a whole number between 256 and 65536'
+    ),
+    keep_results: rangedInt(
+      INTELLIGENCE_CHECK_LIMITS.keepResults,
+      'Enter a whole number between 1 and 100'
     ),
   })
   .superRefine((values, ctx) => {
@@ -182,6 +187,7 @@ export function toIntelligenceCheckValues(
     pelican_interval_hours: settings[`${PREFIX}pelican_interval_hours`],
     pelican_prompt: settings[`${PREFIX}pelican_prompt`],
     pelican_max_tokens: settings[`${PREFIX}pelican_max_tokens`],
+    keep_results: settings[`${PREFIX}keep_results`],
   }
 }
 
