@@ -27,11 +27,12 @@ export type GroupHealthStatus = 'ok' | 'down' | 'unknown'
  */
 export type GroupHealthLatencySource = 'ttft' | 'probe' | ''
 
-/** One bar: real requests and channel checks of one hour, day, or week. */
+/**
+ * One bar: real requests and channel checks of one hour, day, or week.
+ * Only rates and latencies are sent; request counts stay on the server.
+ */
 export interface GroupHealthBar {
   start: number
-  real_requests: number
-  probe_samples: number
   success_rate: number
   has_data: boolean
   avg_latency_ms: number
