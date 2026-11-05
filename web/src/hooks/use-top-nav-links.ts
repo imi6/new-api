@@ -79,11 +79,15 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Model Square'), href: '/pricing', requiresAuth })
   }
 
-  links.push({
-    title: t('Channel Status'),
-    href: 'https://zzshu.si',
-    external: true,
-  })
+  const groupHealth = modules?.groupHealth
+  if (groupHealth && typeof groupHealth === 'object' && groupHealth.enabled) {
+    const requiresAuth = groupHealth.requireAuth && !isAuthed
+    links.push({
+      title: t('Group health'),
+      href: '/group-health',
+      requiresAuth,
+    })
+  }
 
   // Rankings
   const rankings = modules?.rankings
