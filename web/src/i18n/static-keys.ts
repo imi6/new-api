@@ -184,7 +184,6 @@ export const STATIC_I18N_KEYS = [
   'Home',
   'Console',
   'Model Square',
-  'Channel Status',
   'Rankings',
   'Docs',
   'About',
@@ -948,4 +947,13 @@ export const STATIC_I18N_KEYS = [
   'Enter at most 50 product categories',
   'Each product category can have at most 100 characters',
   'Open at least one invoice type',
+  // Group health: statuses, ranges and latency sources.
+  'Healthy',
+  'Outage',
+  'No data',
+  'Last 24 hours',
+  'Last 30 days',
+  'Last 12 weeks',
+  'Time to first token',
+  'Check latency',
 ] as const
