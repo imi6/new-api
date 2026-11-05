@@ -7002,6 +7002,8 @@
     "The key uses the primary channel you set.": "The key uses the primary channel you set.",
     "The keys and API addresses of the channels that use it": "The keys and API addresses of the channels that use it",
     "The language in the metadata does not match the file": "The language in the metadata does not match the file",
+    "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "The last {{count}} complete drawings · grid comparison · select one to play it large",
     "The legacy token stops working on {{date}}. Create a new token to replace it.": "The legacy token stops working on {{date}}. Create a new token to replace it.",
     "The list of translations is invalid": "The list of translations is invalid",
     "The login session that started this Telegram binding is no longer valid.": "The login session that started this Telegram binding is no longer valid.",

@@ -7002,6 +7002,8 @@
     "The key uses the primary channel you set.": "キーは設定したメインチャネルを使います。",
     "The keys and API addresses of the channels that use it": "このプラグインを使うチャネルのキーと API アドレス",
     "The language in the metadata does not match the file": "メタデータの言語がファイルと一致しません",
+    "The last {{count}} answers · final answers compared with the expected one": "直近 {{count}} 件の回答 · 最終回答を正解と照合",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "直近 {{count}} 件の完成作品 · グリッドで比較 · 作品を選ぶと拡大して再生",
     "The legacy token stops working on {{date}}. Create a new token to replace it.": "旧形式のトークンは {{date}} に使用できなくなります。新しいトークンを作成して置き換えてください。",
     "The list of translations is invalid": "翻訳の一覧が正しくありません",
     "The login session that started this Telegram binding is no longer valid.": "この Telegram 連携を開始したログインセッションは無効になりました。",
