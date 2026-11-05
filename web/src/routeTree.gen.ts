@@ -57,6 +57,7 @@ import { Route as AuthenticatedUsageLogsAuditRouteImport } from './routes/_authe
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenticated/wallet/index'
 import { Route as AuthenticatedInvoiceIndexRouteImport } from './routes/_authenticated/invoice/index'
+import { Route as AuthenticatedChannelStatusIndexRouteImport } from './routes/_authenticated/channel-status/index'
 import { Route as AuthenticatedInvoiceManagementIndexRouteImport } from './routes/_authenticated/invoice-management/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
@@ -334,6 +335,12 @@ const AuthenticatedInvoiceIndexRoute =
     path: '/invoice/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedChannelStatusIndexRoute =
+  AuthenticatedChannelStatusIndexRouteImport.update({
+    id: '/channel-status/',
+    path: '/channel-status/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInvoiceManagementIndexRoute =
   AuthenticatedInvoiceManagementIndexRouteImport.update({
     id: '/invoice-management/',
@@ -489,6 +496,7 @@ export interface FileRoutesByFullPath {
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/wallet/': typeof AuthenticatedWalletIndexRoute
   '/invoice/': typeof AuthenticatedInvoiceIndexRoute
+  '/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
@@ -554,6 +562,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersIndexRoute
   '/wallet': typeof AuthenticatedWalletIndexRoute
   '/invoice': typeof AuthenticatedInvoiceIndexRoute
+  '/channel-status': typeof AuthenticatedChannelStatusIndexRoute
   '/invoice-management': typeof AuthenticatedInvoiceManagementIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
@@ -623,6 +632,7 @@ export interface FileRoutesById {
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/wallet/': typeof AuthenticatedWalletIndexRoute
   '/_authenticated/invoice/': typeof AuthenticatedInvoiceIndexRoute
+  '/_authenticated/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/_authenticated/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
@@ -691,6 +701,7 @@ export interface FileRouteTypes {
     | '/users/'
     | '/wallet/'
     | '/invoice/'
+    | '/channel-status/'
     | '/invoice-management/'
     | '/pricing/$modelId/'
     | '/system-settings/auth/$section'
@@ -756,6 +767,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/wallet'
     | '/invoice'
+    | '/channel-status'
     | '/invoice-management'
     | '/pricing/$modelId'
     | '/system-settings/auth/$section'
@@ -824,6 +836,7 @@ export interface FileRouteTypes {
     | '/_authenticated/users/'
     | '/_authenticated/wallet/'
     | '/_authenticated/invoice/'
+    | '/_authenticated/channel-status/'
     | '/_authenticated/invoice-management/'
     | '/pricing/$modelId/'
     | '/_authenticated/system-settings/auth/$section'
@@ -1202,6 +1215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvoiceIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/channel-status/': {
+      id: '/_authenticated/channel-status/'
+      path: '/channel-status'
+      fullPath: '/channel-status/'
+      preLoaderRoute: typeof AuthenticatedChannelStatusIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/invoice-management/': {
       id: '/_authenticated/invoice-management/'
       path: '/invoice-management'
@@ -1444,6 +1464,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWalletIndexRoute: typeof AuthenticatedWalletIndexRoute
   AuthenticatedInvoiceIndexRoute: typeof AuthenticatedInvoiceIndexRoute
+  AuthenticatedChannelStatusIndexRoute: typeof AuthenticatedChannelStatusIndexRoute
   AuthenticatedInvoiceManagementIndexRoute: typeof AuthenticatedInvoiceManagementIndexRoute
 }
 
@@ -1473,6 +1494,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWalletIndexRoute: AuthenticatedWalletIndexRoute,
   AuthenticatedInvoiceIndexRoute: AuthenticatedInvoiceIndexRoute,
+  AuthenticatedChannelStatusIndexRoute: AuthenticatedChannelStatusIndexRoute,
   AuthenticatedInvoiceManagementIndexRoute: AuthenticatedInvoiceManagementIndexRoute,
 }
 
