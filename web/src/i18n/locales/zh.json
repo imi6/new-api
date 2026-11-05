@@ -7002,6 +7002,8 @@
     "The key uses the primary channel you set.": "密钥将使用你设置的主用渠道。",
     "The keys and API addresses of the channels that use it": "使用它的渠道的密钥和 API 地址",
     "The language in the metadata does not match the file": "元数据里的语言和文件不一致",
+    "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最终答案与标准答案比对",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宫格对比 · 点击作品放大播放",
     "The legacy token stops working on {{date}}. Create a new token to replace it.": "旧版令牌将于 {{date}} 停用，请创建新令牌替换。",
     "The list of translations is invalid": "翻译列表有误",
     "The login session that started this Telegram binding is no longer valid.": "发起此 Telegram 绑定的登录会话已失效。",

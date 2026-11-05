@@ -7002,6 +7002,8 @@
     "The key uses the primary channel you set.": "Khóa sẽ dùng kênh chính bạn đã đặt.",
     "The keys and API addresses of the channels that use it": "Khóa và địa chỉ API của các kênh dùng nó",
     "The language in the metadata does not match the file": "Ngôn ngữ trong siêu dữ liệu không khớp với tệp",
+    "The last {{count}} answers · final answers compared with the expected one": "{{count}} câu trả lời gần nhất · đáp án cuối được so với đáp án chuẩn",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "{{count}} bản vẽ hoàn chỉnh gần nhất · so sánh dạng lưới · chọn một bản vẽ để phát phóng to",
     "The legacy token stops working on {{date}}. Create a new token to replace it.": "Token cũ sẽ ngừng hoạt động vào {{date}}. Hãy tạo token mới để thay thế.",
     "The list of translations is invalid": "Danh sách bản dịch không hợp lệ",
     "The login session that started this Telegram binding is no longer valid.": "Phiên đăng nhập đã bắt đầu liên kết Telegram này không còn hợp lệ.",

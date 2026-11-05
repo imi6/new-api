@@ -7002,6 +7002,8 @@
     "The key uses the primary channel you set.": "La clé utilise le canal principal défini.",
     "The keys and API addresses of the channels that use it": "Les clés et adresses d'API des canaux qui l'utilisent",
     "The language in the metadata does not match the file": "La langue des métadonnées ne correspond pas au fichier",
+    "The last {{count}} answers · final answers compared with the expected one": "Les {{count}} dernières réponses · réponses finales comparées à la réponse attendue",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "Les {{count}} derniers dessins complets · comparaison en grille · sélectionnez-en un pour le lire en grand",
     "The legacy token stops working on {{date}}. Create a new token to replace it.": "L’ancien jeton cessera de fonctionner le {{date}}. Créez un nouveau jeton pour le remplacer.",
     "The list of translations is invalid": "La liste des traductions est invalide",
     "The login session that started this Telegram binding is no longer valid.": "La session de connexion ayant lancé cette liaison Telegram n’est plus valide.",
