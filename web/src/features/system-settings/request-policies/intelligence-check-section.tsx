@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -104,13 +105,13 @@ function TargetRows(props: TargetRowsProps) {
         return (
           <div
             key={`${index}-${row.group}`}
-            className='grid grid-cols-[1fr_1fr_auto] items-center gap-2'
+            className='grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_1fr_auto_auto]'
           >
             <Select
               items={groups.map((group) => ({ value: group, label: group }))}
               value={row.group}
               onValueChange={(group) => {
-                if (group !== null) update(index, { group, model: '' })
+                if (group !== null) update(index, { ...row, group, model: '' })
               }}
             >
               <SelectTrigger className='w-full' aria-label={t('Group')}>
@@ -147,10 +148,31 @@ function TargetRows(props: TargetRowsProps) {
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <div className='flex items-center gap-4 text-sm'>
+              <label className='flex cursor-pointer items-center gap-1.5'>
+                <Checkbox
+                  checked={row.candy}
+                  onCheckedChange={(value) =>
+                    update(index, { ...row, candy: !!value })
+                  }
+                />
+                {t('Candy question')}
+              </label>
+              <label className='flex cursor-pointer items-center gap-1.5'>
+                <Checkbox
+                  checked={row.pelican}
+                  onCheckedChange={(value) =>
+                    update(index, { ...row, pelican: !!value })
+                  }
+                />
+                {t('Pelican drawing')}
+              </label>
+            </div>
             <Button
               type='button'
               variant='ghost'
               size='icon-sm'
+              className='justify-self-end'
               aria-label={t('Remove')}
               onClick={() =>
                 props.onChange(props.value.filter((_, i) => i !== index))
@@ -168,7 +190,10 @@ function TargetRows(props: TargetRowsProps) {
         className='self-start'
         disabled={props.value.length >= INTELLIGENCE_CHECK_LIMITS.targets}
         onClick={() =>
-          props.onChange([...props.value, { group: '', model: '' }])
+          props.onChange([
+            ...props.value,
+            { group: '', model: '', candy: true, pelican: true },
+          ])
         }
       >
         <Plus aria-hidden='true' />
@@ -337,7 +362,7 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
                 />
                 <FormDescription>
                   {t(
-                    'Each group is checked with one model. A group not listed shows no check button.'
+                    'Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.'
                   )}
                 </FormDescription>
                 <FormMessage />
