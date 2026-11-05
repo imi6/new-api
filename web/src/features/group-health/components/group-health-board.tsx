@@ -100,7 +100,7 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
       return (
         <EmptyState
           icon={HeartPulse}
-          title={t('Unable to load group health')}
+          title={t('Unable to load channel status')}
           description={t('Try again later.')}
           className='min-h-[320px]'
         />
