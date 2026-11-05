@@ -165,6 +165,7 @@ func MarkRequestPolicySuccess(c *gin.Context, stream *relaycommon.StreamStatus) 
 	state.AddEvent(PolicyEvent{ChannelID: channelID, Decision: decision})
 	if state.Successful && c != nil {
 		ClearChannelDisableStreak(channelID, common.GetContextKeyString(c, constant.ContextKeyChannelKey), DisableStreakRequest)
+		MarkChannelRecentSuccess(c, channelID)
 	}
 }
 
