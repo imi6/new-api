@@ -136,7 +136,7 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
               </Badge>
             )}
             <Badge variant='secondary' className='shrink-0 tabular-nums'>
-              {`${t('Group Ratio')} x${ratioText}`}
+              {`${t('Ratio')} x${ratioText}`}
             </Badge>
             {group.top_model && (
               <Badge
