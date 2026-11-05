@@ -7891,6 +7891,7 @@
     "Cache hit rate window (minutes)": "Период доли попаданий в кэш (минуты)",
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "Карточка показывает долю за это число последних минут. Более старые счётчики удаляются, поэтому больший период заполняется со временем.",
     "Enter a whole number from 5 to 1440": "Введите целое число от 5 до 1440",
-    "Last {{count}} minutes": "Последние {{count}} мин"
+    "Last {{count}} minutes": "Последние {{count}} мин",
+    "Check this group now": "Проверить эту группу сейчас"
   }
 }
