@@ -7726,7 +7726,6 @@
     "Channel checks": "チャネルテスト",
     "Check latency": "テスト遅延",
     "Click a card to see details": "カードをクリックすると詳細を表示します",
-    "Group health": "グループの状態",
     "Groups that users can choose appear here.": "ユーザーが選べるグループがここに表示されます。",
     "Last 12 weeks": "直近 12 週間",
     "Last 24 hours": "直近 24 時間",
@@ -7737,7 +7736,6 @@
     "Now": "現在",
     "Partial outage": "一部異常",
     "Past": "過去",
-    "Require login to view group health": "グループの状態の閲覧にログインを必須にする",
     "Skip channels that just served users": "直近でユーザーに応答したチャネルを定期テストから除外",
     "Success rate and latency of each group, from user requests and channel checks.": "ユーザーのリクエストとチャネルテストに基づく、各グループの成功率と遅延です。",
     "Success rate · {{range}}": "成功率 · {{range}}",
@@ -7745,12 +7743,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "管理者がパフォーマンス指標またはチャネルの定期テストを有効にする必要があります。",
     "Time to first token": "最初のトークンまでの時間",
     "Try again later.": "しばらくしてからもう一度お試しください。",
-    "Unable to load group health": "グループの状態を読み込めません",
     "User requests": "ユーザーのリクエスト",
     "User requests {{real}}, channel checks {{probe}}": "ユーザーのリクエスト {{real}} 件、チャネルテスト {{probe}} 件",
     "View details of {{name}}": "{{name}} の詳細を表示",
-    "Visitors must authenticate before accessing the group health page.": "訪問者はグループの状態ページにアクセスする前にログインする必要があります。",
     "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} 個のグループが正常です",
-    "Failed to load group health": "グループの状態の読み込みに失敗しました"
+    "Require login to view channel status": "チャネルステータスの閲覧にログインを必須にする",
+    "Visitors must authenticate before accessing the channel status page.": "訪問者はチャネルステータスページにアクセスする前にログインする必要があります。",
+    "Unable to load channel status": "チャネルステータスを読み込めません",
+    "Failed to load channel status": "チャネルステータスの読み込みに失敗しました",
+    "Abnormal": "異常"
   }
 }
