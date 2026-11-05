@@ -7806,7 +7806,6 @@
     "Drawing from {{time}}": "Dessin du {{time}}",
     "Drawing...": "Dessin en cours...",
     "Each group can be checked only once": "Chaque groupe ne peut être vérifié qu'une fois",
-    "Each group is checked with one model. A group not listed shows no check button.": "Chaque groupe est vérifié avec un modèle. Un groupe absent n'affiche pas de bouton de vérification.",
     "Enable intelligence checks": "Activer les vérifications d'intelligence",
     "Enter a whole number between 256 and 65536": "Saisissez un nombre entier entre 256 et 65536",
     "Enter a whole number of hours between 1 and 168": "Saisissez un nombre entier d'heures entre 1 et 168",
@@ -7848,6 +7847,8 @@
     "Unable to load intelligence checks": "Impossible de charger les vérifications",
     "Undetermined": "Indéterminé",
     "Waiting for the answer...": "En attente de la réponse...",
-    "Wrong": "Faux"
+    "Wrong": "Faux",
+    "Choose at least one question for every group": "Choisissez au moins une question pour chaque groupe",
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Chaque groupe est vérifié avec un modèle et ne reçoit que les questions cochées sur sa ligne. Un groupe absent n'affiche pas de bouton de vérification."
   }
 }

@@ -7806,7 +7806,6 @@
     "Drawing from {{time}}": "{{time}} 的作品",
     "Drawing...": "正在生成作品...",
     "Each group can be checked only once": "每個分組只能檢測一次",
-    "Each group is checked with one model. A group not listed shows no check button.": "每個分組用一個模型檢測。沒列出的分組，卡片上不顯示降智檢測按鈕。",
     "Enable intelligence checks": "啟用降智檢測",
     "Enter a whole number between 256 and 65536": "請輸入 256 到 65536 之間的整數",
     "Enter a whole number of hours between 1 and 168": "請輸入 1 到 168 之間的整數小時",
@@ -7848,6 +7847,8 @@
     "Unable to load intelligence checks": "無法載入降智檢測結果",
     "Undetermined": "無法判定",
     "Waiting for the answer...": "正在等待回答...",
-    "Wrong": "錯誤"
+    "Wrong": "錯誤",
+    "Choose at least one question for every group": "每個分組至少選擇一道題",
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "每個分組用一個模型檢測，只測這一行勾選的題目。沒列出的分組，卡片上不顯示降智檢測按鈕。"
   }
 }
