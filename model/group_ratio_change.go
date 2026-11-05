@@ -76,7 +76,12 @@ type GroupRatioChangeInfo struct {
 	New bool  `json:"new,omitempty"`
 }
 
-const groupRatioChangeCacheTTL = 60 * time.Second
+const (
+	groupRatioChangeCacheTTL = 60 * time.Second
+	// groupRatioChangeErrorTTL is how long a failed lookup shows no changes
+	// before the database is asked again.
+	groupRatioChangeErrorTTL = 10 * time.Second
+)
 
 var (
 	groupRatioChangeCache        map[string]GroupRatioChangeInfo
@@ -107,6 +112,10 @@ func RecentGroupRatioChanges() map[string]GroupRatioChangeInfo {
 	err := DB.Where("created_at >= ?", since).Order("created_at ASC, id ASC").Find(&rows).Error
 	if err != nil {
 		common.SysError(common.LogText("failed to load group ratio changes: %s", err.Error()))
+		// Keep the empty result for a while: the pages that ask are public,
+		// and retrying on every request would pile them up on the database.
+		groupRatioChangeCache = nil
+		groupRatioChangeCacheExpires = time.Now().Add(groupRatioChangeErrorTTL)
 		return nil
 	}
 	type window struct {
