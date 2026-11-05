@@ -34,10 +34,11 @@ const (
 	groupHealthLatencyProbe = "probe"
 )
 
+// groupHealthBar is one period as the page draws it. It carries rates and
+// latencies only: the page is public, so request and check counts stay on
+// the server.
 type groupHealthBar struct {
 	Start         int64   `json:"start"`
-	RealRequests  int64   `json:"real_requests"`
-	ProbeSamples  int64   `json:"probe_samples"`
 	SuccessRate   float64 `json:"success_rate"`
 	HasData       bool    `json:"has_data"`
 	AvgLatencyMs  int64   `json:"avg_latency_ms"`
@@ -112,7 +113,7 @@ func (h *healthCounters) add(other healthCounters) {
 // of real streaming requests, or the check round trip when there is none.
 // The cache hit rate counts real requests only.
 func (h healthCounters) bar(start int64) groupHealthBar {
-	bar := groupHealthBar{Start: start, RealRequests: h.realRequests, ProbeSamples: h.probeSamples, CacheHitRate: -1}
+	bar := groupHealthBar{Start: start, CacheHitRate: -1}
 	total := h.realRequests + h.probeSamples
 	if total > 0 {
 		bar.HasData = true
