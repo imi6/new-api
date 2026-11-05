@@ -31,7 +31,7 @@ export const GROUP_HEALTH_STATUS_META: Record<
   { labelKey: string; variant: StatusVariant }
 > = {
   ok: { labelKey: 'Healthy', variant: 'success' },
-  down: { labelKey: 'Outage', variant: 'danger' },
+  down: { labelKey: 'Abnormal', variant: 'danger' },
   unknown: { labelKey: 'No data', variant: 'neutral' },
 }
 
