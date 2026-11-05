@@ -22,7 +22,7 @@ import { GroupHealth } from '@/features/group-health'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 import { useAuthStore } from '@/stores/auth-store'
 
-export const Route = createFileRoute('/group-health/')({
+export const Route = createFileRoute('/health/')({
   beforeLoad: async ({ context, location }) => {
     const access = await getModuleAccessForGuard(
       context.queryClient,

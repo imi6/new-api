@@ -56,6 +56,11 @@ var reservedRouteNamespaces = []string{
 	"/usage-logs",
 	"/users",
 	"/wallet",
+	"/referral",
+	"/invoice",
+	"/invoice-management",
+	"/channel-status",
+	"/health",
 }
 
 // The settings are read on every use, so values loaded from the environment
