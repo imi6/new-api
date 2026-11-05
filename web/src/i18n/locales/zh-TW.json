@@ -8076,7 +8076,6 @@
     "All healthy": "全部正常",
     "Auto refresh interval": "自動重新整理間隔",
     "Avg latency": "平均延遲",
-    "Avg latency · {{range}}": "平均延遲 · {{range}}",
     "Channel checks": "渠道測試",
     "Check latency": "測試延遲",
     "Groups that users can choose appear here.": "使用者可選的分組會顯示在這裡。",
@@ -8091,7 +8090,6 @@
     "Past": "過去",
     "Skip channels that just served users": "最近有真實請求成功的渠道跳過定時測試",
     "Success rate and latency of each group, from user requests and channel checks.": "根據使用者請求和渠道測試，展示每個分組的成功率和延遲。",
-    "Success rate · {{range}}": "成功率 · {{range}}",
     "Success rate: {{rate}}": "成功率：{{rate}}",
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "需要管理員開啟效能指標或渠道定時測試。",
     "Time to first token": "首字延遲",
@@ -8205,6 +8203,7 @@
     "What to delete": "清理範圍",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宮格對比 · 點擊作品放大播放",
     "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最終答案與標準答案比對",
-    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "僅展示服務健康概況，不公開站點請求數量、逐請求記錄或內部渠道資訊。"
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "僅展示服務健康概況，不公開站點請求數量、逐請求記錄或內部渠道資訊。",
+    "Cache hit rate": "快取命中率"
   }
 }

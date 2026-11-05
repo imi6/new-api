@@ -8076,7 +8076,6 @@
     "All healthy": "Tất cả bình thường",
     "Auto refresh interval": "Khoảng tự động làm mới",
     "Avg latency": "Độ trễ trung bình",
-    "Avg latency · {{range}}": "Độ trễ trung bình · {{range}}",
     "Channel checks": "Kiểm tra kênh",
     "Check latency": "Độ trễ kiểm tra",
     "Groups that users can choose appear here.": "Các nhóm người dùng có thể chọn sẽ hiển thị ở đây.",
@@ -8091,7 +8090,6 @@
     "Past": "Trước đây",
     "Skip channels that just served users": "Bỏ qua kênh vừa phục vụ người dùng",
     "Success rate and latency of each group, from user requests and channel checks.": "Tỷ lệ thành công và độ trễ của từng nhóm, dựa trên yêu cầu của người dùng và kiểm tra kênh.",
-    "Success rate · {{range}}": "Tỷ lệ thành công · {{range}}",
     "Success rate: {{rate}}": "Tỷ lệ thành công: {{rate}}",
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "Quản trị viên cần bật số liệu hiệu suất hoặc kiểm tra kênh định kỳ.",
     "Time to first token": "Thời gian đến token đầu tiên",
@@ -8205,6 +8203,7 @@
     "What to delete": "Phạm vi xóa",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "{{count}} bản vẽ hoàn chỉnh gần nhất · so sánh dạng lưới · chọn một bản vẽ để phát phóng to",
     "The last {{count}} answers · final answers compared with the expected one": "{{count}} câu trả lời gần nhất · đáp án cuối được so với đáp án chuẩn",
-    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Chỉ hiển thị tổng quan tình trạng dịch vụ. Không công khai số lượng yêu cầu của trang, từng yêu cầu hay thông tin kênh nội bộ."
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Chỉ hiển thị tổng quan tình trạng dịch vụ. Không công khai số lượng yêu cầu của trang, từng yêu cầu hay thông tin kênh nội bộ.",
+    "Cache hit rate": "Tỷ lệ trúng bộ nhớ đệm"
   }
 }

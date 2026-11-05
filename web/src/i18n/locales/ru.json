@@ -8076,7 +8076,6 @@
     "All healthy": "Всё работает",
     "Auto refresh interval": "Интервал автообновления",
     "Avg latency": "Средняя задержка",
-    "Avg latency · {{range}}": "Средняя задержка · {{range}}",
     "Channel checks": "Проверки каналов",
     "Check latency": "Задержка проверки",
     "Groups that users can choose appear here.": "Здесь появятся группы, доступные пользователям.",
@@ -8091,7 +8090,6 @@
     "Past": "Прошлое",
     "Skip channels that just served users": "Пропускать каналы, которые только что обслужили пользователей",
     "Success rate and latency of each group, from user requests and channel checks.": "Доля успешных запросов и задержка каждой группы по запросам пользователей и проверкам каналов.",
-    "Success rate · {{range}}": "Доля успешных · {{range}}",
     "Success rate: {{rate}}": "Доля успешных: {{rate}}",
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "Администратору нужно включить метрики производительности или плановые проверки каналов.",
     "Time to first token": "Время до первого токена",
@@ -8205,6 +8203,7 @@
     "What to delete": "Что удалить",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "Последние {{count}} готовых рисунков · сравнение сеткой · выберите рисунок, чтобы открыть его крупно",
     "The last {{count}} answers · final answers compared with the expected one": "Последние {{count}} ответов · итоговые ответы сравниваются с ожидаемым",
-    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Показывается только общая картина работоспособности сервиса. Количество запросов сайта, отдельные запросы и внутренние данные каналов не публикуются."
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Показывается только общая картина работоспособности сервиса. Количество запросов сайта, отдельные запросы и внутренние данные каналов не публикуются.",
+    "Cache hit rate": "Доля попаданий в кэш"
   }
 }
