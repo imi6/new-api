@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, Clock, Feather } from 'lucide-react'
+import { Activity, Clock, Database, Feather } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -51,18 +51,25 @@ interface GroupHealthCardProps {
 function MetricBox(props: {
   icon: ReactNode
   label: string
+  rangeLabel: string
   value: string
   valueClassName?: string
 }) {
   return (
     <div className='bg-muted/30 flex min-w-0 flex-col gap-1 rounded-xl border px-3 py-2.5'>
-      <span className='text-muted-foreground flex items-center gap-1.5 text-xs'>
-        {props.icon}
-        <span className='truncate'>{props.label}</span>
+      {/* Three boxes share the row, so the range sits under the name. */}
+      <span className='text-muted-foreground flex min-w-0 flex-col text-xs'>
+        <span className='flex items-center gap-1.5'>
+          {props.icon}
+          <span className='truncate'>{props.label}</span>
+        </span>
+        <span className='truncate text-[11px] opacity-80'>
+          {props.rangeLabel}
+        </span>
       </span>
       <span
         className={cn(
-          'truncate text-xl font-semibold tabular-nums',
+          'truncate text-lg font-semibold tabular-nums',
           props.valueClassName
         )}
       >
@@ -141,17 +148,29 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
         </div>
       </div>
 
-      <div className='pointer-events-none grid grid-cols-2 gap-2'>
+      <div className='pointer-events-none grid grid-cols-3 gap-2'>
         <MetricBox
-          icon={<Clock className='size-3.5' aria-hidden='true' />}
-          label={t('Avg latency · {{range}}', { range: props.rangeLabel })}
+          icon={<Clock className='size-3.5 shrink-0' aria-hidden='true' />}
+          label={t('Avg latency')}
+          rangeLabel={props.rangeLabel}
           value={formatLatency(total.avg_latency_ms)}
         />
         <MetricBox
-          icon={<Activity className='size-3.5' aria-hidden='true' />}
-          label={t('Success rate · {{range}}', { range: props.rangeLabel })}
+          icon={<Activity className='size-3.5 shrink-0' aria-hidden='true' />}
+          label={t('Success rate')}
+          rangeLabel={props.rangeLabel}
           value={total.has_data ? formatUptimePct(total.success_rate) : '—'}
           valueClassName={rateClass}
+        />
+        <MetricBox
+          icon={<Database className='size-3.5 shrink-0' aria-hidden='true' />}
+          label={t('Cache hit rate')}
+          rangeLabel={props.rangeLabel}
+          value={
+            total.cache_hit_rate >= 0
+              ? formatUptimePct(total.cache_hit_rate)
+              : '—'
+          }
         />
       </div>
 
