@@ -7858,6 +7858,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "每道题可能要一到几分钟，画鹈鹕更久。可以离开这个页面，检测会在后台继续。",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "检测完成：通过 {{passed}} 道，未通过 {{failed}} 道，无法判定或失败 {{other}} 道。",
     "See the answers on the channel status page": "去渠道状态页查看回答",
-    "The check run failed.": "本次检测运行失败。"
+    "The check run failed.": "本次检测运行失败。",
+    "Cut off at the max output tokens": "达到最大输出 token，被截断",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "回答在最大输出 token 处被截断，请在设置里调大上限。",
+    "{{count}} tokens": "{{count}} tokens"
   }
 }
