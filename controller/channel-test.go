@@ -161,6 +161,7 @@ func testChannel(ctx context.Context, channel *model.Channel, testUserID int, te
 	}
 	cache.WriteContext(c)
 	c.Set("id", testUserID)
+	service.MarkChannelTestContext(c)
 
 	//c.Request.Header.Set("Authorization", "Bearer "+channel.Key)
 	c.Request.Header.Set("Content-Type", "application/json")
@@ -916,6 +917,9 @@ type channelTestSummary struct {
 	Failed    int `json:"failed"`
 	Disabled  int `json:"disabled"`
 	Enabled   int `json:"enabled"`
+	// Skipped counts enabled channels a scheduled run left out because a
+	// user request had just succeeded on them.
+	Skipped int `json:"skipped,omitempty"`
 }
 
 func testChannelForHealthCheck(ctx context.Context, channel *model.Channel, testUserID int, allowDisable bool, disableThreshold int64) channelTestSummary {
@@ -972,6 +976,12 @@ func testChannelForHealthCheck(ctx context.Context, channel *model.Channel, test
 	if result.localErr == nil && !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status) {
 		service.EnableChannel(channel.Id, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.Name)
 		summary.Enabled++
+	}
+
+	// The group health page reads the same result. A disabled channel gets no
+	// user traffic, so its recovery check is left out.
+	if isChannelEnabled {
+		model.RecordGroupHealthProbe(channel.GetGroups(), newAPIError == nil, milliseconds, common.GetTimestamp())
 	}
 
 	channel.UpdateResponseTime(milliseconds)
@@ -1111,13 +1121,37 @@ func runChannelTestTask(ctx context.Context, mode string, notify bool, report fu
 	if err != nil {
 		return channelTestSummary{}, err
 	}
-	if strings.TrimSpace(mode) == "" {
-		mode = operation_setting.GetMonitorSetting().ChannelTestMode
+	monitor := operation_setting.GetMonitorSetting()
+	scheduled := strings.TrimSpace(mode) == ""
+	if scheduled {
+		mode = monitor.ChannelTestMode
 	}
 	selected := selectChannelsForAutomaticTest(channels, mode)
+	skipped := 0
+	// Only a scheduled run skips: a manual "test all" always sends requests.
+	if scheduled && monitor.SkipRecentlyUsedChannels {
+		minutes := monitor.AutoTestChannelMinutes
+		if minutes <= 0 {
+			minutes = 10
+		}
+		since := time.Now().Add(-time.Duration(minutes * float64(time.Minute))).Unix()
+		kept := selected[:0]
+		for _, channel := range selected {
+			// A disabled channel gets no traffic and recovers only through a check.
+			if channel.Status == common.ChannelStatusEnabled && service.ChannelRecentlySucceeded(channel.Id, since) {
+				skipped++
+				continue
+			}
+			kept = append(kept, channel)
+		}
+		selected = kept
+	}
 	allowDisable := mode != operation_setting.ChannelTestModePassiveRecovery
-	concurrency := operation_setting.GetMonitorSetting().ChannelTestConcurrency
-	summary := performChannelTests(ctx, selected, testUserID, allowDisable, concurrency, report)
+	summary := performChannelTests(ctx, selected, testUserID, allowDisable, monitor.ChannelTestConcurrency, report)
+	summary.Skipped = skipped
+	if err := model.DeleteGroupHealthProbesBefore(common.GetTimestamp() - model.GroupHealthProbeRetentionSeconds); err != nil {
+		common.SysError(common.LogText("failed to clean up group health probes: %s", err.Error()))
+	}
 	if notify && (ctx == nil || ctx.Err() == nil) {
 		service.NotifyChannelWatchers(dto.NotifyTypeChannelTest, func(lang string) (string, string) {
 			return i18n.Translate(lang, i18n.MsgChannelTestCompletedSubject), i18n.Translate(lang, i18n.MsgChannelTestCompletedContent)
