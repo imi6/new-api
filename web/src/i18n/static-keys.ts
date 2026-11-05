@@ -968,6 +968,7 @@ export const STATIC_I18N_KEYS = [
   'No animation',
   'Loads external resources',
   'Extra text or code fences',
+  'Cut off at the max output tokens',
   'Intelligence check',
   'Intelligence checks',
   'Check at most 50 groups',
