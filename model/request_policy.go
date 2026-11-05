@@ -64,7 +64,7 @@ func IsRequestPolicyOption(key string) bool {
 		return true
 	}
 	switch key {
-	case "AutomaticEnableChannelEnabled", "ChannelDisableThreshold", "AutomaticDisableFailureCount", "monitor_setting.auto_test_channel_enabled", "monitor_setting.auto_test_channel_minutes", "monitor_setting.channel_test_concurrency", "monitor_setting.channel_test_mode", "RetryTimes", "AutomaticRetryStatusCodes", "AutomaticDisableChannelEnabled", "AutomaticDisableStatusCodes", "AutomaticDisableKeywords":
+	case "AutomaticEnableChannelEnabled", "ChannelDisableThreshold", "AutomaticDisableFailureCount", "monitor_setting.auto_test_channel_enabled", "monitor_setting.auto_test_channel_minutes", "monitor_setting.channel_test_concurrency", "monitor_setting.channel_test_mode", "monitor_setting.skip_recently_used_channels", "RetryTimes", "AutomaticRetryStatusCodes", "AutomaticDisableChannelEnabled", "AutomaticDisableStatusCodes", "AutomaticDisableKeywords":
 		return true
 	}
 	return false
@@ -138,7 +138,7 @@ func BuildRequestPolicy(options map[string]string) (*RequestPolicySnapshot, erro
 		return nil, err
 	}
 	snapshot.DisableKeywords = strings.Split(raw["AutomaticDisableKeywords"], "\n")
-	for _, key := range []string{"AutomaticEnableChannelEnabled", "monitor_setting.auto_test_channel_enabled"} {
+	for _, key := range []string{"AutomaticEnableChannelEnabled", "monitor_setting.auto_test_channel_enabled", "monitor_setting.skip_recently_used_channels"} {
 		if _, err := strconv.ParseBool(raw[key]); err != nil {
 			return nil, fmt.Errorf("invalid boolean: %s", key)
 		}
