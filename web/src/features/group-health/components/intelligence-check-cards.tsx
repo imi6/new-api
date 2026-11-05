@@ -110,7 +110,9 @@ export function CandyCheckCard(props: { check: IntelligenceCheck }) {
   const [expanded, setExpanded] = useState(false)
   const check = props.check
   const verdict = intelligenceVerdict(check)
-  const hasAnswer = verdict === 'passed' || verdict === 'failed'
+  // An undetermined answer still shows what was read, such as "二十一颗".
+  const hasAnswer =
+    verdict === 'passed' || verdict === 'failed' || verdict === 'undetermined'
 
   return (
     <div className='bg-card ring-foreground/10 relative flex min-w-0 flex-col gap-3 overflow-hidden rounded-2xl p-4 pt-5 ring-1'>
@@ -243,26 +245,29 @@ export function PelicanCheckCard(props: PelicanCheckCardProps) {
   if (verdict === 'failed' && failed.length > 0) {
     summary = failed
       .map((name) => t(DRAWING_CHECK_LABEL_KEYS[name] ?? name))
-      .join('、')
+      .join(', ')
   }
 
   return (
     <div className='bg-card ring-foreground/10 flex min-w-0 flex-col overflow-hidden rounded-2xl ring-1'>
-      <button
-        type='button'
-        disabled={!canOpen}
-        onClick={() => props.onOpen(check)}
-        aria-label={t('Play the drawing from {{time}}', {
-          time: checkedAt(check),
-        })}
-        className='focus-visible:ring-ring relative block w-full text-left outline-none focus-visible:ring-2 disabled:cursor-default'
-      >
+      <div className='relative'>
         {canOpen && (
-          <DrawingFrame
-            html={check.response}
-            title={t('Drawing from {{time}}', { time: checkedAt(check) })}
-            thumbnail
-          />
+          <>
+            <DrawingFrame
+              html={check.response}
+              title={t('Drawing from {{time}}', { time: checkedAt(check) })}
+              thumbnail
+            />
+            {/* A button may not hold a frame, so it covers the frame. */}
+            <button
+              type='button'
+              onClick={() => props.onOpen(check)}
+              aria-label={t('Play the drawing from {{time}}', {
+                time: checkedAt(check),
+              })}
+              className='focus-visible:ring-ring absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset'
+            />
+          </>
         )}
         {!canOpen && (
           <div className='bg-muted/40 text-muted-foreground flex aspect-[16/10] items-center justify-center gap-2 text-sm'>
@@ -274,7 +279,7 @@ export function PelicanCheckCard(props: PelicanCheckCardProps) {
               : t(INTELLIGENCE_VERDICT_LABEL_KEYS[verdict])}
           </div>
         )}
-      </button>
+      </div>
       <div className='flex flex-col gap-1 border-t px-3 py-2.5'>
         <div className='flex items-center justify-between gap-2 text-sm'>
           <span className='font-semibold tabular-nums'>{checkedAt(check)}</span>
