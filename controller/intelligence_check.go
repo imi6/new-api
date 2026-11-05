@@ -175,6 +175,8 @@ func runIntelligenceCheck(ctx context.Context, testUserID int, item intelligence
 		common.SysError(common.LogText("failed to start intelligence check group=%s: %s", item.group, err.Error()))
 		return model.IntelligenceCheckError
 	}
+	// Show the check in progress at once, not after the cache expires.
+	clearIntelligenceCheckCache(item.group)
 	checkCtx, cancel := context.WithTimeout(ctx, intelligenceCheckTimeout)
 	defer cancel()
 	started := time.Now()
@@ -183,12 +185,12 @@ func runIntelligenceCheck(ctx context.Context, testUserID int, item intelligence
 	row.ChannelId = channelID
 	if askErr != nil {
 		row.Status = model.IntelligenceCheckError
-		row.Error = common.MaskSensitiveInfo(askErr.Error())
+		row.Error = service.TruncateIntelligenceError(common.MaskSensitiveInfo(askErr.Error()))
 		if errors.Is(askErr, context.DeadlineExceeded) {
 			row.Error = "timeout"
 		}
 	} else {
-		answer := service.IntelligenceAnswerFromStream(result.body)
+		answer := service.IntelligenceAnswerText(service.IntelligenceAnswerFromStream(result.body))
 		if result.usage != nil {
 			row.OutputTokens = result.usage.CompletionTokens
 		}
@@ -201,11 +203,13 @@ func runIntelligenceCheck(ctx context.Context, testUserID int, item intelligence
 		}
 		row.Response, row.Truncated = service.TruncateIntelligenceResponse(answer)
 	}
-	if len(row.Error) > 1024 {
-		row.Error = row.Error[:1024]
-	}
 	if err := model.FinishIntelligenceCheck(row); err != nil {
 		common.SysError(common.LogText("failed to store intelligence check group=%s: %s", item.group, err.Error()))
+		// Do not leave the row running: store the outcome without the answer.
+		row.Status, row.Response, row.Answer, row.Error = model.IntelligenceCheckError, "", "", "store_failed"
+		if retryErr := model.FinishIntelligenceCheck(row); retryErr != nil {
+			common.SysError(common.LogText("failed to end intelligence check group=%s: %s", item.group, retryErr.Error()))
+		}
 	}
 	clearIntelligenceCheckCache(item.group)
 	return row.Status
