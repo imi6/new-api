@@ -7895,6 +7895,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "Hệ số rẻ hơn được đánh dấu xanh với mũi tên xuống, đắt hơn màu cam với mũi tên lên, và nhóm mới với nhãn Mới. Người dùng có hệ số riêng cho một nhóm không thấy dấu trên nhóm đó.",
     "Days a change stays marked": "Số ngày đánh dấu một thay đổi",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Nhiều thay đổi trong khoảng này hiển thị gộp: từ hệ số trước lần đầu đến hệ số hiện tại. Không biết các thay đổi trước khi có tính năng này.",
-    "Enter a whole number from 1 to 30": "Nhập số nguyên từ 1 đến 30"
+    "Enter a whole number from 1 to 30": "Nhập số nguyên từ 1 đến 30",
+    "Clear cache records": "Xóa bản ghi bộ nhớ đệm",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "Tất cả số liệu tỷ lệ trúng bộ nhớ đệm đã lưu của mọi nhóm sẽ bị xóa. Tỷ lệ sẽ được tích lũy lại từ các yêu cầu mới. Không thể hoàn tác.",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Số liệu tỷ lệ trúng bộ nhớ đệm trước {{time}} của mọi nhóm sẽ bị xóa. Không thể hoàn tác.",
+    "Cache records cleared.": "Đã xóa bản ghi bộ nhớ đệm.",
+    "10 minutes ago": "10 phút trước",
+    "30 minutes ago": "30 phút trước"
   }
 }
