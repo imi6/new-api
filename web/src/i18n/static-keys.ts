@@ -938,7 +938,7 @@ export const STATIC_I18N_KEYS = [
   'Open at least one invoice type',
   // Group health: statuses, ranges and latency sources.
   'Healthy',
-  'Outage',
+  'Abnormal',
   'No data',
   'Last 24 hours',
   'Last 30 days',

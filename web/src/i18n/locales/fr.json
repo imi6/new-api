@@ -7726,7 +7726,6 @@
     "Channel checks": "Tests de canal",
     "Check latency": "Latence du test",
     "Click a card to see details": "Cliquez sur une carte pour voir le détail",
-    "Group health": "Santé des groupes",
     "Groups that users can choose appear here.": "Les groupes que les utilisateurs peuvent choisir apparaissent ici.",
     "Last 12 weeks": "12 dernières semaines",
     "Last 24 hours": "24 dernières heures",
@@ -7737,7 +7736,6 @@
     "Now": "Maintenant",
     "Partial outage": "Panne partielle",
     "Past": "Passé",
-    "Require login to view group health": "Connexion requise pour voir la santé des groupes",
     "Skip channels that just served users": "Ignorer les canaux qui viennent de servir des utilisateurs",
     "Success rate and latency of each group, from user requests and channel checks.": "Taux de réussite et latence de chaque groupe, d'après les requêtes utilisateurs et les tests de canal.",
     "Success rate · {{range}}": "Taux de réussite · {{range}}",
@@ -7745,12 +7743,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "L'administrateur doit activer les métriques de performance ou les tests de canal planifiés.",
     "Time to first token": "Délai du premier jeton",
     "Try again later.": "Réessayez plus tard.",
-    "Unable to load group health": "Impossible de charger la santé des groupes",
     "User requests": "Requêtes utilisateurs",
     "User requests {{real}}, channel checks {{probe}}": "Requêtes utilisateurs {{real}}, tests de canal {{probe}}",
     "View details of {{name}}": "Voir le détail de {{name}}",
-    "Visitors must authenticate before accessing the group health page.": "Les visiteurs doivent se connecter avant d'accéder à la page de santé des groupes.",
     "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} groupes fonctionnent",
-    "Failed to load group health": "Échec du chargement de la santé des groupes"
+    "Require login to view channel status": "Connexion requise pour voir le statut des canaux",
+    "Visitors must authenticate before accessing the channel status page.": "Les visiteurs doivent se connecter avant d'accéder à la page de statut des canaux.",
+    "Unable to load channel status": "Impossible de charger le statut des canaux",
+    "Failed to load channel status": "Échec du chargement du statut des canaux",
+    "Abnormal": "Anomalie"
   }
 }
