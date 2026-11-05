@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { HeartPulse, RefreshCw } from 'lucide-react'
-import { type ReactNode, useCallback, useState } from 'react'
+import { type ReactNode, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { EmptyState } from '@/components/empty-state'
@@ -32,6 +32,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { ChannelTypeLogo } from '@/features/channels/components/channel-type-badge'
+import {
+  apiKeyGroupPlatform,
+  apiKeyPlatformLabel,
+  OTHER_PLATFORM,
+} from '@/features/keys/lib/api-key-group-platforms'
 
 import { useGroupHealth } from '../hooks/use-group-health'
 import {
@@ -45,6 +52,7 @@ import { RefreshCountdown } from './refresh-countdown'
 
 const REFRESH_STORAGE_KEY = 'group-health-refresh-seconds'
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+const ALL_PLATFORMS = 'all'
 
 function readRefreshSeconds(): number {
   try {
@@ -69,9 +77,47 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
   const [refreshSeconds, setRefreshSeconds] = useState(readRefreshSeconds)
   const [detailGroup, setDetailGroup] = useState<string | null>(null)
   const [checkGroup, setCheckGroup] = useState<string | null>(null)
+  const [platform, setPlatform] = useState(ALL_PLATFORMS)
   const query = useGroupHealth('hour')
   const data = query.data
-  const groups = data?.groups ?? []
+  const allGroups = useMemo(() => data?.groups ?? [], [data?.groups])
+  // The platform of each group, as its card resolves it, and how many groups
+  // each platform has: other last, then the largest first.
+  const platformOf = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const group of allGroups) {
+      map.set(
+        group.name,
+        apiKeyGroupPlatform(
+          group.name,
+          group.platform ? { [group.name]: group.platform } : undefined
+        )
+      )
+    }
+    return map
+  }, [allGroups])
+  const platforms = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const name of platformOf.values()) {
+      counts.set(name, (counts.get(name) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((left, right) => {
+      const leftOther = left[0] === OTHER_PLATFORM
+      if (leftOther !== (right[0] === OTHER_PLATFORM)) return leftOther ? 1 : -1
+      if (right[1] !== left[1]) return right[1] - left[1]
+      return apiKeyPlatformLabel(left[0], t).localeCompare(
+        apiKeyPlatformLabel(right[0], t)
+      )
+    })
+  }, [platformOf, t])
+  // A platform whose groups all left falls back to every platform.
+  const activePlatform = platforms.some((entry) => entry[0] === platform)
+    ? platform
+    : ALL_PLATFORMS
+  const groups =
+    activePlatform === ALL_PLATFORMS
+      ? allGroups
+      : allGroups.filter((group) => platformOf.get(group.name) === platform)
   const anyDown = groups.some((group) => group.status === 'down')
   const rangeLabel = t(GROUP_HEALTH_RANGE_LABEL_KEYS.hour)
 
@@ -150,6 +196,8 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
 
   return (
     <div className='flex flex-col gap-4'>
+      {/* Title on the left, platforms in the middle, refresh on the right;
+          on narrow screens the platforms take their own line. */}
       <div className='flex flex-wrap items-start justify-between gap-3'>
         <div className='flex flex-col gap-1'>
           {props.title}
@@ -159,6 +207,38 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
             )}
           </p>
         </div>
+        {platforms.length > 1 && (
+          <ToggleGroup
+            value={[activePlatform]}
+            onValueChange={(values) => {
+              const next = values.find((value) => value !== activePlatform)
+              if (next) setPlatform(next)
+            }}
+            aria-label={t('Platform')}
+            variant='outline'
+            size='sm'
+            spacing={2}
+            className='order-last w-full flex-wrap justify-center lg:order-none lg:w-auto lg:flex-1'
+          >
+            <ToggleGroupItem value={ALL_PLATFORMS}>
+              {t('All platforms')}
+              <span className='text-muted-foreground tabular-nums'>
+                {allGroups.length}
+              </span>
+            </ToggleGroupItem>
+            {platforms.map(([name, count]) => (
+              <ToggleGroupItem key={name} value={name}>
+                {name !== OTHER_PLATFORM && (
+                  <ChannelTypeLogo type={Number(name)} size={14} />
+                )}
+                {apiKeyPlatformLabel(name, t)}
+                <span className='text-muted-foreground tabular-nums'>
+                  {count}
+                </span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        )}
         <div className='flex items-center gap-2'>
           {groups.length > 0 && (
             <StatusBadge
