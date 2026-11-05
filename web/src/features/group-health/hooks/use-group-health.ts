@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { requireServerSuccess } from '@/lib/server-error-message'
 
-import { getGroupHealth } from '../api'
+import { getGroupHealth, getIntelligenceChecks } from '../api'
 import type { GroupHealthRange } from '../types'
 
 /**
@@ -34,5 +34,15 @@ export function useGroupHealth(range: GroupHealthRange, enabled = true) {
     queryFn: async () => requireServerSuccess(await getGroupHealth(range)).data,
     enabled,
     placeholderData: (previous) => previous,
+  })
+}
+
+/** Intelligence check results of a group, fetched while its dialog is open. */
+export function useIntelligenceChecks(group: string | null) {
+  return useQuery({
+    queryKey: ['intelligence-checks', group],
+    queryFn: async () =>
+      requireServerSuccess(await getIntelligenceChecks(group ?? '')).data,
+    enabled: group !== null,
   })
 }

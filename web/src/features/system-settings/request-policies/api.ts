@@ -24,6 +24,20 @@ export async function getPolicyConfig() {
   )
   return requireServerSuccess(response.data).data
 }
+/** Enabled models of every user-selectable group. */
+export async function getIntelligenceCheckModels() {
+  const response = await api.get<Response<Record<string, string[]>>>(
+    '/api/option/intelligence_check/models'
+  )
+  return requireServerSuccess(response.data).data
+}
+/** Queues a run of every enabled intelligence check. */
+export async function runIntelligenceChecksNow() {
+  const response = await api.post<Response<{ task_id: string }>>(
+    '/api/option/intelligence_check/run'
+  )
+  return requireServerSuccess(response.data).data
+}
 export async function savePolicyConfig(options: Record<string, string>) {
   const response = await api.patch<Response<PolicyConfig>>(
     '/api/option/request_policy',
