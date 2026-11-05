@@ -8183,6 +8183,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "Chaque réponse peut prendre une à plusieurs minutes, le dessin plus longtemps. Vous pouvez quitter cette page ; la vérification continue.",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "Terminé : {{passed}} réussies, {{failed}} échouées, {{other}} non évaluées.",
     "See the answers on the channel status page": "Voir les réponses sur la page de statut des canaux",
-    "The check run failed.": "La vérification a échoué."
+    "The check run failed.": "La vérification a échoué.",
+    "Cut off at the max output tokens": "Coupé à la limite de jetons de sortie",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "La réponse s'est arrêtée à la limite de jetons de sortie. Augmentez la limite dans les paramètres.",
+    "{{count}} tokens": "{{count}} jetons"
   }
 }
