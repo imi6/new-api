@@ -1305,6 +1305,7 @@
     "Check the box below before you can continue.": "Hãy tích vào ô bên dưới trước khi tiếp tục.",
     "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.": "Kiểm tra ma trận ghi đè tại hàng = nhóm người dùng, cột = nhóm tính phí. Nếu ô đó được đặt thì dùng nó, nếu không thì dùng hệ số cơ bản của nhóm tính phí trong bảng định giá.",
     "Check the source address and try again. Details: {{message}}": "Hãy kiểm tra địa chỉ nguồn rồi thử lại. Chi tiết: {{message}}",
+    "Check this group now": "Kiểm tra nhóm này ngay",
     "Check-in failed": "Điểm danh thất bại",
     "Check-in failed, please try again later": "Điểm danh thất bại, vui lòng thử lại sau",
     "Check-in failed: quota update error": "Điểm danh thất bại: lỗi cập nhật hạn mức",

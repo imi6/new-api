@@ -1305,6 +1305,7 @@
     "Check the box below before you can continue.": "Отметьте согласие ниже, чтобы продолжить.",
     "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.": "Проверьте матрицу переопределений: строка = группа пользователя, столбец = тарифная группа. Если ячейка задана — используется она, иначе базовый коэффициент тарифной группы из таблицы.",
     "Check the source address and try again. Details: {{message}}": "Проверьте адрес источника и повторите попытку. Подробности: {{message}}",
+    "Check this group now": "Проверить эту группу сейчас",
     "Check-in failed": "Регистрация не удалась.",
     "Check-in failed, please try again later": "Не удалось отметиться, попробуйте позже",
     "Check-in failed: quota update error": "Не удалось отметиться: ошибка обновления квоты",

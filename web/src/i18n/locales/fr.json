@@ -1305,6 +1305,7 @@
     "Check the box below before you can continue.": "Cochez la case ci-dessous avant de continuer.",
     "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.": "Consultez la matrice de remplacement à la ligne = groupe d’utilisateurs, colonne = groupe de facturation. Si la cellule est définie, utilisez-la ; sinon utilisez le taux de base du groupe de facturation du tableau tarifaire.",
     "Check the source address and try again. Details: {{message}}": "Vérifiez l’adresse de la source, puis réessayez. Détails : {{message}}",
+    "Check this group now": "Vérifier ce groupe maintenant",
     "Check-in failed": "Échec de la connexion",
     "Check-in failed, please try again later": "Échec de l'enregistrement, veuillez réessayer plus tard",
     "Check-in failed: quota update error": "Échec de l'enregistrement : erreur de mise à jour du quota",

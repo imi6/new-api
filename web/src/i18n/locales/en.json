@@ -1305,6 +1305,7 @@
     "Check the box below before you can continue.": "Check the box below before you can continue.",
     "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.": "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.",
     "Check the source address and try again. Details: {{message}}": "Check the source address and try again. Details: {{message}}",
+    "Check this group now": "Check this group now",
     "Check-in failed": "Check-in failed",
     "Check-in failed, please try again later": "Check-in failed, please try again later",
     "Check-in failed: quota update error": "Check-in failed: quota update error",

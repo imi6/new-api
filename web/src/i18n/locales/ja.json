@@ -1305,6 +1305,7 @@
     "Check the box below before you can continue.": "下の同意にチェックしてから続行してください。",
     "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.": "上書きマトリクスの「行 = ユーザーグループ、列 = 課金グループ」のセルを確認します。設定されていればその値を、なければ料金表の課金グループの基本倍率を使います。",
     "Check the source address and try again. Details: {{message}}": "ソースのアドレスを確認して、もう一度お試しください。詳細：{{message}}",
+    "Check this group now": "このグループを今すぐ検査",
     "Check-in failed": "チェックインできませんでした",
     "Check-in failed, please try again later": "チェックインに失敗しました。しばらくしてから再試行してください",
     "Check-in failed: quota update error": "チェックインに失敗しました：クォータの更新でエラーが発生しました",

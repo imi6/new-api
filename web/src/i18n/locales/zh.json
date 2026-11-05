@@ -1305,6 +1305,7 @@
     "Check the box below before you can continue.": "请勾选下方协议后才能继续。",
     "Check the override matrix at row = user group, column = billing group. If that cell is set, use it. Otherwise use the billing group base ratio from the pricing table.": "查覆盖矩阵中「行 = 用户分组、列 = 计费分组」的单元格。若已设置则使用该值，否则使用定价分组表中计费分组的基础倍率。",
     "Check the source address and try again. Details: {{message}}": "请检查源地址后重试。详情：{{message}}",
+    "Check this group now": "立即检测这个分组",
     "Check-in failed": "签到失败",
     "Check-in failed, please try again later": "签到失败，请稍后重试",
     "Check-in failed: quota update error": "签到失败：更新额度出错",
