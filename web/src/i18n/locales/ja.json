@@ -7865,6 +7865,18 @@
     "Preview stopped": "プレビューを停止しました",
     "View source": "ソースを見る",
     "View drawing": "作品を見る",
-    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "作品はモデルの出力そのままで、このサイトにアクセスできないサンドボックスで動作します。"
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "作品はモデルの出力そのままで、このサイトにアクセスできないサンドボックスで動作します。",
+    "All stored check results are deleted, for every group. This cannot be undone.": "すべてのグループのチェック記録をすべて削除します。この操作は取り消せません。",
+    "Check results from before {{time}} are deleted, for every group. This cannot be undone.": "すべてのグループの {{time}} より前のチェック記録を削除します。この操作は取り消せません。",
+    "Clear all results": "すべての記録を削除",
+    "Clear check results": "チェック記録を削除",
+    "Clear older results": "この時点より前の記録を削除",
+    "Deleted {{count}} check results.": "{{count}} 件のチェック記録を削除しました。",
+    "Enter a whole number between 1 and 100": "1 から 100 の整数を入力してください",
+    "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.": "新しい記録が追加されると古い記録を自動で削除し、データベースが大きくならないようにします。チェック画面には最大 10 件表示されます。",
+    "Results before a time": "指定日時より前",
+    "Results kept per group and question": "グループ・問題ごとに保持する記録数",
+    "Stored results": "チェック記録",
+    "What to delete": "削除する範囲"
   }
 }
