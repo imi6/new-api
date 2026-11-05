@@ -8183,6 +8183,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.",
     "See the answers on the channel status page": "See the answers on the channel status page",
-    "The check run failed.": "The check run failed."
+    "The check run failed.": "The check run failed.",
+    "Cut off at the max output tokens": "Cut off at the max output tokens",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "The answer stopped at the max output tokens. Raise the limit in the settings.",
+    "{{count}} tokens": "{{count}} tokens"
   }
 }

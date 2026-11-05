@@ -8183,6 +8183,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "Mỗi câu trả lời có thể mất một đến vài phút, vẽ còn lâu hơn. Bạn có thể rời trang này; kiểm tra vẫn tiếp tục.",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "Hoàn tất: đạt {{passed}}, không đạt {{failed}}, không xác định {{other}}.",
     "See the answers on the channel status page": "Xem câu trả lời trên trang trạng thái kênh",
-    "The check run failed.": "Lần kiểm tra thất bại."
+    "The check run failed.": "Lần kiểm tra thất bại.",
+    "Cut off at the max output tokens": "Bị cắt ở giới hạn token đầu ra",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "Câu trả lời dừng ở giới hạn token đầu ra. Hãy tăng giới hạn trong cài đặt.",
+    "{{count}} tokens": "{{count}} token"
   }
 }

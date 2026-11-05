@@ -8183,6 +8183,9 @@
     "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "每道題可能要一到幾分鐘，畫鵜鶘更久。可以離開這個頁面，檢測會在背景繼續。",
     "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "檢測完成：通過 {{passed}} 道，未通過 {{failed}} 道，無法判定或失敗 {{other}} 道。",
     "See the answers on the channel status page": "到渠道狀態頁查看回答",
-    "The check run failed.": "本次檢測執行失敗。"
+    "The check run failed.": "本次檢測執行失敗。",
+    "Cut off at the max output tokens": "達到最大輸出 token，被截斷",
+    "The answer stopped at the max output tokens. Raise the limit in the settings.": "回答在最大輸出 token 處被截斷，請在設定裡調大上限。",
+    "{{count}} tokens": "{{count}} tokens"
   }
 }
