@@ -17,18 +17,63 @@ import (
 // has no single answer, so it is passed when the page it returns is
 // complete, self-contained and animated.
 
-var finalAnswerPattern = regexp.MustCompile(`(?i)(?:最终答案|final\s*answer)\s*[:：]\s*\**\s*([-+]?[0-9][0-9,]*(?:\.[0-9]+)?|[^\s*]+)`)
+var (
+	finalAnswerMarker = regexp.MustCompile(`(?i)最终答案|final\s*answer`)
+	// thinkBlock is reasoning some providers leave inline in the answer.
+	thinkBlock     = regexp.MustCompile(`(?is)<think>.*?</think>`)
+	answerNumber   = regexp.MustCompile(`[-+]?[0-9][0-9,]*(?:\.[0-9]+)?`)
+	answerWrappers = strings.NewReplacer("**", "", "__", "", "`", "", "$", "", `\boxed{`, "", `\(`, "", `\)`, "", "{", "", "}", "")
+)
 
-// GradeIntelligenceAnswer extracts the last stated final answer and compares
-// it with the expected one: numerically when both are numbers, otherwise as
-// trimmed text.
+// IntelligenceAnswerText is the answer without inline reasoning, which is
+// graded, stored and shown.
+func IntelligenceAnswerText(answer string) string {
+	answer = thinkBlock.ReplaceAllString(answer, "")
+	// A block left open is reasoning the token limit cut off: no answer
+	// follows it, and a draft answer inside must not be graded.
+	if open := strings.Index(strings.ToLower(answer), "<think>"); open >= 0 {
+		answer = answer[:open]
+	}
+	return strings.TrimSpace(answer)
+}
+
+// GradeIntelligenceAnswer reads the last stated final answer and compares it
+// with the expected one: numerically when the expected answer is a number,
+// otherwise as trimmed text. "最终答案：至少需要 21 颗", "\boxed{21}" and
+// "9+12=21" all read as 21.
 func GradeIntelligenceAnswer(answerText, expected string) (status string, answer string) {
-	matches := finalAnswerPattern.FindAllStringSubmatch(answerText, -1)
-	if len(matches) == 0 {
+	markers := finalAnswerMarker.FindAllStringIndex(answerText, -1)
+	if len(markers) == 0 {
 		return model.IntelligenceCheckUndetermined, ""
 	}
-	answer = strings.TrimSpace(matches[len(matches)-1][1])
+	// The answer follows the marker on its line, or on the next line with
+	// text when the marker ends its line.
+	var line string
+	for candidate := range strings.SplitSeq(answerText[markers[len(markers)-1][1]:], "\n") {
+		line = strings.TrimSpace(strings.Trim(answerWrappers.Replace(candidate), " \t:：是为"))
+		if line != "" {
+			break
+		}
+	}
 	expected = strings.TrimSpace(expected)
+
+	if _, numeric := new(big.Rat).SetString(strings.ReplaceAll(expected, ",", "")); numeric {
+		// In "9+12=21" the result follows the last equals sign.
+		if at := strings.LastIndexAny(line, "=＝"); at >= 0 {
+			line = line[at:]
+		}
+		found := answerNumber.FindString(line)
+		if found == "" {
+			return model.IntelligenceCheckUndetermined, truncateRunes(line, model.IntelligenceCheckMaxAnswerRunes)
+		}
+		answer = strings.ReplaceAll(found, ",", "")
+	} else {
+		answer = strings.TrimRight(line, "。.!！")
+	}
+	answer = truncateRunes(answer, model.IntelligenceCheckMaxAnswerRunes)
+	if answer == "" {
+		return model.IntelligenceCheckUndetermined, ""
+	}
 	if sameIntelligenceAnswer(answer, expected) {
 		return model.IntelligenceCheckPassed, answer
 	}
@@ -42,6 +87,20 @@ func sameIntelligenceAnswer(answer, expected string) bool {
 		return a.Cmp(e) == 0
 	}
 	return strings.EqualFold(answer, expected)
+}
+
+// truncateRunes cuts text to at most max characters, never inside one.
+func truncateRunes(text string, max int) string {
+	if utf8.RuneCountInString(text) <= max {
+		return text
+	}
+	return string([]rune(text)[:max])
+}
+
+// TruncateIntelligenceError keeps an error within its column, on a character
+// boundary.
+func TruncateIntelligenceError(text string) string {
+	return truncateRunes(text, model.IntelligenceCheckMaxErrorRunes)
 }
 
 // Names of the drawing checks, as stored in failed_checks.
