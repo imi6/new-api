@@ -8,10 +8,12 @@ import (
 // GroupHourCounters is real relay traffic of one group in one hour, summed
 // over models.
 type GroupHourCounters struct {
-	RequestCount int64
-	SuccessCount int64
-	TtftSumMs    int64
-	TtftCount    int64
+	RequestCount    int64
+	SuccessCount    int64
+	TtftSumMs       int64
+	TtftCount       int64
+	InputTokens     int64
+	CacheReadTokens int64
 }
 
 // GroupTraffic is real relay traffic per group: hourly counters, and request
@@ -47,6 +49,8 @@ func QueryGroupTraffic(groups []string, startTs int64, endTs int64) (GroupTraffi
 		current.SuccessCount += value.SuccessCount
 		current.TtftSumMs += value.TtftSumMs
 		current.TtftCount += value.TtftCount
+		current.InputTokens += value.InputTokens
+		current.CacheReadTokens += value.CacheReadTokens
 		hours[hourOf(ts)] = current
 	}
 	addModel := func(group string, modelName string, requests int64) {
@@ -67,10 +71,12 @@ func QueryGroupTraffic(groups []string, startTs int64, endTs int64) (GroupTraffi
 	}
 	for _, row := range buckets {
 		add(row.GroupName, row.BucketTs, GroupHourCounters{
-			RequestCount: row.RequestCount,
-			SuccessCount: row.SuccessCount,
-			TtftSumMs:    row.TtftSumMs,
-			TtftCount:    row.TtftCount,
+			RequestCount:    row.RequestCount,
+			SuccessCount:    row.SuccessCount,
+			TtftSumMs:       row.TtftSumMs,
+			TtftCount:       row.TtftCount,
+			InputTokens:     row.InputTokens,
+			CacheReadTokens: row.CacheReadTokens,
 		})
 	}
 	models, err := model.GetPerfMetricGroupModels(groups, startTs, endTs)
@@ -95,10 +101,12 @@ func QueryGroupTraffic(groups []string, startTs int64, endTs int64) (GroupTraffi
 			return true
 		}
 		add(k.group, k.bucketTs, GroupHourCounters{
-			RequestCount: snap.requestCount,
-			SuccessCount: snap.successCount,
-			TtftSumMs:    snap.ttftSumMs,
-			TtftCount:    snap.ttftCount,
+			RequestCount:    snap.requestCount,
+			SuccessCount:    snap.successCount,
+			TtftSumMs:       snap.ttftSumMs,
+			TtftCount:       snap.ttftCount,
+			InputTokens:     snap.inputTokens,
+			CacheReadTokens: snap.cacheReadTokens,
 		})
 		addModel(k.group, k.model, snap.requestCount)
 		return true

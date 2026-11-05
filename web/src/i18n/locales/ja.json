@@ -8076,7 +8076,6 @@
     "All healthy": "すべて正常",
     "Auto refresh interval": "自動更新の間隔",
     "Avg latency": "平均遅延",
-    "Avg latency · {{range}}": "平均遅延 · {{range}}",
     "Channel checks": "チャネルテスト",
     "Check latency": "テスト遅延",
     "Groups that users can choose appear here.": "ユーザーが選べるグループがここに表示されます。",
@@ -8091,7 +8090,6 @@
     "Past": "過去",
     "Skip channels that just served users": "直近でユーザーに応答したチャネルを定期テストから除外",
     "Success rate and latency of each group, from user requests and channel checks.": "ユーザーのリクエストとチャネルテストに基づく、各グループの成功率と遅延です。",
-    "Success rate · {{range}}": "成功率 · {{range}}",
     "Success rate: {{rate}}": "成功率：{{rate}}",
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "管理者がパフォーマンス指標またはチャネルの定期テストを有効にする必要があります。",
     "Time to first token": "最初のトークンまでの時間",
@@ -8205,6 +8203,7 @@
     "What to delete": "削除する範囲",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "直近 {{count}} 件の完成作品 · グリッドで比較 · 作品を選ぶと拡大して再生",
     "The last {{count}} answers · final answers compared with the expected one": "直近 {{count}} 件の回答 · 最終回答を正解と照合",
-    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "サービスの稼働概況のみを表示します。サイトのリクエスト数、個々のリクエスト記録、内部チャネル情報は公開しません。"
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "サービスの稼働概況のみを表示します。サイトのリクエスト数、個々のリクエスト記録、内部チャネル情報は公開しません。",
+    "Cache hit rate": "キャッシュヒット率"
   }
 }
