@@ -37,7 +37,6 @@ import { Switch } from '@/components/ui/switch'
 
 import {
   SettingsForm,
-  SettingsFormGrid,
   SettingsSwitchContent,
   SettingsSwitchItem,
 } from '../components/settings-form-layout'
@@ -45,11 +44,20 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
+import { clearChannelStatusCache } from './api'
 import type { ChannelStatusSettings } from './defaults'
+import { type ClearQuickPick, RecordsClear } from './records-clear'
 
 const PREFIX = 'channel_status_setting.'
 const MIN_MINUTES = 5
 const MAX_MINUTES = 1440
+
+// The counts are kept for at most a day, so the picks stay within one.
+const CACHE_CLEAR_PICKS: readonly ClearQuickPick[] = [
+  { labelKey: '10 minutes ago', minutes: 10 },
+  { labelKey: '30 minutes ago', minutes: 30 },
+  { labelKey: '1 hour ago', minutes: 60 },
+]
 
 type ChannelStatusValues = {
   cache_hit_rate_enabled: boolean
@@ -152,7 +160,8 @@ export function ChannelStatusSection(props: ChannelStatusSectionProps) {
               </SettingsSwitchItem>
             )}
           />
-          <SettingsFormGrid>
+          {/* The window on the left, clearing the counts on the right. */}
+          <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'>
             <FormField
               control={form.control}
               name='cache_hit_rate_minutes'
@@ -177,7 +186,24 @@ export function ChannelStatusSection(props: ChannelStatusSectionProps) {
                 </FormItem>
               )}
             />
-          </SettingsFormGrid>
+            <RecordsClear
+              title={t('Clear cache records')}
+              clear={clearChannelStatusCache}
+              invalidateKeys={[['group-health']]}
+              quickPicks={CACHE_CLEAR_PICKS}
+              defaultMinutes={30}
+              allDescription={t(
+                'All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.'
+              )}
+              beforeDescription={(time) =>
+                t(
+                  'Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.',
+                  { time }
+                )
+              }
+              successMessage={() => t('Cache records cleared.')}
+            />
+          </div>
         </SettingsForm>
       </Form>
     </SettingsSection>
