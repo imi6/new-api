@@ -12,6 +12,7 @@ import (
 	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,6 +50,9 @@ type groupHealthGroup struct {
 	Platform string `json:"platform"`
 	Status   string `json:"status"`
 	TopModel string `json:"top_model"`
+	// GroupRatio is the configured price ratio of the group, the one the
+	// pricing page also shows; a user's special ratio is not applied.
+	GroupRatio float64 `json:"group_ratio"`
 	// LastSampleAt is the time of the latest check, or the start of the
 	// latest hour with real traffic, whichever is later.
 	LastSampleAt int64            `json:"last_sample_at"`
@@ -262,6 +266,7 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 		_ = common.UnmarshalJsonStr(common.GroupPlatformMap, &platforms)
 	}
 	currentHour := now.Unix() - now.Unix()%3600
+	groupRatios := ratio_setting.GetGroupRatioCopy()
 	response := &groupHealthResponse{
 		UpdatedAt:          now.Unix(),
 		Range:              rangeName,
@@ -315,12 +320,17 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 			}
 		}
 
+		ratio, ok := groupRatios[group]
+		if !ok {
+			ratio = 1
+		}
 		response.Groups = append(response.Groups, groupHealthGroup{
 			Name:              group,
 			Desc:              usable[group],
 			Platform:          platforms[group],
 			Status:            status,
 			TopModel:          topModel,
+			GroupRatio:        ratio,
 			LastSampleAt:      lastSample[group],
 			Total:             total.bar(windowStart),
 			Bars:              bars,
