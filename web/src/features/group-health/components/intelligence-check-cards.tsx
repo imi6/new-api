@@ -120,14 +120,11 @@ export function CandyCheckCard(props: { check: IntelligenceCheck }) {
         aria-hidden='true'
         className={cn('absolute inset-x-0 top-0 h-1', VERDICT_STRIP[verdict])}
       />
-      <div className='flex min-w-0 items-center justify-between gap-2'>
-        <span className='truncate font-mono text-xs'>{check.model_name}</span>
-        {check.latency_ms > 0 && (
-          <span className='text-muted-foreground shrink-0 text-xs tabular-nums'>
-            {formatLatency(check.latency_ms)}
-          </span>
-        )}
-      </div>
+      {check.latency_ms > 0 && (
+        <span className='text-muted-foreground self-end text-xs tabular-nums'>
+          {formatLatency(check.latency_ms)}
+        </span>
+      )}
 
       <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-2'>
         <div className='bg-muted/30 flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5'>
