@@ -7773,7 +7773,6 @@
     "A logic question with a hidden condition. The stated final answer is compared with the expected one.": "隠れた条件のある論理問題です。モデルの最終回答を正解と比較します。",
     "AI output:": "AI の出力：",
     "Added after the question so the answer can be read. Keep the words \"最终答案：\" or \"Final answer:\" in it.": "回答を読み取れるよう問題の後に追加します。「最终答案：」または「Final answer:」を残してください。",
-    "An intelligence check is already running. Wait for it to finish": "降格チェックはすでに実行中です。終了するまでお待ちください",
     "Answer format instruction": "回答形式の指示",
     "Ask each group a fixed question on a schedule, routed like a user request, and show the answers on the channel status page. A failed check never disables a channel. Every check is billed by the upstream.": "スケジュールに従って各グループに決まった質問をユーザーのリクエストと同じ経路で送り、回答をチャネルステータスページに表示します。チェックに失敗してもチャネルは無効になりません。チェックごとに上流の費用がかかります。",
     "Ask for the pelican drawing": "ペリカンの絵をチェックする",
@@ -7809,7 +7808,6 @@
     "Intelligence check": "降格チェック",
     "Intelligence checks": "降格チェック",
     "Intelligence checks are turned off. These are the last results.": "降格チェックはオフです。以下は最後の結果です。",
-    "Intelligence checks started. Results appear on the channel status page.": "降格チェックを開始しました。結果はチャネルステータスページに表示されます。",
     "Interrupted": "中断",
     "Interval (hours)": "チェック間隔（時間）",
     "Loads external resources": "外部リソースを読み込む",
@@ -7823,7 +7821,6 @@
     "Pelican drawing": "ペリカンの絵",
     "Play the drawing from {{time}}": "{{time}} の作品を拡大再生",
     "Results appear here after the first scheduled check.": "最初の定期チェックが終わると、結果がここに表示されます。",
-    "Runs every enabled question for every listed group now.": "今すぐ、リストの各グループに有効なすべての問題を実行します。",
     "Save the settings first.": "先に設定を保存してください。",
     "Sent as the user message.": "ユーザーメッセージとして送信します。",
     "Show full answer": "回答をすべて表示",
@@ -7840,6 +7837,16 @@
     "Waiting for the answer...": "回答を待っています...",
     "Wrong": "不正解",
     "Choose at least one question for every group": "各グループで少なくとも 1 つの問題を選んでください",
-    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "各グループは 1 つのモデルでチェックし、その行でチェックした問題だけを出題します。リストにないグループにはチェックボタンが表示されません。"
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "各グループは 1 つのモデルでチェックし、その行でチェックした問題だけを出題します。リストにないグループにはチェックボタンが表示されません。",
+    "A check is already running; its progress is shown below.": "チェックはすでに実行中です。進行状況を下に表示しています。",
+    "Intelligence checks started.": "降格チェックを開始しました。",
+    "Runs every ticked question for every listed group now.": "今すぐ、リストの各グループにチェックした問題を出題します。",
+    "Checking...": "チェック中...",
+    "Waiting to start...": "開始を待っています...",
+    "Answered {{processed}} of {{total}} questions": "{{total}} 問中 {{processed}} 問に回答済み",
+    "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "1 問の回答に 1〜数分かかり、絵はさらに長くかかります。このページを離れてもチェックは続きます。",
+    "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "完了：合格 {{passed}} 問、不合格 {{failed}} 問、判定不能または失敗 {{other}} 問。",
+    "See the answers on the channel status page": "チャネルステータスページで回答を見る",
+    "The check run failed.": "チェックの実行に失敗しました。"
   }
 }
