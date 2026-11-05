@@ -43,6 +43,14 @@ type IntelligenceCheckSetting struct {
 	PelicanIntervalHours int    `json:"pelican_interval_hours"`
 	PelicanPrompt        string `json:"pelican_prompt"`
 	PelicanMaxTokens     int    `json:"pelican_max_tokens"`
+
+	// KeepResults is how many results each group keeps per question; older
+	// ones are deleted as new ones arrive.
+	KeepResults int `json:"keep_results"`
+	// ClearedAt is when results were last cleared. The scheduler counts an
+	// interval from it as from a run, so clearing does not set off every
+	// check at once. It is written by the clear action, not the form.
+	ClearedAt int64 `json:"cleared_at"`
 }
 
 const (
@@ -55,6 +63,10 @@ const (
 	IntelligenceCheckMaxTargets       = 50
 	IntelligenceCheckMaxPromptLength  = 8000
 	IntelligenceCheckMaxAnswerLength  = 64
+	IntelligenceCheckMinKeepResults   = 1
+	IntelligenceCheckMaxKeepResults   = 100
+	// The check dialog lists this many; keep at least as many by default.
+	defaultIntelligenceCheckKeepResults = 10
 
 	defaultCandyIntervalHours   = 6
 	defaultCandyMaxTokens       = 8192
@@ -91,6 +103,7 @@ var intelligenceCheckSetting = IntelligenceCheckSetting{
 	PelicanIntervalHours: defaultPelicanIntervalHours,
 	PelicanPrompt:        DefaultPelicanPrompt,
 	PelicanMaxTokens:     defaultPelicanMaxTokens,
+	KeepResults:          defaultIntelligenceCheckKeepResults,
 }
 
 func init() {
@@ -124,6 +137,15 @@ func IntelligenceCheckInterval(hours int) int {
 	return min(max(hours, IntelligenceCheckMinIntervalHours), IntelligenceCheckMaxIntervalHours)
 }
 
+// IntelligenceCheckKeepResults clamps the stored number of results to keep.
+func IntelligenceCheckKeepResults() int {
+	keep := intelligenceCheckSetting.KeepResults
+	if keep <= 0 {
+		return defaultIntelligenceCheckKeepResults
+	}
+	return min(max(keep, IntelligenceCheckMinKeepResults), IntelligenceCheckMaxKeepResults)
+}
+
 // IntelligenceCheckMaxTokensOrDefault clamps a stored output limit.
 func IntelligenceCheckMaxTokensOrDefault(tokens int) int {
 	return min(max(tokens, IntelligenceCheckMinMaxTokens), IntelligenceCheckMaxMaxTokens)
@@ -146,6 +168,11 @@ func ValidateIntelligenceCheckSettingOption(key, value string) error {
 		return validateIntelligenceIntOption(value, IntelligenceCheckMinIntervalHours, IntelligenceCheckMaxIntervalHours)
 	case "candy_max_tokens", "pelican_max_tokens":
 		return validateIntelligenceIntOption(value, IntelligenceCheckMinMaxTokens, IntelligenceCheckMaxMaxTokens)
+	case "keep_results":
+		return validateIntelligenceIntOption(value, IntelligenceCheckMinKeepResults, IntelligenceCheckMaxKeepResults)
+	case "cleared_at":
+		// Set by the clear action; the settings form never sends it.
+		return common.NewMessage("Invalid parameters")
 	case "candy_prompt", "pelican_prompt":
 		if strings.TrimSpace(value) == "" {
 			return common.NewMessage("Enter the question")
