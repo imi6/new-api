@@ -25,6 +25,7 @@ import {
   FileText,
   FlaskConical,
   Gift,
+  HeartPulse,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -45,6 +46,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { SidebarBadges, SidebarData } from '@/components/layout/types'
 import { useStatus } from '@/hooks/use-status'
+import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import { ROLE } from '@/lib/roles'
 
 /**
@@ -57,6 +59,10 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
   const { status } = useStatus()
   const invoiceEnabled = status?.invoice_enabled === true
+  // Channel status follows the "group health" top navigation switch.
+  const channelStatusEnabled = parseHeaderNavModulesFromStatus(
+    status as Record<string, unknown> | null
+  ).groupHealth.enabled
 
   return {
     navGroups: [
@@ -105,6 +111,15 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             url: '/usage-logs/audit',
             icon: ClipboardList,
           },
+          ...(channelStatusEnabled
+            ? [
+                {
+                  title: t('Channel Status'),
+                  url: '/channel-status',
+                  icon: HeartPulse,
+                },
+              ]
+            : []),
           {
             title: t('Task Logs'),
             url: '/usage-logs/task',
