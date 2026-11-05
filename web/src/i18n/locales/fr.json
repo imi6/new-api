@@ -7835,7 +7835,6 @@
     "Save the settings first.": "Enregistrez d'abord les paramètres.",
     "Sent as the user message.": "Envoyée comme message de l'utilisateur.",
     "Show full answer": "Afficher la réponse complète",
-    "Source code": "Code source",
     "The answer format can have at most {{max}} characters": "La consigne de format peut contenir au maximum {{max}} caractères",
     "The answer was too long and is shown cut short.": "La réponse était trop longue et est affichée tronquée.",
     "The expected answer can have at most {{max}} characters": "La réponse attendue peut contenir au maximum {{max}} caractères",
@@ -7861,6 +7860,13 @@
     "The check run failed.": "La vérification a échoué.",
     "Cut off at the max output tokens": "Coupé à la limite de jetons de sortie",
     "The answer stopped at the max output tokens. Raise the limit in the settings.": "La réponse s'est arrêtée à la limite de jetons de sortie. Augmentez la limite dans les paramètres.",
-    "{{count}} tokens": "{{count}} jetons"
+    "{{count}} tokens": "{{count}} jetons",
+    "Back to all drawings": "Retour aux dessins",
+    "Stop preview": "Arrêter l'aperçu",
+    "Play preview": "Lancer l'aperçu",
+    "Preview stopped": "Aperçu arrêté",
+    "View source": "Voir le code source",
+    "View drawing": "Voir le dessin",
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Le dessin est la sortie du modèle telle que reçue ; il s'exécute dans un bac à sable sans accès à ce site."
   }
 }

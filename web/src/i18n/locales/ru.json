@@ -7835,7 +7835,6 @@
     "Save the settings first.": "Сначала сохраните настройки.",
     "Sent as the user message.": "Отправляется как сообщение пользователя.",
     "Show full answer": "Показать ответ полностью",
-    "Source code": "Исходный код",
     "The answer format can have at most {{max}} characters": "Требование к формату может содержать не более {{max}} символов",
     "The answer was too long and is shown cut short.": "Ответ слишком длинный и показан не полностью.",
     "The expected answer can have at most {{max}} characters": "Эталонный ответ может содержать не более {{max}} символов",
@@ -7861,6 +7860,13 @@
     "The check run failed.": "Проверка завершилась с ошибкой.",
     "Cut off at the max output tokens": "Обрезано на лимите выходных токенов",
     "The answer stopped at the max output tokens. Raise the limit in the settings.": "Ответ оборвался на лимите выходных токенов. Увеличьте лимит в настройках.",
-    "{{count}} tokens": "{{count}} токенов"
+    "{{count}} tokens": "{{count}} токенов",
+    "Back to all drawings": "Назад ко всем рисункам",
+    "Stop preview": "Остановить просмотр",
+    "Play preview": "Запустить просмотр",
+    "Preview stopped": "Просмотр остановлен",
+    "View source": "Посмотреть исходный код",
+    "View drawing": "Посмотреть рисунок",
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Рисунок — вывод модели как есть; он работает в песочнице без доступа к этому сайту."
   }
 }

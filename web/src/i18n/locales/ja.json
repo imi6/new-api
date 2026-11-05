@@ -7835,7 +7835,6 @@
     "Save the settings first.": "先に設定を保存してください。",
     "Sent as the user message.": "ユーザーメッセージとして送信します。",
     "Show full answer": "回答をすべて表示",
-    "Source code": "ソースコード",
     "The answer format can have at most {{max}} characters": "回答形式の指示は {{max}} 文字以内です",
     "The answer was too long and is shown cut short.": "回答が長すぎるため、途中までしか表示していません。",
     "The expected answer can have at most {{max}} characters": "正解は {{max}} 文字以内です",
@@ -7861,6 +7860,13 @@
     "The check run failed.": "チェックの実行に失敗しました。",
     "Cut off at the max output tokens": "最大出力トークンで打ち切られた",
     "The answer stopped at the max output tokens. Raise the limit in the settings.": "回答が最大出力トークンで止まりました。設定で上限を上げてください。",
-    "{{count}} tokens": "{{count}} トークン"
+    "{{count}} tokens": "{{count}} トークン",
+    "Back to all drawings": "作品一覧に戻る",
+    "Stop preview": "プレビューを停止",
+    "Play preview": "プレビューを再生",
+    "Preview stopped": "プレビューを停止しました",
+    "View source": "ソースを見る",
+    "View drawing": "作品を見る",
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "作品はモデルの出力そのままで、このサイトにアクセスできないサンドボックスで動作します。"
   }
 }
