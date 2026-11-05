@@ -7884,6 +7884,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "Un coefficient moins cher est marqué en vert avec une flèche vers le bas, un plus cher en orange avec une flèche vers le haut, et un nouveau groupe avec Nouveau. Les utilisateurs ayant un coefficient spécial pour un groupe n’y voient aucune marque.",
     "Days a change stays marked": "Jours pendant lesquels un changement reste marqué",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Plusieurs changements pendant cette période s’affichent comme un seul : du coefficient avant le premier au coefficient actuel. Les changements antérieurs à cette fonction ne sont pas connus.",
-    "Enter a whole number from 1 to 30": "Saisissez un nombre entier entre 1 et 30"
+    "Enter a whole number from 1 to 30": "Saisissez un nombre entier entre 1 et 30",
+    "Clear cache records": "Effacer les données du cache",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "Toutes les données enregistrées du taux de succès du cache sont supprimées, pour chaque groupe. Les taux se reconstituent avec les nouvelles requêtes. Cette action est irréversible.",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Les données du taux de succès du cache antérieures à {{time}} sont supprimées, pour chaque groupe. Cette action est irréversible.",
+    "Cache records cleared.": "Données du cache effacées.",
+    "10 minutes ago": "Il y a 10 minutes",
+    "30 minutes ago": "Il y a 30 minutes"
   }
 }

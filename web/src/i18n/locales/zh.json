@@ -7884,6 +7884,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "降价显示绿色向下箭头，涨价显示橙色向上箭头，新分组显示“新”。对某个分组享有专属倍率的用户，不会在该分组上看到标记。",
     "Days a change stays marked": "变化标记显示天数",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "这段时间内的多次调整合并显示：从第一次调整前的倍率到现在的倍率。功能上线前的调整无法得知。",
-    "Enter a whole number from 1 to 30": "请输入 1 到 30 之间的整数"
+    "Enter a whole number from 1 to 30": "请输入 1 到 30 之间的整数",
+    "Clear cache records": "清理缓存记录",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "将删除所有分组已保存的缓存命中率记录，之后由新请求重新积累。此操作无法撤销。",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "将删除所有分组在 {{time}} 之前的缓存命中率记录。此操作无法撤销。",
+    "Cache records cleared.": "缓存记录已清理。",
+    "10 minutes ago": "10 分钟前",
+    "30 minutes ago": "30 分钟前"
   }
 }

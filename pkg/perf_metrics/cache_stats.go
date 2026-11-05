@@ -1,6 +1,7 @@
 package perfmetrics
 
 import (
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,10 +50,26 @@ func cacheStatLoop() {
 		time.Sleep(time.Minute)
 		flushCacheMinutes()
 		cutoff := cacheStatCutoff(time.Now())
-		if err := model.DeleteGroupCacheStatsBefore(cutoff); err != nil {
+		if _, err := model.DeleteGroupCacheStatsBefore(cutoff); err != nil {
 			common.SysError(common.LogText("failed to delete old cache stats: %s", err.Error()))
 		}
 	}
+}
+
+// ClearCacheStats deletes the cache counts of every group from before the
+// time, or all of them when before is zero, with this node's unsaved minutes.
+// Other nodes write their unsaved minutes within a minute.
+func ClearCacheStats(before int64) (int64, error) {
+	if before <= 0 {
+		before = math.MaxInt64
+	}
+	cacheMinutes.Range(func(rawKey, _ any) bool {
+		if rawKey.(cacheMinuteKey).minuteTs < before {
+			cacheMinutes.Delete(rawKey)
+		}
+		return true
+	})
+	return model.DeleteGroupCacheStatsBefore(before)
 }
 
 // cacheStatCutoff is the first minute inside the window: the current minute
