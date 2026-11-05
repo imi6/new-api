@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -251,6 +250,8 @@ func (intelligenceCheckHandler) Run(ctx context.Context, task *model.SystemTask,
 		return
 	}
 	report := service.NewSystemTaskProgressReporter(task, runnerID)
+	// The settings page shows "0 of N" while the first long answer streams.
+	report(0, len(items))
 	summary := intelligenceCheckSummary{}
 	// One at a time: the answers are long, and a burst would load every
 	// upstream at once.
@@ -273,7 +274,8 @@ func (intelligenceCheckHandler) Run(ctx context.Context, task *model.SystemTask,
 }
 
 // RunIntelligenceChecksNow queues a run of every enabled check, for an admin
-// who changed a question and wants to see it answered.
+// who changed a question and wants to see it answered. When a run is already
+// going, it returns that run so the page follows it instead of failing.
 func RunIntelligenceChecksNow(c *gin.Context) {
 	setting := operation_setting.GetIntelligenceCheckSetting()
 	if !setting.Enabled || len(setting.Targets) == 0 {
@@ -285,11 +287,7 @@ func RunIntelligenceChecksNow(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	if !created {
-		common.ApiErrorStatus(c, http.StatusConflict, common.NewMessage("An intelligence check is already running. Wait for it to finish"), gin.H{"data": gin.H{"task_id": task.TaskID}})
-		return
-	}
-	common.ApiSuccess(c, gin.H{"task_id": task.TaskID})
+	common.ApiSuccess(c, gin.H{"task_id": task.TaskID, "already_running": !created})
 }
 
 // GetIntelligenceCheckModels lists the enabled models of every group, for
