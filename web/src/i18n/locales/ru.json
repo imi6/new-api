@@ -7743,7 +7743,6 @@
     "Avg latency · {{range}}": "Средняя задержка · {{range}}",
     "Channel checks": "Проверки каналов",
     "Check latency": "Задержка проверки",
-    "Click a card to see details": "Нажмите на карточку, чтобы увидеть подробности",
     "Groups that users can choose appear here.": "Здесь появятся группы, доступные пользователям.",
     "Last 12 weeks": "Последние 12 недель",
     "Last 24 hours": "Последние 24 часа",
@@ -7764,7 +7763,6 @@
     "User requests": "Запросы пользователей",
     "User requests {{real}}, channel checks {{probe}}": "Запросов пользователей: {{real}}, проверок каналов: {{probe}}",
     "View details of {{name}}": "Подробнее о {{name}}",
-    "{{healthy}}/{{total}} groups are healthy": "Работают {{healthy}} из {{total}} групп",
     "Require login to view channel status": "Для просмотра статуса каналов нужен вход",
     "Visitors must authenticate before accessing the channel status page.": "Посетители должны войти, чтобы открыть страницу статуса каналов.",
     "Unable to load channel status": "Не удалось загрузить статус каналов",
@@ -7870,6 +7868,7 @@
     "Stored results": "Сохранённые результаты",
     "What to delete": "Что удалить",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "Последние {{count}} готовых рисунков · сравнение сеткой · выберите рисунок, чтобы открыть его крупно",
-    "The last {{count}} answers · final answers compared with the expected one": "Последние {{count}} ответов · итоговые ответы сравниваются с ожидаемым"
+    "The last {{count}} answers · final answers compared with the expected one": "Последние {{count}} ответов · итоговые ответы сравниваются с ожидаемым",
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Показывается только общая картина работоспособности сервиса. Количество запросов сайта, отдельные запросы и внутренние данные каналов не публикуются."
   }
 }

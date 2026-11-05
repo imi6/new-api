@@ -7743,7 +7743,6 @@
     "Avg latency · {{range}}": "Độ trễ trung bình · {{range}}",
     "Channel checks": "Kiểm tra kênh",
     "Check latency": "Độ trễ kiểm tra",
-    "Click a card to see details": "Nhấn vào thẻ để xem chi tiết",
     "Groups that users can choose appear here.": "Các nhóm người dùng có thể chọn sẽ hiển thị ở đây.",
     "Last 12 weeks": "12 tuần gần đây",
     "Last 24 hours": "24 giờ gần đây",
@@ -7764,7 +7763,6 @@
     "User requests": "Yêu cầu của người dùng",
     "User requests {{real}}, channel checks {{probe}}": "Yêu cầu người dùng {{real}}, kiểm tra kênh {{probe}}",
     "View details of {{name}}": "Xem chi tiết {{name}}",
-    "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} nhóm hoạt động bình thường",
     "Require login to view channel status": "Yêu cầu đăng nhập để xem trạng thái kênh",
     "Visitors must authenticate before accessing the channel status page.": "Khách truy cập phải đăng nhập trước khi vào trang trạng thái kênh.",
     "Unable to load channel status": "Không thể tải trạng thái kênh",
@@ -7870,6 +7868,7 @@
     "Stored results": "Kết quả đã lưu",
     "What to delete": "Phạm vi xóa",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "{{count}} bản vẽ hoàn chỉnh gần nhất · so sánh dạng lưới · chọn một bản vẽ để phát phóng to",
-    "The last {{count}} answers · final answers compared with the expected one": "{{count}} câu trả lời gần nhất · đáp án cuối được so với đáp án chuẩn"
+    "The last {{count}} answers · final answers compared with the expected one": "{{count}} câu trả lời gần nhất · đáp án cuối được so với đáp án chuẩn",
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Chỉ hiển thị tổng quan tình trạng dịch vụ. Không công khai số lượng yêu cầu của trang, từng yêu cầu hay thông tin kênh nội bộ."
   }
 }
