@@ -51,6 +51,7 @@ export function GroupHealthDetailDialog(props: GroupHealthDetailDialogProps) {
   const query = useGroupHealth(range, props.groupName !== null)
   const group = query.data?.groups.find((item) => item.name === props.groupName)
   const rows = (group?.bars ?? []).filter((bar) => bar.has_data).reverse()
+  const showCache = query.data?.cache_hit_rate_enabled === true
 
   return (
     <Dialog
@@ -124,9 +125,11 @@ export function GroupHealthDetailDialog(props: GroupHealthDetailDialogProps) {
                       <th className='px-3 py-2 text-right font-medium'>
                         {t('Avg latency')}
                       </th>
-                      <th className='px-3 py-2 text-right font-medium'>
-                        {t('Cache hit rate')}
-                      </th>
+                      {showCache && (
+                        <th className='px-3 py-2 text-right font-medium'>
+                          {t('Cache hit rate')}
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className='divide-y tabular-nums'>
@@ -164,11 +167,13 @@ export function GroupHealthDetailDialog(props: GroupHealthDetailDialogProps) {
                             </span>
                           )}
                         </td>
-                        <td className='px-3 py-2 text-right'>
-                          {bar.cache_hit_rate >= 0
-                            ? formatUptimePct(bar.cache_hit_rate)
-                            : '—'}
-                        </td>
+                        {showCache && (
+                          <td className='px-3 py-2 text-right'>
+                            {bar.cache_hit_rate >= 0
+                              ? formatUptimePct(bar.cache_hit_rate)
+                              : '—'}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
