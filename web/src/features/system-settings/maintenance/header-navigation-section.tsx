@@ -55,6 +55,8 @@ const headerNavSchema = z.object({
   pricingRequireAuth: z.boolean(),
   rankingsEnabled: z.boolean(),
   rankingsRequireAuth: z.boolean(),
+  groupHealthEnabled: z.boolean(),
+  groupHealthRequireAuth: z.boolean(),
   docs: z.boolean(),
   about: z.boolean(),
 })
@@ -89,6 +91,14 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.rankings?.requireAuth === undefined
       ? HEADER_NAV_DEFAULT.rankings.requireAuth
       : Boolean(config.rankings.requireAuth),
+  groupHealthEnabled:
+    config.groupHealth?.enabled === undefined
+      ? HEADER_NAV_DEFAULT.groupHealth.enabled
+      : Boolean(config.groupHealth.enabled),
+  groupHealthRequireAuth:
+    config.groupHealth?.requireAuth === undefined
+      ? HEADER_NAV_DEFAULT.groupHealth.requireAuth
+      : Boolean(config.groupHealth.requireAuth),
   docs:
     config.docs === undefined ? HEADER_NAV_DEFAULT.docs : Boolean(config.docs),
   about:
@@ -130,6 +140,11 @@ export function HeaderNavigationSection({
         ...(config.rankings ?? HEADER_NAV_DEFAULT.rankings),
         enabled: values.rankingsEnabled,
         requireAuth: values.rankingsRequireAuth,
+      },
+      groupHealth: {
+        ...(config.groupHealth ?? HEADER_NAV_DEFAULT.groupHealth),
+        enabled: values.groupHealthEnabled,
+        requireAuth: values.groupHealthRequireAuth,
       },
     }
 
@@ -178,7 +193,10 @@ export function HeaderNavigationSection({
   const accessModules: Array<{
     enabledKey: keyof HeaderNavFormValues
     requireAuthKey: keyof HeaderNavFormValues
-    requireAuthDependsOn: 'pricingEnabled' | 'rankingsEnabled'
+    requireAuthDependsOn:
+      | 'pricingEnabled'
+      | 'rankingsEnabled'
+      | 'groupHealthEnabled'
     title: string
     description: string
     requireAuthTitle: string
@@ -204,6 +222,19 @@ export function HeaderNavigationSection({
       requireAuthTitle: t('Require login to view rankings'),
       requireAuthDescription: t(
         'Visitors must authenticate before accessing the rankings page.'
+      ),
+    },
+    {
+      enabledKey: 'groupHealthEnabled',
+      requireAuthKey: 'groupHealthRequireAuth',
+      requireAuthDependsOn: 'groupHealthEnabled',
+      title: t('Group health'),
+      description: t(
+        'Success rate and latency of each group, from user requests and channel checks.'
+      ),
+      requireAuthTitle: t('Require login to view group health'),
+      requireAuthDescription: t(
+        'Visitors must authenticate before accessing the group health page.'
       ),
     },
   ]
