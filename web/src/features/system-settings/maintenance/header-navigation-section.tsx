@@ -228,13 +228,13 @@ export function HeaderNavigationSection({
       enabledKey: 'groupHealthEnabled',
       requireAuthKey: 'groupHealthRequireAuth',
       requireAuthDependsOn: 'groupHealthEnabled',
-      title: t('Group health'),
+      title: t('Channel Status'),
       description: t(
         'Success rate and latency of each group, from user requests and channel checks.'
       ),
-      requireAuthTitle: t('Require login to view group health'),
+      requireAuthTitle: t('Require login to view channel status'),
       requireAuthDescription: t(
-        'Visitors must authenticate before accessing the group health page.'
+        'Visitors must authenticate before accessing the channel status page.'
       ),
     },
   ]
