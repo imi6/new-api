@@ -7868,6 +7868,8 @@
     "Results before a time": "指定日時より前",
     "Results kept per group and question": "グループ・問題ごとに保持する記録数",
     "Stored results": "チェック記録",
-    "What to delete": "削除する範囲"
+    "What to delete": "削除する範囲",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "直近 {{count}} 件の完成作品 · グリッドで比較 · 作品を選ぶと拡大して再生",
+    "The last {{count}} answers · final answers compared with the expected one": "直近 {{count}} 件の回答 · 最終回答を正解と照合"
   }
 }

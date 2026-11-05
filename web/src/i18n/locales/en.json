@@ -7868,6 +7868,8 @@
     "Results before a time": "Results before a time",
     "Results kept per group and question": "Results kept per group and question",
     "Stored results": "Stored results",
-    "What to delete": "What to delete"
+    "What to delete": "What to delete",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "The last {{count}} complete drawings · grid comparison · select one to play it large",
+    "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one"
   }
 }
