@@ -24,6 +24,10 @@ import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
 import { MultiSelect } from '@/components/multi-select'
+import {
+  type GroupRatioChange,
+  RatioChangeBadge,
+} from '@/components/ratio-change-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -186,7 +190,14 @@ export function ApiKeyCreateDialog({
 
   const groups = useMemo<ApiKeyGroupOption[]>(() => {
     const entries = Object.entries(groupsData?.data || {}) as Array<
-      [string, { desc?: string; ratio: number | string }]
+      [
+        string,
+        {
+          desc?: string
+          ratio: number | string
+          ratio_change?: GroupRatioChange
+        },
+      ]
     >
     return entries
       .filter(([key]) => key !== 'auto')
@@ -195,6 +206,7 @@ export function ApiKeyCreateDialog({
         label: key,
         desc: info.desc ? translateServerText(t, info.desc) : '',
         ratio: info.ratio,
+        ratioChange: info.ratio_change,
       }))
   }, [groupsData, t])
   const groupsByValue = useMemo(
@@ -683,6 +695,7 @@ export function ApiKeyCreateDialog({
                             </span>
                           ) : null}
                         </span>
+                        <RatioChangeBadge change={group.ratioChange} />
                         <GroupRatioBadge ratio={group.ratio} />
                       </button>
                     )
@@ -887,7 +900,10 @@ function SmartRouteOrder(props: {
                   ) : null}
                 </div>
                 {option?.ratio !== undefined && (
-                  <GroupRatioBadge ratio={option.ratio} />
+                  <>
+                    <RatioChangeBadge change={option.ratioChange} />
+                    <GroupRatioBadge ratio={option.ratio} />
+                  </>
                 )}
                 <div className='flex shrink-0 flex-col'>
                   <Button
