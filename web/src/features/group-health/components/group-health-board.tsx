@@ -40,6 +40,7 @@ import {
 } from '../lib/group-health'
 import { GroupHealthCard } from './group-health-card'
 import { GroupHealthDetailDialog } from './group-health-detail-dialog'
+import { IntelligenceCheckDialog } from './intelligence-check-dialog'
 import { RefreshCountdown } from './refresh-countdown'
 
 const REFRESH_STORAGE_KEY = 'group-health-refresh-seconds'
@@ -67,6 +68,7 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
   const { t } = useTranslation()
   const [refreshSeconds, setRefreshSeconds] = useState(readRefreshSeconds)
   const [detailGroup, setDetailGroup] = useState<string | null>(null)
+  const [checkGroup, setCheckGroup] = useState<string | null>(null)
   const query = useGroupHealth('hour')
   const data = query.data
   const groups = data?.groups ?? []
@@ -137,6 +139,7 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
             range='hour'
             rangeLabel={rangeLabel}
             onOpen={(item) => setDetailGroup(item.name)}
+            onOpenIntelligenceCheck={(item) => setCheckGroup(item.name)}
           />
         ))}
       </div>
@@ -231,6 +234,12 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
         groupName={detailGroup}
         onOpenChange={(open) => {
           if (!open) setDetailGroup(null)
+        }}
+      />
+      <IntelligenceCheckDialog
+        group={checkGroup}
+        onOpenChange={(open) => {
+          if (!open) setCheckGroup(null)
         }}
       />
     </div>
