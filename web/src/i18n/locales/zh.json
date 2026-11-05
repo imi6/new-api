@@ -7744,7 +7744,6 @@
     "Channel checks": "渠道测试",
     "Check latency": "测试延迟",
     "Click a card to see details": "点击卡片查看详情",
-    "Group health": "分组健康",
     "Groups that users can choose appear here.": "用户可选的分组会显示在这里。",
     "Last 12 weeks": "近 12 周",
     "Last 24 hours": "近 24 小时",
@@ -7755,7 +7754,6 @@
     "Now": "现在",
     "Partial outage": "部分异常",
     "Past": "过去",
-    "Require login to view group health": "登录后才能查看分组健康",
     "Skip channels that just served users": "最近有真实请求成功的渠道跳过定时测试",
     "Success rate and latency of each group, from user requests and channel checks.": "根据用户请求和渠道测试，展示每个分组的成功率和延迟。",
     "Success rate · {{range}}": "成功率 · {{range}}",
@@ -7763,12 +7761,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "需要管理员开启性能指标或渠道定时测试。",
     "Time to first token": "首字延迟",
     "Try again later.": "请稍后再试。",
-    "Unable to load group health": "无法加载分组健康数据",
     "User requests": "用户请求",
     "User requests {{real}}, channel checks {{probe}}": "用户请求 {{real}} 次，渠道测试 {{probe}} 次",
     "View details of {{name}}": "查看 {{name}} 的详情",
-    "Visitors must authenticate before accessing the group health page.": "访客必须登录后才能访问分组健康页面。",
     "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} 个分组运行正常",
-    "Failed to load group health": "加载分组健康数据失败"
+    "Require login to view channel status": "登录后才能查看渠道状态",
+    "Visitors must authenticate before accessing the channel status page.": "访客必须登录后才能访问渠道状态页面。",
+    "Unable to load channel status": "无法加载渠道状态",
+    "Failed to load channel status": "加载渠道状态失败",
+    "Abnormal": "异常"
   }
 }

@@ -7744,7 +7744,6 @@
     "Channel checks": "渠道測試",
     "Check latency": "測試延遲",
     "Click a card to see details": "點擊卡片查看詳情",
-    "Group health": "分組健康",
     "Groups that users can choose appear here.": "使用者可選的分組會顯示在這裡。",
     "Last 12 weeks": "近 12 週",
     "Last 24 hours": "近 24 小時",
@@ -7755,7 +7754,6 @@
     "Now": "現在",
     "Partial outage": "部分異常",
     "Past": "過去",
-    "Require login to view group health": "登入後才能查看分組健康",
     "Skip channels that just served users": "最近有真實請求成功的渠道跳過定時測試",
     "Success rate and latency of each group, from user requests and channel checks.": "根據使用者請求和渠道測試，展示每個分組的成功率和延遲。",
     "Success rate · {{range}}": "成功率 · {{range}}",
@@ -7763,12 +7761,14 @@
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "需要管理員開啟效能指標或渠道定時測試。",
     "Time to first token": "首字延遲",
     "Try again later.": "請稍後再試。",
-    "Unable to load group health": "無法載入分組健康資料",
     "User requests": "使用者請求",
     "User requests {{real}}, channel checks {{probe}}": "使用者請求 {{real}} 次，渠道測試 {{probe}} 次",
     "View details of {{name}}": "查看 {{name}} 的詳情",
-    "Visitors must authenticate before accessing the group health page.": "訪客必須登入後才能存取分組健康頁面。",
     "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} 個分組運行正常",
-    "Failed to load group health": "載入分組健康資料失敗"
+    "Require login to view channel status": "登入後才能查看渠道狀態",
+    "Visitors must authenticate before accessing the channel status page.": "訪客必須登入後才能存取渠道狀態頁面。",
+    "Unable to load channel status": "無法載入渠道狀態",
+    "Failed to load channel status": "載入渠道狀態失敗",
+    "Abnormal": "異常"
   }
 }
