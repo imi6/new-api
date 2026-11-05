@@ -139,6 +139,8 @@ func askIntelligenceCheck(ctx context.Context, testUserID int, item intelligence
 			group:        item.group,
 			logName:      intelligenceCheckLogName,
 			maxBodyBytes: intelligenceCheckMaxBodyBytes,
+			// A timed-out answer is a failed request, not a short answer.
+			requireCompleteStream: true,
 		})
 		if last.localErr == nil && last.newAPIError == nil {
 			return last, channelID, nil
@@ -190,17 +192,22 @@ func runIntelligenceCheck(ctx context.Context, testUserID int, item intelligence
 			row.Error = "timeout"
 		}
 	} else {
-		answer := service.IntelligenceAnswerText(service.IntelligenceAnswerFromStream(result.body))
+		streamed, cutAtLimit := service.IntelligenceAnswerFromStream(result.body)
+		answer := service.IntelligenceAnswerText(streamed)
 		if result.usage != nil {
 			row.OutputTokens = result.usage.CompletionTokens
 		}
+		var failed []string
 		if item.checkKey == model.IntelligenceCheckCandy {
 			row.Status, row.Answer = service.GradeIntelligenceAnswer(answer, expected)
 		} else {
-			var failed []string
 			row.Status, failed = service.GradeIntelligenceDrawing(answer)
-			row.FailedChecks = strings.Join(failed, ",")
 		}
+		// Say why an answer stopped short: raising the limit fixes it.
+		if cutAtLimit && row.Status != model.IntelligenceCheckPassed {
+			failed = append([]string{service.IntelligenceCheckTokenLimit}, failed...)
+		}
+		row.FailedChecks = strings.Join(failed, ",")
 		row.Response, row.Truncated = service.TruncateIntelligenceResponse(answer)
 	}
 	if err := model.FinishIntelligenceCheck(row); err != nil {
