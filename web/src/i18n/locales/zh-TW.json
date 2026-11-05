@@ -7782,7 +7782,6 @@
     "A logic question with a hidden condition. The stated final answer is compared with the expected one.": "一道帶隱藏條件的邏輯題，把模型給出的最終答案和標準答案比對。",
     "AI output:": "AI 輸出：",
     "Added after the question so the answer can be read. Keep the words \"最终答案：\" or \"Final answer:\" in it.": "附加在題目後面，方便讀取答案。請保留「最终答案：」或「Final answer:」字樣。",
-    "An intelligence check is already running. Wait for it to finish": "已有降智檢測正在執行，請等它完成",
     "Answer format instruction": "答案格式要求",
     "Ask each group a fixed question on a schedule, routed like a user request, and show the answers on the channel status page. A failed check never disables a channel. Every check is billed by the upstream.": "按設定的時間向每個分組提一個固定問題，像使用者請求一樣走路由，並在渠道狀態頁展示回答。檢測失敗不會停用渠道。每次檢測都會產生上游費用。",
     "Ask for the pelican drawing": "檢測畫鵜鶘",
@@ -7818,7 +7817,6 @@
     "Intelligence check": "降智檢測",
     "Intelligence checks": "降智檢測",
     "Intelligence checks are turned off. These are the last results.": "降智檢測已關閉，以下是最後一次的結果。",
-    "Intelligence checks started. Results appear on the channel status page.": "降智檢測已開始，結果會顯示在渠道狀態頁。",
     "Interrupted": "已中斷",
     "Interval (hours)": "檢測間隔（小時）",
     "Loads external resources": "使用了外部資源",
@@ -7832,7 +7830,6 @@
     "Pelican drawing": "畫鵜鶘",
     "Play the drawing from {{time}}": "放大播放 {{time}} 的作品",
     "Results appear here after the first scheduled check.": "第一次定時檢測完成後，結果會顯示在這裡。",
-    "Runs every enabled question for every listed group now.": "現在就對列出的每個分組執行一次所有已啟用的題目。",
     "Save the settings first.": "請先儲存設定。",
     "Sent as the user message.": "作為使用者訊息傳送。",
     "Show full answer": "展開完整回答",
@@ -7849,6 +7846,16 @@
     "Waiting for the answer...": "正在等待回答...",
     "Wrong": "錯誤",
     "Choose at least one question for every group": "每個分組至少選擇一道題",
-    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "每個分組用一個模型檢測，只測這一行勾選的題目。沒列出的分組，卡片上不顯示降智檢測按鈕。"
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "每個分組用一個模型檢測，只測這一行勾選的題目。沒列出的分組，卡片上不顯示降智檢測按鈕。",
+    "A check is already running; its progress is shown below.": "已有一次檢測正在執行，下面顯示它的進度。",
+    "Intelligence checks started.": "降智檢測已開始。",
+    "Runs every ticked question for every listed group now.": "現在就對列出的每個分組執行一次勾選的題目。",
+    "Checking...": "檢測中...",
+    "Waiting to start...": "等待開始...",
+    "Answered {{processed}} of {{total}} questions": "已完成 {{processed}}/{{total}} 道題",
+    "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "每道題可能要一到幾分鐘，畫鵜鶘更久。可以離開這個頁面，檢測會在背景繼續。",
+    "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "檢測完成：通過 {{passed}} 道，未通過 {{failed}} 道，無法判定或失敗 {{other}} 道。",
+    "See the answers on the channel status page": "到渠道狀態頁查看回答",
+    "The check run failed.": "本次檢測執行失敗。"
   }
 }
