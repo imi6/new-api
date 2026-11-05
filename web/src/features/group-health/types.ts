@@ -45,6 +45,8 @@ export interface GroupHealthGroup {
   platform: string
   status: GroupHealthStatus
   top_model: string
+  /** The configured price ratio of the group, as on the pricing page. */
+  group_ratio: number
   last_sample_at: number
   total: GroupHealthBar
   bars: GroupHealthBar[]
