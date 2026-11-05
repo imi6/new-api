@@ -7886,6 +7886,8 @@
     "Results before a time": "Trước một thời điểm",
     "Results kept per group and question": "Số kết quả giữ lại cho mỗi nhóm và câu hỏi",
     "Stored results": "Kết quả đã lưu",
-    "What to delete": "Phạm vi xóa"
+    "What to delete": "Phạm vi xóa",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "{{count}} bản vẽ hoàn chỉnh gần nhất · so sánh dạng lưới · chọn một bản vẽ để phát phóng to",
+    "The last {{count}} answers · final answers compared with the expected one": "{{count}} câu trả lời gần nhất · đáp án cuối được so với đáp án chuẩn"
   }
 }
