@@ -54,6 +54,7 @@ export type IntelligenceCheckSettings = {
   'intelligence_check_setting.pelican_interval_hours': number
   'intelligence_check_setting.pelican_prompt': string
   'intelligence_check_setting.pelican_max_tokens': number
+  'intelligence_check_setting.keep_results': number
 }
 export type FilteringSettings = Pick<
   SecuritySettings,
@@ -93,6 +94,7 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
   'intelligence_check_setting.pelican_interval_hours': 24,
   'intelligence_check_setting.pelican_prompt': '',
   'intelligence_check_setting.pelican_max_tokens': 32000,
+  'intelligence_check_setting.keep_results': 10,
   'channel_affinity_setting.enabled': false,
   'channel_affinity_setting.session_mode': '',
   'channel_affinity_setting.switch_on_success': true,

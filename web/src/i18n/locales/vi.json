@@ -7856,6 +7856,18 @@
     "Preview stopped": "Đã dừng xem trước",
     "View source": "Xem mã nguồn",
     "View drawing": "Xem tác phẩm",
-    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Tác phẩm là đầu ra nguyên bản của mô hình; nó chạy trong hộp cát và không truy cập được trang này."
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Tác phẩm là đầu ra nguyên bản của mô hình; nó chạy trong hộp cát và không truy cập được trang này.",
+    "All stored check results are deleted, for every group. This cannot be undone.": "Tất cả kết quả kiểm tra của mọi nhóm sẽ bị xóa. Không thể hoàn tác.",
+    "Check results from before {{time}} are deleted, for every group. This cannot be undone.": "Kết quả kiểm tra trước {{time}} của mọi nhóm sẽ bị xóa. Không thể hoàn tác.",
+    "Clear all results": "Xóa toàn bộ kết quả",
+    "Clear check results": "Xóa kết quả kiểm tra",
+    "Clear older results": "Xóa kết quả cũ hơn",
+    "Deleted {{count}} check results.": "Đã xóa {{count}} kết quả kiểm tra.",
+    "Enter a whole number between 1 and 100": "Nhập số nguyên từ 1 đến 100",
+    "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.": "Kết quả cũ bị xóa khi có kết quả mới để cơ sở dữ liệu không phình to. Hộp thoại hiển thị tối đa 10 kết quả.",
+    "Results before a time": "Trước một thời điểm",
+    "Results kept per group and question": "Số kết quả giữ lại cho mỗi nhóm và câu hỏi",
+    "Stored results": "Kết quả đã lưu",
+    "What to delete": "Phạm vi xóa"
   }
 }

@@ -7856,6 +7856,18 @@
     "Preview stopped": "Preview stopped",
     "View source": "View source",
     "View drawing": "View drawing",
-    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "The drawing is the model output as received; it runs in a sandbox without access to this site."
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "The drawing is the model output as received; it runs in a sandbox without access to this site.",
+    "All stored check results are deleted, for every group. This cannot be undone.": "All stored check results are deleted, for every group. This cannot be undone.",
+    "Check results from before {{time}} are deleted, for every group. This cannot be undone.": "Check results from before {{time}} are deleted, for every group. This cannot be undone.",
+    "Clear all results": "Clear all results",
+    "Clear check results": "Clear check results",
+    "Clear older results": "Clear older results",
+    "Deleted {{count}} check results.": "Deleted {{count}} check results.",
+    "Enter a whole number between 1 and 100": "Enter a whole number between 1 and 100",
+    "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.": "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.",
+    "Results before a time": "Results before a time",
+    "Results kept per group and question": "Results kept per group and question",
+    "Stored results": "Stored results",
+    "What to delete": "What to delete"
   }
 }
