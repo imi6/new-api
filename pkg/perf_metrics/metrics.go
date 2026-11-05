@@ -58,14 +58,16 @@ func RecordRelayResult(ctx context.Context, info *relaycommon.RelayInfo, apiErr 
 		generationMs = latencyMs
 	}
 	Record(Sample{
-		Model:        info.OriginModelName,
-		Group:        info.UsingGroup,
-		LatencyMs:    latencyMs,
-		TtftMs:       ttftMs,
-		HasTtft:      hasTtft,
-		Success:      outcome == OutcomeSuccess,
-		OutputTokens: info.PerformanceOutputTokens,
-		GenerationMs: generationMs,
+		Model:           info.OriginModelName,
+		Group:           info.UsingGroup,
+		LatencyMs:       latencyMs,
+		TtftMs:          ttftMs,
+		HasTtft:         hasTtft,
+		Success:         outcome == OutcomeSuccess,
+		OutputTokens:    info.PerformanceOutputTokens,
+		GenerationMs:    generationMs,
+		InputTokens:     info.PerformanceInputTokens,
+		CacheReadTokens: info.PerformanceCacheReadTokens,
 	})
 }
 
@@ -442,6 +444,8 @@ func mergeCounters(merged map[bucketKey]counters, key bucketKey, value counters)
 	current.ttftCount += value.ttftCount
 	current.outputTokens += value.outputTokens
 	current.generationMs += value.generationMs
+	current.inputTokens += value.inputTokens
+	current.cacheReadTokens += value.cacheReadTokens
 	merged[key] = current
 }
 
@@ -590,6 +594,10 @@ func recordRedis(key bucketKey, sample Sample) {
 	if sample.OutputTokens > 0 && sample.GenerationMs > 0 {
 		pipe.HIncrBy(ctx, redisKey, "out", sample.OutputTokens)
 		pipe.HIncrBy(ctx, redisKey, "gen_ms", sample.GenerationMs)
+	}
+	if sample.InputTokens > 0 {
+		pipe.HIncrBy(ctx, redisKey, "in", sample.InputTokens)
+		pipe.HIncrBy(ctx, redisKey, "cache_read", min(max(sample.CacheReadTokens, 0), sample.InputTokens))
 	}
 	pipe.Expire(ctx, redisKey, time.Hour)
 	_, _ = pipe.Exec(ctx)
