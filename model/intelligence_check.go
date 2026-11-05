@@ -25,6 +25,10 @@ const (
 	// IntelligenceCheckMaxResponseBytes keeps a stored answer within MySQL's
 	// 65535-byte TEXT limit on every database.
 	IntelligenceCheckMaxResponseBytes = 60000
+	// IntelligenceCheckMaxAnswerRunes and IntelligenceCheckMaxErrorRunes match
+	// the answer and error columns; a longer value fails the write on MySQL.
+	IntelligenceCheckMaxAnswerRunes = 64
+	IntelligenceCheckMaxErrorRunes  = 1024
 )
 
 type IntelligenceCheckResult struct {
