@@ -124,7 +124,7 @@ function DrawingDetail(props: DrawingDetailProps) {
           {t('Back to all drawings')}
         </Button>
         <span className='text-muted-foreground truncate text-center text-sm'>
-          {time} · {check.model_name}
+          {time}
         </span>
         <div className='flex items-center gap-2 justify-self-end'>
           {view === 'preview' && (
@@ -285,7 +285,6 @@ export function IntelligenceCheckDialog(props: IntelligenceCheckDialogProps) {
           </span>
         </span>
       }
-      description={data?.model}
       contentClassName='sm:max-w-6xl'
     >
       {data && !data.enabled && (
