@@ -7867,6 +7867,18 @@
     "Preview stopped": "Aperçu arrêté",
     "View source": "Voir le code source",
     "View drawing": "Voir le dessin",
-    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Le dessin est la sortie du modèle telle que reçue ; il s'exécute dans un bac à sable sans accès à ce site."
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Le dessin est la sortie du modèle telle que reçue ; il s'exécute dans un bac à sable sans accès à ce site.",
+    "All stored check results are deleted, for every group. This cannot be undone.": "Tous les résultats stockés de tous les groupes seront supprimés. Cette action est irréversible.",
+    "Check results from before {{time}} are deleted, for every group. This cannot be undone.": "Les résultats antérieurs au {{time}} de tous les groupes seront supprimés. Cette action est irréversible.",
+    "Clear all results": "Supprimer tous les résultats",
+    "Clear check results": "Supprimer les résultats",
+    "Clear older results": "Supprimer les résultats antérieurs",
+    "Deleted {{count}} check results.": "{{count}} résultats supprimés.",
+    "Enter a whole number between 1 and 100": "Saisissez un nombre entier entre 1 et 100",
+    "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.": "Les anciens résultats sont supprimés à l'arrivée des nouveaux, pour que la base ne grossisse pas. La fenêtre en affiche 10 au maximum.",
+    "Results before a time": "Avant une date",
+    "Results kept per group and question": "Résultats conservés par groupe et question",
+    "Stored results": "Résultats stockés",
+    "What to delete": "Quoi supprimer"
   }
 }
