@@ -7879,6 +7879,14 @@
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "The last {{count}} complete drawings · grid comparison · select one to play it large",
     "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one",
     "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.",
-    "Cache hit rate": "Cache hit rate"
+    "Cache hit rate": "Cache hit rate",
+    "Channel status page": "Channel status page",
+    "What the channel status page shows. Changes appear within a minute.": "What the channel status page shows. Changes appear within a minute.",
+    "Show the cache hit rate": "Show the cache hit rate",
+    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.",
+    "Cache hit rate window (minutes)": "Cache hit rate window (minutes)",
+    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.",
+    "Enter a whole number from 5 to 1440": "Enter a whole number from 5 to 1440",
+    "Last {{count}} minutes": "Last {{count}} minutes"
   }
 }

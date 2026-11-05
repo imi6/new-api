@@ -44,6 +44,8 @@ interface GroupHealthCardProps {
   group: GroupHealthGroup
   range: GroupHealthRange
   rangeLabel: string
+  /** The cache hit rate window, or null when the rate is hidden. */
+  cacheHitRateMinutes: number | null
   onOpen: (group: GroupHealthGroup) => void
   onOpenIntelligenceCheck: (group: GroupHealthGroup) => void
 }
@@ -148,7 +150,12 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
         </div>
       </div>
 
-      <div className='pointer-events-none grid grid-cols-3 gap-2'>
+      <div
+        className={cn(
+          'pointer-events-none grid gap-2',
+          props.cacheHitRateMinutes === null ? 'grid-cols-2' : 'grid-cols-3'
+        )}
+      >
         <MetricBox
           icon={<Clock className='size-3.5 shrink-0' aria-hidden='true' />}
           label={t('Avg latency')}
@@ -162,16 +169,22 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
           value={total.has_data ? formatUptimePct(total.success_rate) : '—'}
           valueClassName={rateClass}
         />
-        <MetricBox
-          icon={<Database className='size-3.5 shrink-0' aria-hidden='true' />}
-          label={t('Cache hit rate')}
-          rangeLabel={props.rangeLabel}
-          value={
-            total.cache_hit_rate >= 0
-              ? formatUptimePct(total.cache_hit_rate)
-              : '—'
-          }
-        />
+        {props.cacheHitRateMinutes !== null && (
+          <MetricBox
+            icon={
+              <Database className='size-3.5 shrink-0' aria-hidden='true' />
+            }
+            label={t('Cache hit rate')}
+            rangeLabel={t('Last {{count}} minutes', {
+              count: props.cacheHitRateMinutes,
+            })}
+            value={
+              group.cache_hit_rate >= 0
+                ? formatUptimePct(group.cache_hit_rate)
+                : '—'
+            }
+          />
+        )}
       </div>
 
       <div className='flex flex-col gap-2 border-t pt-3'>
