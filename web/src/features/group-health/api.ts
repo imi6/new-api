@@ -18,11 +18,24 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
 
-import type { GroupHealthRange, GroupHealthResponse } from './types'
+import type {
+  GroupHealthRange,
+  GroupHealthResponse,
+  IntelligenceCheckResponse,
+} from './types'
 
 export async function getGroupHealth(
   range: GroupHealthRange
 ): Promise<GroupHealthResponse> {
   const res = await api.get('/api/group-health', { params: { range } })
+  return res.data
+}
+
+export async function getIntelligenceChecks(
+  group: string
+): Promise<IntelligenceCheckResponse> {
+  const res = await api.get('/api/group-health/intelligence', {
+    params: { group },
+  })
   return res.data
 }

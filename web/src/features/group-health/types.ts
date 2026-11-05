@@ -48,6 +48,50 @@ export interface GroupHealthGroup {
   last_sample_at: number
   total: GroupHealthBar
   bars: GroupHealthBar[]
+  /** The group is listed for intelligence checks. */
+  intelligence_check: boolean
+}
+
+export type IntelligenceCheckStatus =
+  | 'running'
+  | 'passed'
+  | 'failed'
+  | 'undetermined'
+  | 'error'
+
+/** One scheduled answer to a check question. */
+export interface IntelligenceCheck {
+  id: number
+  status: IntelligenceCheckStatus
+  model_name: string
+  expected_answer: string
+  answer: string
+  /** Comma separated names of the drawing checks that failed. */
+  failed_checks: string
+  response: string
+  truncated: boolean
+  latency_ms: number
+  output_tokens: number
+  created_at: number
+  finished_at: number
+  /** Administrators only. */
+  channel_id?: number
+  error?: string
+  interrupted?: boolean
+}
+
+export interface IntelligenceCheckGroup {
+  group: string
+  model: string
+  enabled: boolean
+  candy: IntelligenceCheck[]
+  pelican: IntelligenceCheck[]
+}
+
+export interface IntelligenceCheckResponse {
+  success: boolean
+  message?: string
+  data: IntelligenceCheckGroup
 }
 
 export interface GroupHealthData {
