@@ -7884,6 +7884,7 @@
     "Cache hit rate window (minutes)": "快取命中率統計時長（分鐘）",
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "卡片顯示最近這麼多分鐘的命中率。超過這個時長的記錄會被刪除，所以調大後需要時間重新累積。",
     "Enter a whole number from 5 to 1440": "請輸入 5 到 1440 之間的整數",
-    "Last {{count}} minutes": "近 {{count}} 分鐘"
+    "Last {{count}} minutes": "近 {{count}} 分鐘",
+    "Check this group now": "立即檢測這個分組"
   }
 }

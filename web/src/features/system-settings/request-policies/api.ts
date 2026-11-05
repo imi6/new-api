@@ -37,15 +37,16 @@ export async function getIntelligenceCheckModels() {
  * Queues a run of every enabled intelligence check, or returns the run
  * already going.
  */
-export async function runIntelligenceChecksNow() {
+/** Runs every listed group's checks now, or only one group's. */
+export async function runIntelligenceChecksNow(group?: string) {
   const response = await api.post<
     Response<{ task_id: string; already_running: boolean }>
-  >('/api/option/intelligence_check/run')
+  >('/api/option/intelligence_check/run', { group: group ?? '' })
   return requireServerSuccess(response.data).data
 }
 
 export type IntelligenceCheckRun = SystemTask<
-  Record<string, unknown>,
+  { force?: boolean; group?: string },
   { total: number; processed: number; progress: number },
   { checked: number; passed: number; failed: number; other: number }
 >
