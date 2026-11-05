@@ -7779,7 +7779,6 @@
     "Drawing from {{time}}": "Рисунок от {{time}}",
     "Drawing...": "Рисует...",
     "Each group can be checked only once": "Каждую группу можно проверять только один раз",
-    "Each group is checked with one model. A group not listed shows no check button.": "Каждая группа проверяется одной моделью. У групп не из списка нет кнопки проверки.",
     "Enable intelligence checks": "Включить проверку на деградацию",
     "Enter a whole number between 256 and 65536": "Введите целое число от 256 до 65536",
     "Enter a whole number of hours between 1 and 168": "Введите целое число часов от 1 до 168",
@@ -7821,6 +7820,8 @@
     "Unable to load intelligence checks": "Не удалось загрузить результаты проверки",
     "Undetermined": "Не определено",
     "Waiting for the answer...": "Ожидание ответа...",
-    "Wrong": "Неверно"
+    "Wrong": "Неверно",
+    "Choose at least one question for every group": "Выберите хотя бы один вопрос для каждой группы",
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Каждая группа проверяется одной моделью и получает только вопросы, отмеченные в её строке. У групп не из списка нет кнопки проверки."
   }
 }
