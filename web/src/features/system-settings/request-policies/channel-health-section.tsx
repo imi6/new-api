@@ -106,6 +106,7 @@ const createChannelHealthSchema = (
             t('Channel test concurrency must be between 1 and 32')
           ),
         channel_test_mode: z.enum(channelTestModes),
+        skip_recently_used_channels: z.boolean(),
       }),
     })
     .superRefine((values, ctx) => {
@@ -146,6 +147,7 @@ type NormalizedChannelHealthValues = {
   'monitor_setting.auto_test_channel_minutes': number
   'monitor_setting.channel_test_concurrency': number
   'monitor_setting.channel_test_mode': ChannelTestMode
+  'monitor_setting.skip_recently_used_channels': boolean
 }
 
 function normalizeChannelTestMode(value?: string): ChannelTestMode {
@@ -176,6 +178,8 @@ const buildFormDefaults = (
     channel_test_mode: normalizeChannelTestMode(
       defaults['monitor_setting.channel_test_mode']
     ),
+    skip_recently_used_channels:
+      defaults['monitor_setting.skip_recently_used_channels'] ?? true,
   },
 })
 
@@ -201,6 +205,8 @@ const normalizeDefaults = (
   'monitor_setting.channel_test_mode': normalizeChannelTestMode(
     defaults['monitor_setting.channel_test_mode']
   ),
+  'monitor_setting.skip_recently_used_channels':
+    defaults['monitor_setting.skip_recently_used_channels'] ?? true,
 })
 
 const normalizeFormValues = (
@@ -223,6 +229,8 @@ const normalizeFormValues = (
   'monitor_setting.channel_test_concurrency':
     values.monitor_setting.channel_test_concurrency,
   'monitor_setting.channel_test_mode': values.monitor_setting.channel_test_mode,
+  'monitor_setting.skip_recently_used_channels':
+    values.monitor_setting.skip_recently_used_channels,
 })
 
 export function ChannelHealthSection({
@@ -440,6 +448,31 @@ export function ChannelHealthSection({
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='monitor_setting.skip_recently_used_channels'
+                    render={({ field }) => (
+                      <SettingsSwitchItem className='lg:col-span-2'>
+                        <SettingsSwitchContent>
+                          <FormLabel>
+                            {t('Skip channels that just served users')}
+                          </FormLabel>
+                          <FormDescription>
+                            {t(
+                              'A scheduled check skips an enabled channel that served a successful user request within one test interval, which saves the cost of the check. Disabled channels and manual tests are always checked.'
+                            )}
+                          </FormDescription>
+                        </SettingsSwitchContent>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </SettingsSwitchItem>
                     )}
                   />
                 </SettingsControlChildren>
