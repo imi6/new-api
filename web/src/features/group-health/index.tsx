@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { HeartPulse, RefreshCw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { EmptyState } from '@/components/empty-state'
@@ -37,6 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import { GroupHealthCard } from './components/group-health-card'
 import { GroupHealthDetailDialog } from './components/group-health-detail-dialog'
+import { RefreshCountdown } from './components/refresh-countdown'
 import { useGroupHealth } from './hooks/use-group-health'
 import {
   GROUP_HEALTH_RANGE_LABEL_KEYS,
@@ -62,25 +63,15 @@ export function GroupHealth() {
   const { t } = useTranslation()
   const [refreshSeconds, setRefreshSeconds] = useState(readRefreshSeconds)
   const [detailGroup, setDetailGroup] = useState<string | null>(null)
-  const [now, setNow] = useState(() => Date.now())
-  const query = useGroupHealth('hour', {
-    refetchIntervalMs: refreshSeconds * 1000,
-  })
+  const query = useGroupHealth('hour')
   const data = query.data
   const groups = data?.groups ?? []
   const healthy = groups.filter((group) => group.status === 'ok').length
   const anyDown = groups.some((group) => group.status === 'down')
   const rangeLabel = t(GROUP_HEALTH_RANGE_LABEL_KEYS.hour)
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  const secondsLeft = Math.max(
-    0,
-    Math.ceil((query.dataUpdatedAt + refreshSeconds * 1000 - now) / 1000)
-  )
+  const refetch = query.refetch
+  const refresh = useCallback(() => void refetch(), [refetch])
 
   const changeRefresh = (value: number) => {
     setRefreshSeconds(value)
@@ -176,7 +167,7 @@ export function GroupHealth() {
               <Button
                 variant='outline'
                 size='icon-sm'
-                onClick={() => void query.refetch()}
+                onClick={refresh}
                 disabled={query.isFetching}
                 aria-label={t('Refresh')}
               >
@@ -212,7 +203,15 @@ export function GroupHealth() {
                 </SelectContent>
               </Select>
               <span className='text-muted-foreground w-9 text-right text-xs tabular-nums'>
-                {query.dataUpdatedAt > 0 ? `${secondsLeft}s` : ''}
+                <RefreshCountdown
+                  lastFetchedAt={Math.max(
+                    query.dataUpdatedAt,
+                    query.errorUpdatedAt
+                  )}
+                  intervalSeconds={refreshSeconds}
+                  fetching={query.isFetching}
+                  onRefresh={refresh}
+                />
               </span>
             </div>
             {groups.length > 0 && (
