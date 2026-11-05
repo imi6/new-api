@@ -7842,7 +7842,6 @@
     "Save the settings first.": "Save the settings first.",
     "Sent as the user message.": "Sent as the user message.",
     "Show full answer": "Show full answer",
-    "Source code": "Source code",
     "The answer format can have at most {{max}} characters": "The answer format can have at most {{max}} characters",
     "The answer was too long and is shown cut short.": "The answer was too long and is shown cut short.",
     "The expected answer can have at most {{max}} characters": "The expected answer can have at most {{max}} characters",
@@ -7868,6 +7867,13 @@
     "The check run failed.": "The check run failed.",
     "Cut off at the max output tokens": "Cut off at the max output tokens",
     "The answer stopped at the max output tokens. Raise the limit in the settings.": "The answer stopped at the max output tokens. Raise the limit in the settings.",
-    "{{count}} tokens": "{{count}} tokens"
+    "{{count}} tokens": "{{count}} tokens",
+    "Back to all drawings": "Back to all drawings",
+    "Stop preview": "Stop preview",
+    "Play preview": "Play preview",
+    "Preview stopped": "Preview stopped",
+    "View source": "View source",
+    "View drawing": "View drawing",
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "The drawing is the model output as received; it runs in a sandbox without access to this site."
   }
 }

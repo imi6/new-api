@@ -7842,7 +7842,6 @@
     "Save the settings first.": "Hãy lưu cài đặt trước.",
     "Sent as the user message.": "Được gửi dưới dạng tin nhắn của người dùng.",
     "Show full answer": "Xem toàn bộ câu trả lời",
-    "Source code": "Mã nguồn",
     "The answer format can have at most {{max}} characters": "Yêu cầu định dạng tối đa {{max}} ký tự",
     "The answer was too long and is shown cut short.": "Câu trả lời quá dài nên chỉ hiển thị một phần.",
     "The expected answer can have at most {{max}} characters": "Đáp án chuẩn tối đa {{max}} ký tự",
@@ -7868,6 +7867,13 @@
     "The check run failed.": "Lần kiểm tra thất bại.",
     "Cut off at the max output tokens": "Bị cắt ở giới hạn token đầu ra",
     "The answer stopped at the max output tokens. Raise the limit in the settings.": "Câu trả lời dừng ở giới hạn token đầu ra. Hãy tăng giới hạn trong cài đặt.",
-    "{{count}} tokens": "{{count}} token"
+    "{{count}} tokens": "{{count}} token",
+    "Back to all drawings": "Quay lại danh sách",
+    "Stop preview": "Dừng xem trước",
+    "Play preview": "Phát xem trước",
+    "Preview stopped": "Đã dừng xem trước",
+    "View source": "Xem mã nguồn",
+    "View drawing": "Xem tác phẩm",
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "Tác phẩm là đầu ra nguyên bản của mô hình; nó chạy trong hộp cát và không truy cập được trang này."
   }
 }
