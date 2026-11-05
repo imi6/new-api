@@ -7879,6 +7879,8 @@
     "Results before a time": "清理某個時間之前",
     "Results kept per group and question": "每個分組每道題保留記錄數",
     "Stored results": "檢測記錄",
-    "What to delete": "清理範圍"
+    "What to delete": "清理範圍",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宮格對比 · 點擊作品放大播放",
+    "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最終答案與標準答案比對"
   }
 }
