@@ -137,6 +137,9 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
             group={group}
             range='hour'
             rangeLabel={rangeLabel}
+            cacheHitRateMinutes={
+              data.cache_hit_rate_enabled ? data.cache_hit_rate_minutes : null
+            }
             onOpen={(item) => setDetailGroup(item.name)}
             onOpenIntelligenceCheck={(item) => setCheckGroup(item.name)}
           />
