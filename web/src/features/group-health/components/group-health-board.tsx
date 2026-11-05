@@ -196,8 +196,7 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
 
   return (
     <div className='flex flex-col gap-4'>
-      {/* Title on the left, platforms in the middle, refresh on the right;
-          on narrow screens the platforms take their own line. */}
+      {/* Title and refresh on one row; the platforms below on their own. */}
       <div className='flex flex-wrap items-start justify-between gap-3'>
         <div className='flex flex-col gap-1'>
           {props.title}
@@ -207,38 +206,6 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
             )}
           </p>
         </div>
-        {platforms.length > 1 && (
-          <ToggleGroup
-            value={[activePlatform]}
-            onValueChange={(values) => {
-              const next = values.find((value) => value !== activePlatform)
-              if (next) setPlatform(next)
-            }}
-            aria-label={t('Platform')}
-            variant='outline'
-            size='sm'
-            spacing={2}
-            className='order-last w-full flex-wrap justify-center lg:order-none lg:w-auto lg:flex-1'
-          >
-            <ToggleGroupItem value={ALL_PLATFORMS}>
-              {t('All platforms')}
-              <span className='text-muted-foreground tabular-nums'>
-                {allGroups.length}
-              </span>
-            </ToggleGroupItem>
-            {platforms.map(([name, count]) => (
-              <ToggleGroupItem key={name} value={name}>
-                {name !== OTHER_PLATFORM && (
-                  <ChannelTypeLogo type={Number(name)} size={14} />
-                )}
-                {apiKeyPlatformLabel(name, t)}
-                <span className='text-muted-foreground tabular-nums'>
-                  {count}
-                </span>
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        )}
         <div className='flex items-center gap-2'>
           {groups.length > 0 && (
             <StatusBadge
@@ -299,6 +266,39 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
           </span>
         </div>
       </div>
+
+      {platforms.length > 1 && (
+        <ToggleGroup
+          value={[activePlatform]}
+          onValueChange={(values) => {
+            const next = values.find((value) => value !== activePlatform)
+            if (next) setPlatform(next)
+          }}
+          aria-label={t('Platform')}
+          variant='outline'
+          size='sm'
+          spacing={2}
+          className='w-full flex-wrap'
+        >
+          <ToggleGroupItem value={ALL_PLATFORMS}>
+            {t('All platforms')}
+            <span className='text-muted-foreground tabular-nums'>
+              {allGroups.length}
+            </span>
+          </ToggleGroupItem>
+          {platforms.map(([name, count]) => (
+            <ToggleGroupItem key={name} value={name}>
+              {name !== OTHER_PLATFORM && (
+                <ChannelTypeLogo type={Number(name)} size={14} />
+              )}
+              {apiKeyPlatformLabel(name, t)}
+              <span className='text-muted-foreground tabular-nums'>
+                {count}
+              </span>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      )}
 
       {renderBody()}
 
