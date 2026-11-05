@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createSectionRegistry } from '../utils/section-registry'
 import { ChannelHealthSection } from './channel-health-section'
+import { ChannelStatusSection } from './channel-status-section'
 import { IntelligenceCheckSection } from './intelligence-check-section'
 import type { RequestPolicySettings } from './defaults'
 import { RequestChecksSection } from './request-checks-section'
@@ -54,6 +55,13 @@ const POLICY_SECTIONS = [
     titleKey: 'Intelligence checks',
     build: (settings: RequestPolicySettings) => (
       <IntelligenceCheckSection defaultValues={settings} />
+    ),
+  },
+  {
+    id: 'channel-status',
+    titleKey: 'Channel status page',
+    build: (settings: RequestPolicySettings) => (
+      <ChannelStatusSection defaultValues={settings} />
     ),
   },
 ] as const
