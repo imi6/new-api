@@ -8109,7 +8109,6 @@
     "A logic question with a hidden condition. The stated final answer is compared with the expected one.": "A logic question with a hidden condition. The stated final answer is compared with the expected one.",
     "AI output:": "AI output:",
     "Added after the question so the answer can be read. Keep the words \"最终答案：\" or \"Final answer:\" in it.": "Added after the question so the answer can be read. Keep the words \"最终答案：\" or \"Final answer:\" in it.",
-    "An intelligence check is already running. Wait for it to finish": "An intelligence check is already running. Wait for it to finish",
     "Answer format instruction": "Answer format instruction",
     "Ask each group a fixed question on a schedule, routed like a user request, and show the answers on the channel status page. A failed check never disables a channel. Every check is billed by the upstream.": "Ask each group a fixed question on a schedule, routed like a user request, and show the answers on the channel status page. A failed check never disables a channel. Every check is billed by the upstream.",
     "Ask for the pelican drawing": "Ask for the pelican drawing",
@@ -8145,7 +8144,6 @@
     "Intelligence check": "Intelligence check",
     "Intelligence checks": "Intelligence checks",
     "Intelligence checks are turned off. These are the last results.": "Intelligence checks are turned off. These are the last results.",
-    "Intelligence checks started. Results appear on the channel status page.": "Intelligence checks started. Results appear on the channel status page.",
     "Interrupted": "Interrupted",
     "Interval (hours)": "Interval (hours)",
     "Loads external resources": "Loads external resources",
@@ -8159,7 +8157,6 @@
     "Pelican drawing": "Pelican drawing",
     "Play the drawing from {{time}}": "Play the drawing from {{time}}",
     "Results appear here after the first scheduled check.": "Results appear here after the first scheduled check.",
-    "Runs every enabled question for every listed group now.": "Runs every enabled question for every listed group now.",
     "Save the settings first.": "Save the settings first.",
     "Sent as the user message.": "Sent as the user message.",
     "Show full answer": "Show full answer",
@@ -8176,6 +8173,16 @@
     "Waiting for the answer...": "Waiting for the answer...",
     "Wrong": "Wrong",
     "Choose at least one question for every group": "Choose at least one question for every group",
-    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button."
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.",
+    "A check is already running; its progress is shown below.": "A check is already running; its progress is shown below.",
+    "Intelligence checks started.": "Intelligence checks started.",
+    "Runs every ticked question for every listed group now.": "Runs every ticked question for every listed group now.",
+    "Checking...": "Checking...",
+    "Waiting to start...": "Waiting to start...",
+    "Answered {{processed}} of {{total}} questions": "Answered {{processed}} of {{total}} questions",
+    "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.",
+    "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.",
+    "See the answers on the channel status page": "See the answers on the channel status page",
+    "The check run failed.": "The check run failed."
   }
 }

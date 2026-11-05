@@ -8109,7 +8109,6 @@
     "A logic question with a hidden condition. The stated final answer is compared with the expected one.": "Логическая задача со скрытым условием. Итоговый ответ модели сравнивается с эталонным.",
     "AI output:": "Ответ ИИ:",
     "Added after the question so the answer can be read. Keep the words \"最终答案：\" or \"Final answer:\" in it.": "Добавляется после вопроса, чтобы ответ можно было прочитать. Сохраните слова «最终答案：» или «Final answer:».",
-    "An intelligence check is already running. Wait for it to finish": "Проверка уже выполняется. Дождитесь её завершения",
     "Answer format instruction": "Требование к формату ответа",
     "Ask each group a fixed question on a schedule, routed like a user request, and show the answers on the channel status page. A failed check never disables a channel. Every check is billed by the upstream.": "По расписанию задаёт каждой группе фиксированный вопрос, маршрутизируя его как запрос пользователя, и показывает ответы на странице статуса каналов. Неудачная проверка никогда не отключает канал. Каждая проверка оплачивается у поставщика.",
     "Ask for the pelican drawing": "Просить нарисовать пеликана",
@@ -8145,7 +8144,6 @@
     "Intelligence check": "Проверка на деградацию",
     "Intelligence checks": "Проверка на деградацию",
     "Intelligence checks are turned off. These are the last results.": "Проверка выключена. Это последние результаты.",
-    "Intelligence checks started. Results appear on the channel status page.": "Проверка запущена. Результаты появятся на странице статуса каналов.",
     "Interrupted": "Прервано",
     "Interval (hours)": "Интервал (часы)",
     "Loads external resources": "Загружает внешние ресурсы",
@@ -8159,7 +8157,6 @@
     "Pelican drawing": "Рисунок пеликана",
     "Play the drawing from {{time}}": "Открыть рисунок от {{time}}",
     "Results appear here after the first scheduled check.": "Результаты появятся здесь после первой плановой проверки.",
-    "Runs every enabled question for every listed group now.": "Сейчас задаёт все включённые вопросы каждой группе из списка.",
     "Save the settings first.": "Сначала сохраните настройки.",
     "Sent as the user message.": "Отправляется как сообщение пользователя.",
     "Show full answer": "Показать ответ полностью",
@@ -8176,6 +8173,16 @@
     "Waiting for the answer...": "Ожидание ответа...",
     "Wrong": "Неверно",
     "Choose at least one question for every group": "Выберите хотя бы один вопрос для каждой группы",
-    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Каждая группа проверяется одной моделью и получает только вопросы, отмеченные в её строке. У групп не из списка нет кнопки проверки."
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Каждая группа проверяется одной моделью и получает только вопросы, отмеченные в её строке. У групп не из списка нет кнопки проверки.",
+    "A check is already running; its progress is shown below.": "Проверка уже выполняется; её ход показан ниже.",
+    "Intelligence checks started.": "Проверка запущена.",
+    "Runs every ticked question for every listed group now.": "Сейчас задаёт каждой группе из списка отмеченные вопросы.",
+    "Checking...": "Проверка...",
+    "Waiting to start...": "Ожидание запуска...",
+    "Answered {{processed}} of {{total}} questions": "Отвечено {{processed}} из {{total}} вопросов",
+    "Each answer can take one to several minutes, the drawing longer. You can leave this page; the check keeps running.": "Каждый ответ может занять от одной до нескольких минут, рисунок дольше. Можно уйти со страницы — проверка продолжится.",
+    "Done: {{passed}} passed, {{failed}} failed, {{other}} could not be judged.": "Готово: пройдено {{passed}}, не пройдено {{failed}}, не оценено {{other}}.",
+    "See the answers on the channel status page": "Ответы на странице статуса каналов",
+    "The check run failed.": "Проверка завершилась с ошибкой."
   }
 }
