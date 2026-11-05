@@ -87,7 +87,8 @@ export function IntelligenceCheckClear() {
         )
 
   return (
-    <div className='flex flex-col gap-3'>
+    <div className='flex flex-col gap-2'>
+      <span className='text-sm font-medium'>{t('Clear check results')}</span>
       <ToggleGroup
         value={[scope]}
         onValueChange={(values) => {
@@ -107,37 +108,42 @@ export function IntelligenceCheckClear() {
       </ToggleGroup>
 
       {scope === 'before' && (
-        <div className='flex flex-col gap-2'>
-          <DateTimePicker value={before} onChange={setBefore} />
-          <div className='flex flex-wrap gap-2'>
-            {QUICK_PICKS.map((pick) => (
-              <Button
-                key={pick.labelKey}
-                type='button'
-                variant='outline'
-                size='sm'
-                onClick={() =>
-                  setBefore(new Date(Date.now() - pick.days * DAY_MS))
-                }
-              >
-                {t(pick.labelKey)}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <DateTimePicker
+          value={before}
+          onChange={setBefore}
+          className='w-full max-w-sm'
+        />
       )}
 
-      <Button
-        type='button'
-        variant='destructive'
-        size='sm'
-        className='self-start'
-        disabled={!canClear || clear.isPending}
-        onClick={() => setConfirming(true)}
-      >
-        <Trash2 aria-hidden='true' />
-        {scope === 'all' ? t('Clear all results') : t('Clear older results')}
-      </Button>
+      {/* The quick picks and the button share a row to keep it short. */}
+      <div className='flex flex-wrap items-center gap-2'>
+        {scope === 'before' &&
+          QUICK_PICKS.map((pick) => (
+            <Button
+              key={pick.labelKey}
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={() =>
+                setBefore(new Date(Date.now() - pick.days * DAY_MS))
+              }
+            >
+              {t(pick.labelKey)}
+            </Button>
+          ))}
+        <Button
+          type='button'
+          variant='destructive'
+          size='sm'
+          disabled={!canClear || clear.isPending}
+          onClick={() => setConfirming(true)}
+        >
+          <Trash2 aria-hidden='true' />
+          {scope === 'all'
+            ? t('Clear all results')
+            : t('Clear older results')}
+        </Button>
+      </div>
 
       <ConfirmDialog
         open={confirming}
