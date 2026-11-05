@@ -383,6 +383,7 @@ func migrateDB() error {
 		&InvoiceOrderLock{},
 		&InvoiceTaxPayment{},
 		&GroupHealthProbe{},
+		&IntelligenceCheckResult{},
 	)
 	if err != nil {
 		return err
