@@ -7902,6 +7902,12 @@
     "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.",
     "Days a change stays marked": "Days a change stays marked",
     "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.",
-    "Enter a whole number from 1 to 30": "Enter a whole number from 1 to 30"
+    "Enter a whole number from 1 to 30": "Enter a whole number from 1 to 30",
+    "Clear cache records": "Clear cache records",
+    "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.": "All stored cache hit rate counts are deleted, for every group. The rates fill in again from new requests. This cannot be undone.",
+    "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.",
+    "Cache records cleared.": "Cache records cleared.",
+    "10 minutes ago": "10 minutes ago",
+    "30 minutes ago": "30 minutes ago"
   }
 }
