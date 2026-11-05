@@ -382,8 +382,9 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
 
           <Separator />
           <h4 className='text-sm font-medium'>{t('Stored results')}</h4>
-          {/* What is kept on the left, clearing by hand on the right. */}
-          <div className='grid gap-6 lg:grid-cols-2'>
+          {/* What is kept on the left, clearing by hand on the right; the
+              clearing row is wider so its controls fit on one line. */}
+          <div className='grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'>
             <div className='flex flex-col gap-2'>
               {renderNumber(
                 'keep_results',
