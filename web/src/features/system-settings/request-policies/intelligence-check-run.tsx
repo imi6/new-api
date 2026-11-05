@@ -39,28 +39,12 @@ function isActive(run: IntelligenceCheckRun | null | undefined): boolean {
   return run?.status === 'pending' || run?.status === 'running'
 }
 
-/** Seconds since the run started, ticking on its own. */
-function Elapsed(props: { since: number }) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
-  const seconds = Math.max(0, Math.round(now / 1000 - props.since))
-  return <>{`${seconds}s`}</>
-}
-
-interface IntelligenceCheckRunProps {
-  /** Unsaved changes would not be checked, so the run waits for a save. */
-  dirty: boolean
-}
-
 /**
- * "Check now" with the progress of the run: how many questions are answered,
- * how long it has taken, and the outcome. A run started before the page
- * opened is picked up too.
+ * The intelligence check run the settings page follows: the one it started,
+ * or one already going when the page opened. Only one run goes at a time,
+ * for every group or for one.
  */
-export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
+export function useIntelligenceCheckRun() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [taskId, setTaskId] = useState<string | null>(null)
@@ -78,7 +62,6 @@ export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
       query.state.data && !isActive(query.state.data) ? false : RUN_POLL_MS,
   })
   const current = run.data
-  const running = isActive(current)
 
   // New results replace what an open channel status dialog shows.
   useEffect(() => {
@@ -87,8 +70,8 @@ export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
     }
   }, [current?.status, queryClient])
 
-  const runNow = useMutation({
-    mutationFn: runIntelligenceChecksNow,
+  const start = useMutation({
+    mutationFn: (group: string) => runIntelligenceChecksNow(group),
     onSuccess: (data) => {
       setTaskId(data.task_id)
       toast.success(
@@ -101,6 +84,51 @@ export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
     meta: { errorToast: false },
   })
 
+  const running = isActive(current)
+  return {
+    current,
+    running,
+    /** The group of a one-group run in progress; empty for a full run. */
+    runningGroup: running ? (current?.payload?.group ?? '') : '',
+    /** Starts a run of one group, or of every group when empty. */
+    start: (group: string) => start.mutate(group),
+    starting: start.isPending,
+    /** The group being started, or null when nothing is being started. */
+    startingGroup: start.isPending ? start.variables : null,
+  }
+}
+
+export type IntelligenceCheckRunState = ReturnType<
+  typeof useIntelligenceCheckRun
+>
+
+/** Seconds since the run started, ticking on its own. */
+function Elapsed(props: { since: number }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const seconds = Math.max(0, Math.round(now / 1000 - props.since))
+  return <>{`${seconds}s`}</>
+}
+
+interface IntelligenceCheckRunProps {
+  run: IntelligenceCheckRunState
+  /** Unsaved changes would not be checked, so the run waits for a save. */
+  dirty: boolean
+}
+
+/**
+ * "Check now" for every group, with the progress of the run: how many
+ * questions are answered, how long it has taken, and the outcome. A run
+ * started from a group card, or before the page opened, is shown too.
+ */
+export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
+  const { t } = useTranslation()
+  const current = props.run.current
+  const running = props.run.running
+
   let hint = t('Runs every ticked question for every listed group now.')
   if (props.dirty) hint = t('Save the settings first.')
 
@@ -111,10 +139,10 @@ export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
           type='button'
           variant='outline'
           size='sm'
-          disabled={props.dirty || runNow.isPending || running}
-          onClick={() => runNow.mutate()}
+          disabled={props.dirty || props.run.starting || running}
+          onClick={() => props.run.start('')}
         >
-          {runNow.isPending || running ? (
+          {props.run.starting || running ? (
             <Loader2 className='animate-spin' aria-hidden='true' />
           ) : (
             <Play aria-hidden='true' />
@@ -131,7 +159,7 @@ export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
           className='bg-muted/40 flex flex-col gap-1 rounded-lg px-3 py-2 text-sm'
           role='status'
         >
-          <span className='flex items-center gap-2 font-medium'>
+          <span className='flex flex-wrap items-center gap-2 font-medium'>
             <Loader2 className='size-4 animate-spin' aria-hidden='true' />
             {current.status === 'pending' || !current.state
               ? t('Waiting to start...')
@@ -142,6 +170,11 @@ export function IntelligenceCheckRunNow(props: IntelligenceCheckRunProps) {
             <span className='text-muted-foreground font-normal tabular-nums'>
               · <Elapsed since={current.created_at} />
             </span>
+            {props.run.runningGroup !== '' && (
+              <span className='text-muted-foreground font-normal'>
+                · {props.run.runningGroup}
+              </span>
+            )}
           </span>
           <span className='text-muted-foreground text-xs'>
             {t(
