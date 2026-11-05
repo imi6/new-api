@@ -17,8 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { Loader2, Play, Plus, Trash2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -47,7 +47,6 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { handleServerError } from '@/lib/handle-server-error'
 
 import {
   SettingsForm,
@@ -59,8 +58,9 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
-import { getIntelligenceCheckModels, runIntelligenceChecksNow } from './api'
+import { getIntelligenceCheckModels } from './api'
 import type { IntelligenceCheckSettings } from './defaults'
+import { IntelligenceCheckRunNow } from './intelligence-check-run'
 import {
   changedIntelligenceCheckOptions,
   INTELLIGENCE_CHECK_LIMITS,
@@ -86,7 +86,10 @@ interface TargetRowsProps {
   modelsByGroup: Record<string, string[]>
 }
 
-/** One row per checked group: the group, then a model enabled in it. */
+/**
+ * One card per checked group: the group, a model enabled in it, and the
+ * questions it is asked.
+ */
 function TargetRows(props: TargetRowsProps) {
   const { t } = useTranslation()
   const groups = Object.keys(props.modelsByGroup).sort()
@@ -94,95 +97,110 @@ function TargetRows(props: TargetRowsProps) {
     props.onChange(props.value.map((row, i) => (i === index ? next : row)))
 
   return (
-    <div className='flex flex-col gap-2'>
-      {props.value.map((row, index) => {
-        const models = props.modelsByGroup[row.group] ?? []
-        // Keep a saved model selectable even when it left the group.
-        const modelItems =
-          row.model !== '' && !models.includes(row.model)
-            ? [row.model, ...models]
-            : models
-        return (
-          <div
-            key={`${index}-${row.group}`}
-            className='grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_1fr_auto_auto]'
-          >
-            <Select
-              items={groups.map((group) => ({ value: group, label: group }))}
-              value={row.group}
-              onValueChange={(group) => {
-                if (group !== null) update(index, { ...row, group, model: '' })
-              }}
+    <div className='flex flex-col gap-3'>
+      {/* Two groups side by side on wide screens, one on narrow ones. */}
+      <div className='grid gap-3 xl:grid-cols-2'>
+        {props.value.map((row, index) => {
+          const models = props.modelsByGroup[row.group] ?? []
+          // Keep a saved model selectable even when it left the group.
+          const modelItems =
+            row.model !== '' && !models.includes(row.model)
+              ? [row.model, ...models]
+              : models
+          return (
+            <div
+              key={`${index}-${row.group}`}
+              className='flex min-w-0 flex-col gap-2 rounded-lg border p-3'
             >
-              <SelectTrigger className='w-full' aria-label={t('Group')}>
-                <SelectValue placeholder={t('Choose a group')} />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
-                <SelectGroup>
-                  {groups.map((group) => (
-                    <SelectItem key={group} value={group}>
-                      {group}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Select
-              items={modelItems.map((name) => ({ value: name, label: name }))}
-              value={row.model}
-              onValueChange={(model) => {
-                if (model !== null) update(index, { ...row, model })
-              }}
-              disabled={row.group === ''}
-            >
-              <SelectTrigger className='w-full' aria-label={t('Model')}>
-                <SelectValue placeholder={t('Choose a model')} />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
-                <SelectGroup>
-                  {modelItems.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <div className='flex items-center gap-4 text-sm'>
-              <label className='flex cursor-pointer items-center gap-1.5'>
-                <Checkbox
-                  checked={row.candy}
-                  onCheckedChange={(value) =>
-                    update(index, { ...row, candy: !!value })
+              {/* Group names are long, so the two pickers stack. */}
+              <div className='flex min-w-0 flex-col gap-2'>
+                <Select
+                  items={groups.map((group) => ({
+                    value: group,
+                    label: group,
+                  }))}
+                  value={row.group}
+                  onValueChange={(group) => {
+                    if (group !== null) {
+                      update(index, { ...row, group, model: '' })
+                    }
+                  }}
+                >
+                  <SelectTrigger className='w-full' aria-label={t('Group')}>
+                    <SelectValue placeholder={t('Choose a group')} />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {groups.map((group) => (
+                        <SelectItem key={group} value={group}>
+                          {group}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Select
+                  items={modelItems.map((name) => ({
+                    value: name,
+                    label: name,
+                  }))}
+                  value={row.model}
+                  onValueChange={(model) => {
+                    if (model !== null) update(index, { ...row, model })
+                  }}
+                  disabled={row.group === ''}
+                >
+                  <SelectTrigger className='w-full' aria-label={t('Model')}>
+                    <SelectValue placeholder={t('Choose a model')} />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {modelItems.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='flex items-center justify-between gap-2'>
+                <div className='flex items-center gap-4 text-sm'>
+                  <label className='flex cursor-pointer items-center gap-1.5'>
+                    <Checkbox
+                      checked={row.candy}
+                      onCheckedChange={(value) =>
+                        update(index, { ...row, candy: !!value })
+                      }
+                    />
+                    {t('Candy question')}
+                  </label>
+                  <label className='flex cursor-pointer items-center gap-1.5'>
+                    <Checkbox
+                      checked={row.pelican}
+                      onCheckedChange={(value) =>
+                        update(index, { ...row, pelican: !!value })
+                      }
+                    />
+                    {t('Pelican drawing')}
+                  </label>
+                </div>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon-sm'
+                  aria-label={t('Remove')}
+                  onClick={() =>
+                    props.onChange(props.value.filter((_, i) => i !== index))
                   }
-                />
-                {t('Candy question')}
-              </label>
-              <label className='flex cursor-pointer items-center gap-1.5'>
-                <Checkbox
-                  checked={row.pelican}
-                  onCheckedChange={(value) =>
-                    update(index, { ...row, pelican: !!value })
-                  }
-                />
-                {t('Pelican drawing')}
-              </label>
+                >
+                  <Trash2 aria-hidden='true' />
+                </Button>
+              </div>
             </div>
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon-sm'
-              className='justify-self-end'
-              aria-label={t('Remove')}
-              onClick={() =>
-                props.onChange(props.value.filter((_, i) => i !== index))
-              }
-            >
-              <Trash2 aria-hidden='true' />
-            </Button>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
       <Button
         type='button'
         variant='outline'
@@ -225,18 +243,6 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
     queryKey: ['intelligence-check-models'],
     queryFn: getIntelligenceCheckModels,
   })
-  const runNow = useMutation({
-    mutationFn: runIntelligenceChecksNow,
-    onSuccess: () =>
-      toast.success(
-        t(
-          'Intelligence checks started. Results appear on the channel status page.'
-        )
-      ),
-    onError: (error) => handleServerError(error),
-    meta: { errorToast: false },
-  })
-
   const { isDirty, isSubmitting } = form.formState
   const saving = updateOption.isPending || isSubmitting
 
@@ -370,27 +376,7 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
             )}
           />
 
-          <div className='flex flex-wrap items-center gap-3'>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              disabled={isDirty || runNow.isPending}
-              onClick={() => runNow.mutate()}
-            >
-              {runNow.isPending ? (
-                <Loader2 className='animate-spin' aria-hidden='true' />
-              ) : (
-                <Play aria-hidden='true' />
-              )}
-              {t('Check now')}
-            </Button>
-            <span className='text-muted-foreground text-xs'>
-              {isDirty
-                ? t('Save the settings first.')
-                : t('Runs every enabled question for every listed group now.')}
-            </span>
-          </div>
+          <IntelligenceCheckRunNow dirty={isDirty} />
 
           <Separator />
           <h4 className='text-sm font-medium'>{t('Candy question')}</h4>
