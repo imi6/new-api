@@ -7838,6 +7838,18 @@
     "Preview stopped": "预览已停止",
     "View source": "查看源码",
     "View drawing": "查看作品",
-    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "作品是模型输出的原样内容，运行在沙箱里，无法访问本站。"
+    "The drawing is the model output as received; it runs in a sandbox without access to this site.": "作品是模型输出的原样内容，运行在沙箱里，无法访问本站。",
+    "All stored check results are deleted, for every group. This cannot be undone.": "将删除所有分组的全部检测记录，此操作不可撤销。",
+    "Check results from before {{time}} are deleted, for every group. This cannot be undone.": "将删除所有分组在 {{time}} 之前的检测记录，此操作不可撤销。",
+    "Clear all results": "清理全部记录",
+    "Clear check results": "清理检测记录",
+    "Clear older results": "清理该时间之前的记录",
+    "Deleted {{count}} check results.": "已删除 {{count}} 条检测记录。",
+    "Enter a whole number between 1 and 100": "请输入 1 到 100 之间的整数",
+    "Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.": "有新记录时会自动删除更早的记录，避免数据库越来越大。检测弹窗最多显示 10 条。",
+    "Results before a time": "清理某个时间之前",
+    "Results kept per group and question": "每个分组每道题保留记录数",
+    "Stored results": "检测记录",
+    "What to delete": "清理范围"
   }
 }
