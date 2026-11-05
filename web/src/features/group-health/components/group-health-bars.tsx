@@ -78,12 +78,6 @@ export function GroupHealthBars(props: GroupHealthBarsProps) {
                       rate: formatUptimePct(bar.success_rate),
                     })}
                   </span>
-                  <span>
-                    {t('User requests {{real}}, channel checks {{probe}}', {
-                      real: bar.real_requests,
-                      probe: bar.probe_samples,
-                    })}
-                  </span>
                   {bar.latency_source !== '' && (
                     <span>
                       {t(GROUP_HEALTH_LATENCY_LABEL_KEYS[bar.latency_source])}
