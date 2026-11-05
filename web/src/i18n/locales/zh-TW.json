@@ -7879,6 +7879,14 @@
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宮格對比 · 點擊作品放大播放",
     "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最終答案與標準答案比對",
     "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "僅展示服務健康概況，不公開站點請求數量、逐請求記錄或內部渠道資訊。",
-    "Cache hit rate": "快取命中率"
+    "Cache hit rate": "快取命中率",
+    "Channel status page": "渠道狀態頁",
+    "What the channel status page shows. Changes appear within a minute.": "渠道狀態頁顯示的內容。儲存後一分鐘內生效。",
+    "Show the cache hit rate": "顯示快取命中率",
+    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "每個分組卡片顯示真實使用者請求中，從上游快取讀取的輸入 token 佔比。關閉後不再記錄。",
+    "Cache hit rate window (minutes)": "快取命中率統計時長（分鐘）",
+    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "卡片顯示最近這麼多分鐘的命中率。超過這個時長的記錄會被刪除，所以調大後需要時間重新累積。",
+    "Enter a whole number from 5 to 1440": "請輸入 5 到 1440 之間的整數",
+    "Last {{count}} minutes": "近 {{count}} 分鐘"
   }
 }
