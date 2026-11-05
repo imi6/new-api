@@ -7815,7 +7815,6 @@
     "Drawing from {{time}}": "Tác phẩm lúc {{time}}",
     "Drawing...": "Đang vẽ...",
     "Each group can be checked only once": "Mỗi nhóm chỉ được kiểm tra một lần",
-    "Each group is checked with one model. A group not listed shows no check button.": "Mỗi nhóm được kiểm tra bằng một mô hình. Nhóm không có trong danh sách sẽ không hiện nút kiểm tra.",
     "Enable intelligence checks": "Bật kiểm tra giảm trí tuệ",
     "Enter a whole number between 256 and 65536": "Nhập số nguyên từ 256 đến 65536",
     "Enter a whole number of hours between 1 and 168": "Nhập số giờ nguyên từ 1 đến 168",
@@ -7857,6 +7856,8 @@
     "Unable to load intelligence checks": "Không thể tải kết quả kiểm tra",
     "Undetermined": "Không xác định",
     "Waiting for the answer...": "Đang chờ câu trả lời...",
-    "Wrong": "Sai"
+    "Wrong": "Sai",
+    "Choose at least one question for every group": "Chọn ít nhất một câu hỏi cho mỗi nhóm",
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Mỗi nhóm được kiểm tra bằng một mô hình và chỉ nhận các câu hỏi được đánh dấu ở dòng của nó. Nhóm không có trong danh sách sẽ không hiện nút kiểm tra."
   }
 }

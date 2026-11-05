@@ -966,4 +966,5 @@ export const STATIC_I18N_KEYS = [
   'Enter the expected answer',
   'Choose a group and a model for every row',
   'Each group can be checked only once',
+  'Choose at least one question for every group',
 ] as const
