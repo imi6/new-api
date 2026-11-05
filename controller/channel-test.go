@@ -979,8 +979,9 @@ func testChannelForHealthCheck(ctx context.Context, channel *model.Channel, test
 	}
 
 	// The group health page reads the same result. A disabled channel gets no
-	// user traffic, so its recovery check is left out.
-	if isChannelEnabled {
+	// user traffic, so its recovery check is left out, and so is a check that
+	// failed here before any request was sent (localErr without an API error).
+	if isChannelEnabled && (result.localErr == nil || newAPIError != nil) {
 		model.RecordGroupHealthProbe(channel.GetGroups(), newAPIError == nil, milliseconds, common.GetTimestamp())
 	}
 
