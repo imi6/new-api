@@ -2943,7 +2943,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Related Projects",
     "footer.defaultCopyright": "All rights reserved.",
-    "footer.new\u0061pi.projectAttributionSuffix": "All rights reserved. Designed and developed by the project contributors.",
+    "footer.newapi.projectAttributionSuffix": "All rights reserved. Designed and developed by the project contributors.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment",
     "For example: My app": "For example: My app",
@@ -7850,6 +7850,8 @@
     "Results before a time": "Results before a time",
     "Results kept per group and question": "Results kept per group and question",
     "Stored results": "Stored results",
-    "What to delete": "What to delete"
+    "What to delete": "What to delete",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "The last {{count}} complete drawings · grid comparison · select one to play it large",
+    "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one"
   }
 }

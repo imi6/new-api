@@ -2943,7 +2943,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "相关项目",
     "footer.defaultCopyright": "版权所有。",
-    "footer.new\u0061pi.projectAttributionSuffix": "版权所有，由项目贡献者设计与开发。",
+    "footer.newapi.projectAttributionSuffix": "版权所有，由项目贡献者设计与开发。",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "高级自定义渠道仅对 /v1/responses 且不做协议转换的路由生效。",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "对于 2025 年 5 月 10 日之后添加的渠道，在部署时无需从模型名称中移除 \".\"",
     "For example: My app": "例如：我的应用",
@@ -7850,6 +7850,8 @@
     "Results before a time": "清理某个时间之前",
     "Results kept per group and question": "每个分组每道题保留记录数",
     "Stored results": "检测记录",
-    "What to delete": "清理范围"
+    "What to delete": "清理范围",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "最近 {{count}} 份完整作品 · 九宫格对比 · 点击作品放大播放",
+    "The last {{count}} answers · final answers compared with the expected one": "最近 {{count}} 次作答 · 最终答案与标准答案比对"
   }
 }
