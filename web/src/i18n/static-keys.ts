@@ -979,4 +979,5 @@ export const STATIC_I18N_KEYS = [
   'Choose a group and a model for every row',
   'Each group can be checked only once',
   'Choose at least one question for every group',
+  'Enter a whole number between 1 and 100',
 ] as const
