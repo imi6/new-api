@@ -7722,7 +7722,6 @@
     "All healthy": "All healthy",
     "Auto refresh interval": "Auto refresh interval",
     "Avg latency": "Avg latency",
-    "Avg latency · {{range}}": "Avg latency · {{range}}",
     "Channel checks": "Channel checks",
     "Check latency": "Check latency",
     "Groups that users can choose appear here.": "Groups that users can choose appear here.",
@@ -7737,7 +7736,6 @@
     "Past": "Past",
     "Skip channels that just served users": "Skip channels that just served users",
     "Success rate and latency of each group, from user requests and channel checks.": "Success rate and latency of each group, from user requests and channel checks.",
-    "Success rate · {{range}}": "Success rate · {{range}}",
     "Success rate: {{rate}}": "Success rate: {{rate}}",
     "The administrator needs to turn on performance metrics or scheduled channel tests.": "The administrator needs to turn on performance metrics or scheduled channel tests.",
     "Time to first token": "Time to first token",
@@ -7851,6 +7849,7 @@
     "What to delete": "What to delete",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "The last {{count}} complete drawings · grid comparison · select one to play it large",
     "The last {{count}} answers · final answers compared with the expected one": "The last {{count}} answers · final answers compared with the expected one",
-    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published."
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.",
+    "Cache hit rate": "Cache hit rate"
   }
 }
