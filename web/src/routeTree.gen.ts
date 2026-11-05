@@ -32,7 +32,7 @@ import { Route as AboutIndexRouteImport } from './routes/about/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
-import { Route as GroupHealthIndexRouteImport } from './routes/group-health/index'
+import { Route as HealthIndexRouteImport } from './routes/health/index'
 import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
@@ -191,9 +191,9 @@ const RankingsIndexRoute = RankingsIndexRouteImport.update({
   path: '/rankings/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GroupHealthIndexRoute = GroupHealthIndexRouteImport.update({
-  id: '/group-health/',
-  path: '/group-health/',
+const HealthIndexRoute = HealthIndexRouteImport.update({
+  id: '/health/',
+  path: '/health/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupIndexRoute = SetupIndexRouteImport.update({
@@ -471,7 +471,7 @@ export interface FileRoutesByFullPath {
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
-  '/group-health/': typeof GroupHealthIndexRoute
+  '/health/': typeof HealthIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -537,7 +537,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutIndexRoute
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
-  '/group-health': typeof GroupHealthIndexRoute
+  '/health': typeof HealthIndexRoute
   '/setup': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -607,7 +607,7 @@ export interface FileRoutesById {
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
-  '/group-health/': typeof GroupHealthIndexRoute
+  '/health/': typeof HealthIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
   '/_authenticated/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -676,7 +676,7 @@ export interface FileRouteTypes {
     | '/about/'
     | '/pricing/'
     | '/rankings/'
-    | '/group-health/'
+    | '/health/'
     | '/setup/'
     | '/user/reset'
     | '/chat/$chatId'
@@ -742,7 +742,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/pricing'
     | '/rankings'
-    | '/group-health'
+    | '/health'
     | '/setup'
     | '/user/reset'
     | '/chat/$chatId'
@@ -811,7 +811,7 @@ export interface FileRouteTypes {
     | '/about/'
     | '/pricing/'
     | '/rankings/'
-    | '/group-health/'
+    | '/health/'
     | '/setup/'
     | '/(auth)/user/reset'
     | '/_authenticated/chat/$chatId'
@@ -872,7 +872,7 @@ export interface RootRouteChildren {
   AboutIndexRoute: typeof AboutIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
-  GroupHealthIndexRoute: typeof GroupHealthIndexRoute
+  HealthIndexRoute: typeof HealthIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
   PricingModelIdIndexRoute: typeof PricingModelIdIndexRoute
 }
@@ -1040,11 +1040,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RankingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/group-health/': {
-      id: '/group-health/'
-      path: '/group-health'
-      fullPath: '/group-health/'
-      preLoaderRoute: typeof GroupHealthIndexRouteImport
+    '/health/': {
+      id: '/health/'
+      path: '/health'
+      fullPath: '/health/'
+      preLoaderRoute: typeof HealthIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup/': {
@@ -1516,7 +1516,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutIndexRoute: AboutIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,
-  GroupHealthIndexRoute: GroupHealthIndexRoute,
+  HealthIndexRoute: HealthIndexRoute,
   SetupIndexRoute: SetupIndexRoute,
   PricingModelIdIndexRoute: PricingModelIdIndexRoute,
 }
