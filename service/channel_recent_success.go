@@ -74,8 +74,11 @@ func MarkChannelRecentSuccess(c *gin.Context, channelID int) {
 }
 
 // ChannelRecentlySucceeded reports whether the channel served a successful
-// user request since the given time, on any node when Redis is enabled.
+// user request since the given time, on any node when Redis is enabled. A
+// node writes at most once per minute, so the stored time may lag the last
+// success by that much; the check allows for it.
 func ChannelRecentlySucceeded(channelID int, since int64) bool {
+	since -= channelRecentSuccessWriteGap
 	if last, ok := channelRecentSuccess.Load(channelID); ok && last.(int64) >= since {
 		return true
 	}
