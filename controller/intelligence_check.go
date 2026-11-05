@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -82,6 +83,10 @@ func dueIntelligenceChecks(force bool) ([]intelligenceCheckItem, error) {
 				continue
 			}
 			lastRun, ran := last[check.key+"\x00"+target.Group]
+			// Clearing removes the runs but not the wait for the next one.
+			if setting.ClearedAt > lastRun {
+				lastRun, ran = setting.ClearedAt, true
+			}
 			interval := int64(operation_setting.IntelligenceCheckInterval(check.hours)) * 3600
 			if force || !ran || now-lastRun >= interval {
 				items = append(items, intelligenceCheckItem{checkKey: check.key, group: target.Group, model: target.Model})
@@ -210,11 +215,12 @@ func runIntelligenceCheck(ctx context.Context, testUserID int, item intelligence
 		row.FailedChecks = strings.Join(failed, ",")
 		row.Response, row.Truncated = service.TruncateIntelligenceResponse(answer)
 	}
-	if err := model.FinishIntelligenceCheck(row); err != nil {
+	keep := operation_setting.IntelligenceCheckKeepResults()
+	if err := model.FinishIntelligenceCheck(row, keep); err != nil {
 		common.SysError(common.LogText("failed to store intelligence check group=%s: %s", item.group, err.Error()))
 		// Do not leave the row running: store the outcome without the answer.
 		row.Status, row.Response, row.Answer, row.Error = model.IntelligenceCheckError, "", "", "store_failed"
-		if retryErr := model.FinishIntelligenceCheck(row); retryErr != nil {
+		if retryErr := model.FinishIntelligenceCheck(row, keep); retryErr != nil {
 			common.SysError(common.LogText("failed to end intelligence check group=%s: %s", item.group, retryErr.Error()))
 		}
 	}
@@ -245,6 +251,10 @@ func (intelligenceCheckHandler) Run(ctx context.Context, task *model.SystemTask,
 	}
 	if err := model.MarkStaleIntelligenceChecks(); err != nil {
 		common.SysError(common.LogText("failed to end stale intelligence checks: %s", err.Error()))
+	}
+	// A lowered keep limit applies to the old results too.
+	if err := model.TrimAllIntelligenceChecks(operation_setting.IntelligenceCheckKeepResults()); err != nil {
+		common.SysError(common.LogText("failed to trim intelligence checks: %s", err.Error()))
 	}
 	items, err := dueIntelligenceChecks(payload.Force)
 	if err != nil {
@@ -295,6 +305,36 @@ func RunIntelligenceChecksNow(c *gin.Context) {
 		return
 	}
 	common.ApiSuccess(c, gin.H{"task_id": task.TaskID, "already_running": !created})
+}
+
+type intelligenceCheckClearRequest struct {
+	// Before deletes the results created before this time; zero deletes all.
+	Before int64 `json:"before"`
+}
+
+// ClearIntelligenceChecks deletes stored results, all of them or those older
+// than a time. The next scheduled check waits a full interval from now, so a
+// clear does not set off every check at once.
+func ClearIntelligenceChecks(c *gin.Context) {
+	var req intelligenceCheckClearRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil || req.Before < 0 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	deleted, err := model.DeleteIntelligenceChecksBefore(req.Before)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if deleted > 0 {
+		if err := model.UpdateOption("intelligence_check_setting.cleared_at", strconv.FormatInt(common.GetTimestamp(), 10)); err != nil {
+			common.SysError(common.LogText("failed to record intelligence check clear: %s", err.Error()))
+		}
+	}
+	intelligenceCheckCacheMu.Lock()
+	intelligenceCheckCache = map[string]intelligenceCheckCacheEntry{}
+	intelligenceCheckCacheMu.Unlock()
+	common.ApiSuccess(c, gin.H{"deleted": deleted})
 }
 
 // GetIntelligenceCheckModels lists the enabled models of every group, for
