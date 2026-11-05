@@ -382,19 +382,22 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
 
           <Separator />
           <h4 className='text-sm font-medium'>{t('Stored results')}</h4>
-          <SettingsFormGrid>
-            {renderNumber(
-              'keep_results',
-              t('Results kept per group and question'),
-              INTELLIGENCE_CHECK_LIMITS.keepResults
-            )}
-          </SettingsFormGrid>
-          <p className='text-muted-foreground -mt-2 text-xs'>
-            {t(
-              'Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.'
-            )}
-          </p>
-          <IntelligenceCheckClear />
+          {/* What is kept on the left, clearing by hand on the right. */}
+          <div className='grid gap-6 lg:grid-cols-2'>
+            <div className='flex flex-col gap-2'>
+              {renderNumber(
+                'keep_results',
+                t('Results kept per group and question'),
+                INTELLIGENCE_CHECK_LIMITS.keepResults
+              )}
+              <p className='text-muted-foreground text-xs'>
+                {t(
+                  'Older results are deleted as new ones arrive, so the database does not grow. The check dialog shows up to 10.'
+                )}
+              </p>
+            </div>
+            <IntelligenceCheckClear />
+          </div>
 
           <Separator />
           <h4 className='text-sm font-medium'>{t('Candy question')}</h4>
