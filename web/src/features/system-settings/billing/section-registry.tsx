@@ -23,6 +23,7 @@ import { InvoiceSettingsSection } from '../general/invoice-settings-section'
 import { PricingSection } from '../general/pricing-section'
 import { QuotaSettingsSection } from '../general/quota-settings-section'
 import { PaymentSettingsSection } from '../integrations/payment-settings-section'
+import { RatioChangeSettingsSection } from '../models/ratio-change-settings-section'
 import { RatioSettingsCard } from '../models/ratio-settings-card'
 import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
@@ -132,6 +133,18 @@ const BILLING_SECTIONS = [
         groupDefaults={getGroupDefaults(settings)}
         toolPricesDefault={settings['tool_price_setting.prices']}
         visibleTabs={['groups']}
+      />
+    ),
+  },
+  {
+    id: 'ratio-change',
+    titleKey: 'Ratio change notice',
+    build: (settings: BillingSettings) => (
+      <RatioChangeSettingsSection
+        defaultValues={{
+          enabled: settings['ratio_change_setting.enabled'],
+          days: settings['ratio_change_setting.days'],
+        }}
       />
     ),
   },

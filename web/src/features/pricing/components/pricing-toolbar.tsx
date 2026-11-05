@@ -26,6 +26,7 @@ import {
   sideDrawerFormClassName,
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
+import type { GroupRatioChange } from '@/components/ratio-change-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,6 +74,7 @@ export interface PricingToolbarProps {
   vendors: PricingVendor[]
   groups: string[]
   groupRatios?: Record<string, number>
+  groupRatioChanges?: Record<string, GroupRatioChange>
   tags: string[]
   models: PricingModel[]
   hasActiveFilters: boolean
@@ -217,6 +219,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
               vendors={props.vendors}
               groups={props.groups}
               groupRatios={props.groupRatios}
+              groupRatioChanges={props.groupRatioChanges}
               tags={props.tags}
               models={props.models}
               hasActiveFilters={props.hasActiveFilters}
