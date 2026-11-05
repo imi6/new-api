@@ -13,6 +13,9 @@ type MonitorSetting struct {
 	AutoTestChannelMinutes float64 `json:"auto_test_channel_minutes"`
 	ChannelTestMode        string  `json:"channel_test_mode"`
 	ChannelTestConcurrency int     `json:"channel_test_concurrency"`
+	// SkipRecentlyUsedChannels lets a scheduled run skip an enabled channel
+	// that served a successful user request within one test interval.
+	SkipRecentlyUsedChannels bool `json:"skip_recently_used_channels"`
 }
 
 const (
@@ -27,10 +30,11 @@ const (
 
 // 默认配置
 var monitorSetting = MonitorSetting{
-	AutoTestChannelEnabled: false,
-	AutoTestChannelMinutes: 10,
-	ChannelTestMode:        ChannelTestModeScheduledAll,
-	ChannelTestConcurrency: DefaultChannelTestConcurrency,
+	AutoTestChannelEnabled:   false,
+	AutoTestChannelMinutes:   10,
+	ChannelTestMode:          ChannelTestModeScheduledAll,
+	ChannelTestConcurrency:   DefaultChannelTestConcurrency,
+	SkipRecentlyUsedChannels: true,
 }
 
 func init() {

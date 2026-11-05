@@ -1,0 +1,319 @@
+package controller
+
+import (
+	"math"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
+	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
+	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
+
+	"github.com/gin-gonic/gin"
+)
+
+// The group health page shows, for every group a user can pick, how real
+// requests and scheduled channel checks went. Real traffic comes from the
+// model square metrics; checks come from the scheduled channel test, so no
+// request is sent only for this page. Only group totals leave the server:
+// no channel name, id, upstream address, or error text.
+
+const groupHealthCacheTTL = 60 * time.Second
+
+const (
+	groupHealthStatusOK      = "ok"
+	groupHealthStatusDown    = "down"
+	groupHealthStatusUnknown = "unknown"
+
+	groupHealthLatencyTTFT  = "ttft"
+	groupHealthLatencyProbe = "probe"
+)
+
+type groupHealthBar struct {
+	Start         int64   `json:"start"`
+	RealRequests  int64   `json:"real_requests"`
+	ProbeSamples  int64   `json:"probe_samples"`
+	SuccessRate   float64 `json:"success_rate"`
+	HasData       bool    `json:"has_data"`
+	AvgLatencyMs  int64   `json:"avg_latency_ms"`
+	LatencySource string  `json:"latency_source"`
+}
+
+type groupHealthGroup struct {
+	Name     string `json:"name"`
+	Desc     string `json:"desc"`
+	Platform string `json:"platform"`
+	Status   string `json:"status"`
+	TopModel string `json:"top_model"`
+	// LastSampleAt is the time of the latest check, or the start of the
+	// latest hour with real traffic, whichever is later.
+	LastSampleAt int64            `json:"last_sample_at"`
+	Total        groupHealthBar   `json:"total"`
+	Bars         []groupHealthBar `json:"bars"`
+}
+
+type groupHealthResponse struct {
+	UpdatedAt          int64              `json:"updated_at"`
+	Range              string             `json:"range"`
+	RealTrafficEnabled bool               `json:"real_traffic_enabled"`
+	ProbeEnabled       bool               `json:"probe_enabled"`
+	Total              groupHealthBar     `json:"total"`
+	Groups             []groupHealthGroup `json:"groups"`
+}
+
+// healthCounters sums real requests and checks over any span of hours.
+type healthCounters struct {
+	realRequests   int64
+	realSuccesses  int64
+	ttftSumMs      int64
+	ttftCount      int64
+	probeSamples   int64
+	probeSuccesses int64
+	probeLatencyMs int64
+}
+
+func (h *healthCounters) add(other healthCounters) {
+	h.realRequests += other.realRequests
+	h.realSuccesses += other.realSuccesses
+	h.ttftSumMs += other.ttftSumMs
+	h.ttftCount += other.ttftCount
+	h.probeSamples += other.probeSamples
+	h.probeSuccesses += other.probeSuccesses
+	h.probeLatencyMs += other.probeLatencyMs
+}
+
+// bar turns counters into the shape the page draws. The success rate counts
+// real requests and checks together. The latency is the time to first token
+// of real streaming requests, or the check round trip when there is none.
+func (h healthCounters) bar(start int64) groupHealthBar {
+	bar := groupHealthBar{Start: start, RealRequests: h.realRequests, ProbeSamples: h.probeSamples}
+	total := h.realRequests + h.probeSamples
+	if total > 0 {
+		bar.HasData = true
+		rate := float64(h.realSuccesses+h.probeSuccesses) / float64(total) * 100
+		bar.SuccessRate = math.Round(rate*100) / 100
+	}
+	switch {
+	case h.ttftCount > 0:
+		bar.AvgLatencyMs = h.ttftSumMs / h.ttftCount
+		bar.LatencySource = groupHealthLatencyTTFT
+	case h.probeSuccesses > 0:
+		bar.AvgLatencyMs = h.probeLatencyMs / h.probeSuccesses
+		bar.LatencySource = groupHealthLatencyProbe
+	}
+	return bar
+}
+
+type groupHealthCacheEntry struct {
+	data    *groupHealthResponse
+	expires time.Time
+}
+
+var (
+	groupHealthCache   = map[string]groupHealthCacheEntry{}
+	groupHealthCacheMu sync.Mutex
+)
+
+// GetGroupHealth serves the group health page. Access follows the
+// "groupHealth" top navigation switch.
+func GetGroupHealth(c *gin.Context) {
+	rangeName := c.DefaultQuery("range", "hour")
+	switch rangeName {
+	case "hour", "day", "week":
+	default:
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	groupHealthCacheMu.Lock()
+	entry, ok := groupHealthCache[rangeName]
+	groupHealthCacheMu.Unlock()
+	if ok && time.Now().Before(entry.expires) {
+		common.ApiSuccess(c, entry.data)
+		return
+	}
+	data, err := buildGroupHealth(rangeName, time.Now())
+	if err != nil {
+		common.SysError(common.LogText("failed to build group health: %s", err.Error()))
+		common.ApiErrorT(c, "Failed to load group health")
+		return
+	}
+	groupHealthCacheMu.Lock()
+	groupHealthCache[rangeName] = groupHealthCacheEntry{data: data, expires: time.Now().Add(groupHealthCacheTTL)}
+	groupHealthCacheMu.Unlock()
+	common.ApiSuccess(c, data)
+}
+
+// groupHealthBarStarts returns the start of every bar of the range, oldest
+// first, in the server's time zone.
+func groupHealthBarStarts(rangeName string, now time.Time) []int64 {
+	local := now.Local()
+	starts := make([]int64, 0, 30)
+	switch rangeName {
+	case "day":
+		today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, local.Location())
+		for i := 29; i >= 0; i-- {
+			starts = append(starts, today.AddDate(0, 0, -i).Unix())
+		}
+	case "week":
+		today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, local.Location())
+		monday := today.AddDate(0, 0, -((int(today.Weekday()) + 6) % 7))
+		for i := 11; i >= 0; i-- {
+			starts = append(starts, monday.AddDate(0, 0, -7*i).Unix())
+		}
+	default:
+		hour := now.Unix() - now.Unix()%3600
+		for i := int64(23); i >= 0; i-- {
+			starts = append(starts, hour-i*3600)
+		}
+	}
+	return starts
+}
+
+func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, error) {
+	usable := service.GetUserUsableGroups("")
+	channels, err := model.GetGroupHealthChannels()
+	if err != nil {
+		return nil, err
+	}
+	enabledChannels := map[string]int{}
+	testModels := map[string]string{}
+	present := map[string]bool{}
+	for _, channel := range channels {
+		for group := range strings.SplitSeq(strings.Trim(channel.Group, ","), ",") {
+			group = strings.TrimSpace(group)
+			if _, ok := usable[group]; !ok || group == "auto" {
+				continue
+			}
+			present[group] = true
+			if channel.Status == common.ChannelStatusEnabled {
+				enabledChannels[group]++
+			}
+			if testModels[group] == "" && channel.TestModel != nil {
+				testModels[group] = strings.TrimSpace(*channel.TestModel)
+			}
+		}
+	}
+	groups := make([]string, 0, len(present))
+	for group := range present {
+		groups = append(groups, group)
+	}
+	slices.Sort(groups)
+
+	starts := groupHealthBarStarts(rangeName, now)
+	windowStart, windowEnd := starts[0], now.Unix()
+	traffic, err := perfmetrics.QueryGroupTraffic(groups, windowStart, windowEnd)
+	if err != nil {
+		return nil, err
+	}
+	probes, err := model.GetGroupHealthProbes(groups, windowStart, windowEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	hours := map[string]map[int64]*healthCounters{}
+	lastSample := map[string]int64{}
+	hourOf := func(group string, ts int64) *healthCounters {
+		byHour := hours[group]
+		if byHour == nil {
+			byHour = map[int64]*healthCounters{}
+			hours[group] = byHour
+		}
+		counters := byHour[ts]
+		if counters == nil {
+			counters = &healthCounters{}
+			byHour[ts] = counters
+		}
+		return counters
+	}
+	for group, byHour := range traffic.Hours {
+		for ts, value := range byHour {
+			counters := hourOf(group, ts)
+			counters.realRequests += value.RequestCount
+			counters.realSuccesses += value.SuccessCount
+			counters.ttftSumMs += value.TtftSumMs
+			counters.ttftCount += value.TtftCount
+			lastSample[group] = max(lastSample[group], ts)
+		}
+	}
+	for _, row := range probes {
+		counters := hourOf(row.GroupName, row.BucketTs)
+		counters.probeSamples += row.Samples
+		counters.probeSuccesses += row.Successes
+		counters.probeLatencyMs += row.LatencySumMs
+		lastSample[row.GroupName] = max(lastSample[row.GroupName], row.LastTs)
+	}
+
+	platforms := map[string]string{}
+	if common.GroupPlatformMap != "" {
+		// Admin-validated JSON; a parse failure only drops the platform hint.
+		_ = common.UnmarshalJsonStr(common.GroupPlatformMap, &platforms)
+	}
+	currentHour := now.Unix() - now.Unix()%3600
+	response := &groupHealthResponse{
+		UpdatedAt:          now.Unix(),
+		Range:              rangeName,
+		RealTrafficEnabled: traffic.Enabled,
+		ProbeEnabled:       operation_setting.GetMonitorSetting().AutoTestChannelEnabled,
+		Groups:             make([]groupHealthGroup, 0, len(groups)),
+	}
+	var overall healthCounters
+	for _, group := range groups {
+		barCounters := make([]healthCounters, len(starts))
+		var total, recent healthCounters
+		for ts, counters := range hours[group] {
+			// The bar is the last one starting at or before this hour.
+			index, found := slices.BinarySearch(starts, ts)
+			if !found {
+				index--
+			}
+			if index >= 0 {
+				barCounters[index].add(*counters)
+				total.add(*counters)
+			}
+			if ts >= currentHour-3600 {
+				recent.add(*counters)
+			}
+		}
+		bars := make([]groupHealthBar, len(starts))
+		for i, counters := range barCounters {
+			bars[i] = counters.bar(starts[i])
+		}
+		overall.add(total)
+
+		status := groupHealthStatusUnknown
+		switch {
+		case enabledChannels[group] == 0:
+			status = groupHealthStatusDown
+		case recent.realRequests+recent.probeSamples == 0:
+		case recent.realSuccesses+recent.probeSuccesses > 0:
+			status = groupHealthStatusOK
+		default:
+			status = groupHealthStatusDown
+		}
+
+		topModel := testModels[group]
+		var topRequests int64
+		for name, requests := range traffic.Models[group] {
+			if requests > topRequests || (requests == topRequests && name < topModel) {
+				topModel, topRequests = name, requests
+			}
+		}
+
+		response.Groups = append(response.Groups, groupHealthGroup{
+			Name:         group,
+			Desc:         usable[group],
+			Platform:     platforms[group],
+			Status:       status,
+			TopModel:     topModel,
+			LastSampleAt: lastSample[group],
+			Total:        total.bar(windowStart),
+			Bars:         bars,
+		})
+	}
+	response.Total = overall.bar(windowStart)
+	return response, nil
+}
