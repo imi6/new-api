@@ -2943,7 +2943,7 @@
     "footer.columns.related.links.oneApi": "Один API",
     "footer.columns.related.title": "Связанные проекты",
     "footer.defaultCopyright": "Все права защищены.",
-    "footer.new\u0061pi.projectAttributionSuffix": "Все права защищены. Разработано участниками проекта.",
+    "footer.newapi.projectAttributionSuffix": "Все права защищены. Разработано участниками проекта.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "Для расширенных пользовательских каналов это действует только для маршрутов /v1/responses без преобразования протокола.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "Для каналов, добавленных после 10 мая 2025 г., не нужно удалять \".\" из имён моделей при развёртывании",
     "For example: My app": "Например: Моё приложение",
@@ -7850,6 +7850,8 @@
     "Results before a time": "До определённого времени",
     "Results kept per group and question": "Хранить результатов на группу и вопрос",
     "Stored results": "Сохранённые результаты",
-    "What to delete": "Что удалить"
+    "What to delete": "Что удалить",
+    "The last {{count}} complete drawings · grid comparison · select one to play it large": "Последние {{count}} готовых рисунков · сравнение сеткой · выберите рисунок, чтобы открыть его крупно",
+    "The last {{count}} answers · final answers compared with the expected one": "Последние {{count}} ответов · итоговые ответы сравниваются с ожидаемым"
   }
 }
