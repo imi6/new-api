@@ -7885,6 +7885,16 @@
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.",
     "Enter a whole number from 5 to 1440": "Enter a whole number from 5 to 1440",
     "Last {{count}} minutes": "Last {{count}} minutes",
-    "Check this group now": "Check this group now"
+    "Check this group now": "Check this group now",
+    "New": "New",
+    "New group, added on {{date}}": "New group, added on {{date}}",
+    "Ratio changed from {{from}}x to {{to}}x on {{date}}": "Ratio changed from {{from}}x to {{to}}x on {{date}}",
+    "Ratio change notice": "Ratio change notice",
+    "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.": "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.",
+    "Show ratio changes": "Show ratio changes",
+    "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.",
+    "Days a change stays marked": "Days a change stays marked",
+    "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.",
+    "Enter a whole number from 1 to 30": "Enter a whole number from 1 to 30"
   }
 }
