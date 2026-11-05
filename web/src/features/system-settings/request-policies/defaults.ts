@@ -39,12 +39,29 @@ export type HealthSettings = {
     | 'auto_ban_only'
     | 'passive_recovery'
 }
+/** Scheduled intelligence checks; stored as intelligence_check_setting.* options. */
+export type IntelligenceCheckSettings = {
+  'intelligence_check_setting.enabled': boolean
+  /** JSON array of { group, model }. */
+  'intelligence_check_setting.targets': string
+  'intelligence_check_setting.candy_enabled': boolean
+  'intelligence_check_setting.candy_interval_hours': number
+  'intelligence_check_setting.candy_prompt': string
+  'intelligence_check_setting.candy_answer': string
+  'intelligence_check_setting.candy_answer_format': string
+  'intelligence_check_setting.candy_max_tokens': number
+  'intelligence_check_setting.pelican_enabled': boolean
+  'intelligence_check_setting.pelican_interval_hours': number
+  'intelligence_check_setting.pelican_prompt': string
+  'intelligence_check_setting.pelican_max_tokens': number
+}
 export type FilteringSettings = Pick<
   SecuritySettings,
   'CheckSensitiveEnabled' | 'CheckSensitiveOnPromptEnabled' | 'SensitiveWords'
 >
 export type RequestPolicySettings = RetrySettings &
   HealthSettings &
+  IntelligenceCheckSettings &
   FilteringSettings &
   Pick<ChannelAffinitySettings, keyof ChannelAffinitySettings>
 
@@ -63,6 +80,19 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
   'monitor_setting.channel_test_concurrency': 1,
   'monitor_setting.channel_test_mode': 'scheduled_all',
   'monitor_setting.skip_recently_used_channels': true,
+  // The server sends the real values, including the default questions.
+  'intelligence_check_setting.enabled': false,
+  'intelligence_check_setting.targets': '[]',
+  'intelligence_check_setting.candy_enabled': true,
+  'intelligence_check_setting.candy_interval_hours': 6,
+  'intelligence_check_setting.candy_prompt': '',
+  'intelligence_check_setting.candy_answer': '21',
+  'intelligence_check_setting.candy_answer_format': '',
+  'intelligence_check_setting.candy_max_tokens': 8192,
+  'intelligence_check_setting.pelican_enabled': true,
+  'intelligence_check_setting.pelican_interval_hours': 24,
+  'intelligence_check_setting.pelican_prompt': '',
+  'intelligence_check_setting.pelican_max_tokens': 16384,
   'channel_affinity_setting.enabled': false,
   'channel_affinity_setting.session_mode': '',
   'channel_affinity_setting.switch_on_success': true,
