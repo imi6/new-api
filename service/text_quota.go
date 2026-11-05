@@ -557,4 +557,13 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		Other:            other,
 	})
 	relayInfo.PerformanceOutputTokens = int64(summary.CompletionTokens)
+	// For the cache hit rate only, after the charge and the log are written.
+	// The input total follows the token rules of calculateTextQuotaSummary:
+	// Anthropic-style usage reports cache reads and writes apart from input.
+	inputTokens := summary.PromptTokens
+	if summary.IsClaudeUsageSemantic || isLegacyClaudeDerivedOpenAIUsage(relayInfo, billingUsage) {
+		inputTokens += summary.CacheTokens + cacheWriteTokensTotal(summary)
+	}
+	relayInfo.PerformanceInputTokens = int64(max(inputTokens, 0))
+	relayInfo.PerformanceCacheReadTokens = int64(min(max(summary.CacheTokens, 0), max(inputTokens, 0)))
 }

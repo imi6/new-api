@@ -84,12 +84,14 @@ func GetGroupHealthProbes(groups []string, startTs int64, endTs int64) ([]GroupH
 // PerfMetricGroupBucket is real relay traffic of one group in one stored
 // bucket, summed over models.
 type PerfMetricGroupBucket struct {
-	GroupName    string `gorm:"column:group_name"`
-	BucketTs     int64  `gorm:"column:bucket_ts"`
-	RequestCount int64  `gorm:"column:request_count"`
-	SuccessCount int64  `gorm:"column:success_count"`
-	TtftSumMs    int64  `gorm:"column:ttft_sum_ms"`
-	TtftCount    int64  `gorm:"column:ttft_count"`
+	GroupName       string `gorm:"column:group_name"`
+	BucketTs        int64  `gorm:"column:bucket_ts"`
+	RequestCount    int64  `gorm:"column:request_count"`
+	SuccessCount    int64  `gorm:"column:success_count"`
+	TtftSumMs       int64  `gorm:"column:ttft_sum_ms"`
+	TtftCount       int64  `gorm:"column:ttft_count"`
+	InputTokens     int64  `gorm:"column:input_tokens"`
+	CacheReadTokens int64  `gorm:"column:cache_read_tokens"`
 }
 
 // GetPerfMetricGroupBuckets sums stored relay metrics by group and bucket.
@@ -99,7 +101,7 @@ func GetPerfMetricGroupBuckets(groups []string, startTs int64, endTs int64) ([]P
 		return rows, nil
 	}
 	err := DB.Model(&PerfMetric{}).
-		Select(commonGroupCol+" AS group_name, bucket_ts, SUM(request_count) AS request_count, SUM(success_count) AS success_count, SUM(ttft_sum_ms) AS ttft_sum_ms, SUM(ttft_count) AS ttft_count").
+		Select(commonGroupCol+" AS group_name, bucket_ts, SUM(request_count) AS request_count, SUM(success_count) AS success_count, SUM(ttft_sum_ms) AS ttft_sum_ms, SUM(ttft_count) AS ttft_count, SUM(input_tokens) AS input_tokens, SUM(cache_read_tokens) AS cache_read_tokens").
 		Where(commonGroupCol+" IN ? AND bucket_ts >= ? AND bucket_ts <= ?", groups, startTs, endTs).
 		Group(commonGroupCol + ", bucket_ts").
 		Find(&rows).Error
