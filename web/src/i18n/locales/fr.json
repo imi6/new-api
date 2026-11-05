@@ -7725,7 +7725,6 @@
     "Avg latency · {{range}}": "Latence moyenne · {{range}}",
     "Channel checks": "Tests de canal",
     "Check latency": "Latence du test",
-    "Click a card to see details": "Cliquez sur une carte pour voir le détail",
     "Groups that users can choose appear here.": "Les groupes que les utilisateurs peuvent choisir apparaissent ici.",
     "Last 12 weeks": "12 dernières semaines",
     "Last 24 hours": "24 dernières heures",
@@ -7746,7 +7745,6 @@
     "User requests": "Requêtes utilisateurs",
     "User requests {{real}}, channel checks {{probe}}": "Requêtes utilisateurs {{real}}, tests de canal {{probe}}",
     "View details of {{name}}": "Voir le détail de {{name}}",
-    "{{healthy}}/{{total}} groups are healthy": "{{healthy}}/{{total}} groupes fonctionnent",
     "Require login to view channel status": "Connexion requise pour voir le statut des canaux",
     "Visitors must authenticate before accessing the channel status page.": "Les visiteurs doivent se connecter avant d'accéder à la page de statut des canaux.",
     "Unable to load channel status": "Impossible de charger le statut des canaux",
@@ -7852,6 +7850,7 @@
     "Stored results": "Résultats stockés",
     "What to delete": "Quoi supprimer",
     "The last {{count}} complete drawings · grid comparison · select one to play it large": "Les {{count}} derniers dessins complets · comparaison en grille · sélectionnez-en un pour le lire en grand",
-    "The last {{count}} answers · final answers compared with the expected one": "Les {{count}} dernières réponses · réponses finales comparées à la réponse attendue"
+    "The last {{count}} answers · final answers compared with the expected one": "Les {{count}} dernières réponses · réponses finales comparées à la réponse attendue",
+    "Only an overview of service health is shown. Site request counts, individual requests and internal channel details are not published.": "Seul un aperçu de l'état du service est affiché. Le nombre de requêtes du site, le détail des requêtes et les informations internes des canaux ne sont pas publiés."
   }
 }
