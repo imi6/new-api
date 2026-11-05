@@ -50,6 +50,18 @@ export type IntelligenceCheckRun = SystemTask<
   { checked: number; passed: number; failed: number; other: number }
 >
 
+/**
+ * Deletes stored check results created before the time, or all of them when
+ * before is zero.
+ */
+export async function clearIntelligenceChecks(before: number) {
+  const response = await api.post<Response<{ deleted: number }>>(
+    '/api/option/intelligence_check/clear',
+    { before }
+  )
+  return requireServerSuccess(response.data).data
+}
+
 /** The intelligence check run in progress, if any. */
 export async function getActiveIntelligenceCheckRun() {
   const response = await api.get<Response<IntelligenceCheckRun | null>>(

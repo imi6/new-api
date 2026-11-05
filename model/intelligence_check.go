@@ -17,8 +17,6 @@ const (
 	IntelligenceCheckUndetermined = "undetermined"
 	IntelligenceCheckError        = "error"
 
-	// IntelligenceCheckKeep is how many results each group and check keeps.
-	IntelligenceCheckKeep = 30
 	// IntelligenceCheckStaleSeconds is how long a running row may stay
 	// unfinished before it is read as interrupted.
 	IntelligenceCheckStaleSeconds = 15 * 60
@@ -64,8 +62,8 @@ func StartIntelligenceCheck(checkKey, group, modelName, expectedAnswer string) (
 }
 
 // FinishIntelligenceCheck stores the outcome of a running row and keeps only
-// the newest results of its group and check.
-func FinishIntelligenceCheck(row *IntelligenceCheckResult) error {
+// the newest keep results of its group and check.
+func FinishIntelligenceCheck(row *IntelligenceCheckResult, keep int) error {
 	row.FinishedAt = common.GetTimestamp()
 	err := DB.Model(&IntelligenceCheckResult{}).Where("id = ?", row.Id).Updates(map[string]any{
 		"channel_id":    row.ChannelId,
@@ -82,19 +80,53 @@ func FinishIntelligenceCheck(row *IntelligenceCheckResult) error {
 	if err != nil {
 		return err
 	}
-	return trimIntelligenceChecks(row.CheckKey, row.GroupName)
+	return trimIntelligenceChecks(row.CheckKey, row.GroupName, keep)
 }
 
-func trimIntelligenceChecks(checkKey, group string) error {
-	var keep []int
+// trimIntelligenceChecks deletes all but the newest keep results of a group
+// and check. A running row is never deleted.
+func trimIntelligenceChecks(checkKey, group string, keep int) error {
+	if keep <= 0 {
+		return nil
+	}
+	var kept []int
 	err := DB.Model(&IntelligenceCheckResult{}).
 		Where("check_key = ? AND group_name = ?", checkKey, group).
-		Order("id desc").Limit(IntelligenceCheckKeep).Pluck("id", &keep).Error
-	if err != nil || len(keep) < IntelligenceCheckKeep {
+		Order("id desc").Limit(keep).Pluck("id", &kept).Error
+	if err != nil || len(kept) < keep {
 		return err
 	}
-	return DB.Where("check_key = ? AND group_name = ? AND id < ?", checkKey, group, keep[len(keep)-1]).
+	return DB.Where("check_key = ? AND group_name = ? AND id < ? AND status <> ?", checkKey, group, kept[len(kept)-1], IntelligenceCheckRunning).
 		Delete(&IntelligenceCheckResult{}).Error
+}
+
+// TrimAllIntelligenceChecks applies the keep limit to every group and check,
+// so lowering the limit takes effect without waiting for new results.
+func TrimAllIntelligenceChecks(keep int) error {
+	var pairs []IntelligenceCheckLastRun
+	if err := DB.Model(&IntelligenceCheckResult{}).
+		Select("check_key, group_name").Group("check_key, group_name").
+		Find(&pairs).Error; err != nil {
+		return err
+	}
+	for _, pair := range pairs {
+		if err := trimIntelligenceChecks(pair.CheckKey, pair.GroupName, keep); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DeleteIntelligenceChecksBefore deletes finished results created before the
+// cutoff, or every finished result when the cutoff is zero, and returns how
+// many went. A check still running is left alone.
+func DeleteIntelligenceChecksBefore(cutoff int64) (int64, error) {
+	query := DB.Where("status <> ?", IntelligenceCheckRunning)
+	if cutoff > 0 {
+		query = query.Where("created_at < ?", cutoff)
+	}
+	result := query.Delete(&IntelligenceCheckResult{})
+	return result.RowsAffected, result.Error
 }
 
 // MarkStaleIntelligenceChecks ends running rows that a restart or crash left
