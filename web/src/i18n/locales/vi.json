@@ -7874,6 +7874,16 @@
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "Thẻ hiển thị tỷ lệ trong số phút gần nhất này. Số liệu cũ hơn sẽ bị xóa, nên khoảng dài hơn cần thời gian để tích lũy lại.",
     "Enter a whole number from 5 to 1440": "Nhập số nguyên từ 5 đến 1440",
     "Last {{count}} minutes": "{{count}} phút gần nhất",
-    "Check this group now": "Kiểm tra nhóm này ngay"
+    "Check this group now": "Kiểm tra nhóm này ngay",
+    "New": "Mới",
+    "New group, added on {{date}}": "Nhóm mới, thêm ngày {{date}}",
+    "Ratio changed from {{from}}x to {{to}}x on {{date}}": "Hệ số đổi từ {{from}}x thành {{to}}x ngày {{date}}",
+    "Ratio change notice": "Thông báo thay đổi hệ số",
+    "When a group ratio is saved with a new value, users see by how much it changed next to the ratio, when creating a key, on the pricing page and on the channel status page.": "Khi hệ số nhóm được lưu với giá trị mới, người dùng thấy mức thay đổi bên cạnh hệ số khi tạo khóa, trên trang giá và trên trang trạng thái kênh.",
+    "Show ratio changes": "Hiển thị thay đổi hệ số",
+    "A cheaper ratio is marked green with a down arrow, a dearer one orange with an up arrow, and a new group with New. Users with a special ratio for a group see no mark on it.": "Hệ số rẻ hơn được đánh dấu xanh với mũi tên xuống, đắt hơn màu cam với mũi tên lên, và nhóm mới với nhãn Mới. Người dùng có hệ số riêng cho một nhóm không thấy dấu trên nhóm đó.",
+    "Days a change stays marked": "Số ngày đánh dấu một thay đổi",
+    "Several changes in this time show as one: from the ratio before the first to the ratio now. Changes before this feature was added are not known.": "Nhiều thay đổi trong khoảng này hiển thị gộp: từ hệ số trước lần đầu đến hệ số hiện tại. Không biết các thay đổi trước khi có tính năng này.",
+    "Enter a whole number from 1 to 30": "Nhập số nguyên từ 1 đến 30"
   }
 }
