@@ -135,7 +135,9 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
                 {apiKeyPlatformLabel(platform, t)}
               </Badge>
             )}
-            <Badge variant='secondary' className='shrink-0 tabular-nums'>
+            {/* Stands out from the platform badge: the price is what a
+                visitor compares between groups. */}
+            <Badge variant='warning' className='shrink-0 tabular-nums'>
               {`${t('Ratio')} x${ratioText}`}
             </Badge>
             {group.top_model && (
