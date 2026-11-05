@@ -169,6 +169,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/option/intelligence_check/models":                  accessTokenScopeRule("option:read"),
 	"POST /api/option/intelligence_check/run":                    accessTokenScopeRule("option:write"),
 	"POST /api/option/intelligence_check/clear":                  accessTokenScopeRule("option:write"),
+	"POST /api/option/channel_status/cache/clear":                accessTokenScopeRule("option:write"),
 	"PATCH /api/option/request_policy":                           accessTokenScopeRule("option:write"),
 	"PUT /api/option/":                                           accessTokenScopeRule("option:write"),
 	"PUT /api/option/passkey/domains":                            accessTokenScopeRule("option:write"),

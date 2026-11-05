@@ -63,9 +63,8 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
-import { getIntelligenceCheckModels } from './api'
+import { clearIntelligenceChecks, getIntelligenceCheckModels } from './api'
 import type { IntelligenceCheckSettings } from './defaults'
-import { IntelligenceCheckClear } from './intelligence-check-clear'
 import {
   IntelligenceCheckRunNow,
   type IntelligenceCheckRunState,
@@ -79,6 +78,13 @@ import {
   type IntelligenceCheckValues,
   toIntelligenceCheckValues,
 } from './intelligence-check-schema'
+import { type ClearQuickPick, RecordsClear } from './records-clear'
+
+const INTELLIGENCE_CLEAR_PICKS: readonly ClearQuickPick[] = [
+  { labelKey: '24 hours ago', minutes: 24 * 60 },
+  { labelKey: '7 days ago', minutes: 7 * 24 * 60 },
+  { labelKey: '30 days ago', minutes: 30 * 24 * 60 },
+]
 
 interface IntelligenceCheckSectionProps {
   defaultValues: IntelligenceCheckSettings
@@ -452,7 +458,25 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
                 )}
               </p>
             </div>
-            <IntelligenceCheckClear />
+            <RecordsClear
+              title={t('Clear check results')}
+              clear={clearIntelligenceChecks}
+              invalidateKeys={[['intelligence-checks']]}
+              quickPicks={INTELLIGENCE_CLEAR_PICKS}
+              defaultMinutes={7 * 24 * 60}
+              allDescription={t(
+                'All stored check results are deleted, for every group. This cannot be undone.'
+              )}
+              beforeDescription={(time) =>
+                t(
+                  'Check results from before {{time}} are deleted, for every group. This cannot be undone.',
+                  { time }
+                )
+              }
+              successMessage={(count) =>
+                t('Deleted {{count}} check results.', { count })
+              }
+            />
           </div>
 
           <Separator />
