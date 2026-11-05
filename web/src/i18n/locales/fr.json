@@ -7882,6 +7882,7 @@
     "Cache hit rate window (minutes)": "Période du taux de succès du cache (minutes)",
     "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "La carte affiche le taux sur ce nombre de minutes récentes. Les comptes plus anciens sont supprimés, une période plus longue se remplit donc avec le temps.",
     "Enter a whole number from 5 to 1440": "Saisissez un nombre entier entre 5 et 1440",
-    "Last {{count}} minutes": "{{count}} dernières minutes"
+    "Last {{count}} minutes": "{{count}} dernières minutes",
+    "Check this group now": "Vérifier ce groupe maintenant"
   }
 }
