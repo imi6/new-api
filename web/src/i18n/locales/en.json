@@ -7808,7 +7808,6 @@
     "Drawing from {{time}}": "Drawing from {{time}}",
     "Drawing...": "Drawing...",
     "Each group can be checked only once": "Each group can be checked only once",
-    "Each group is checked with one model. A group not listed shows no check button.": "Each group is checked with one model. A group not listed shows no check button.",
     "Enable intelligence checks": "Enable intelligence checks",
     "Enter a whole number between 256 and 65536": "Enter a whole number between 256 and 65536",
     "Enter a whole number of hours between 1 and 168": "Enter a whole number of hours between 1 and 168",
@@ -7850,6 +7849,8 @@
     "Unable to load intelligence checks": "Unable to load intelligence checks",
     "Undetermined": "Undetermined",
     "Waiting for the answer...": "Waiting for the answer...",
-    "Wrong": "Wrong"
+    "Wrong": "Wrong",
+    "Choose at least one question for every group": "Choose at least one question for every group",
+    "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button.": "Each group is checked with one model and asked only the questions ticked in its row. A group not listed shows no check button."
   }
 }
