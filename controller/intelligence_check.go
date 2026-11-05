@@ -66,17 +66,18 @@ func dueIntelligenceChecks(force bool) ([]intelligenceCheckItem, error) {
 	for _, run := range lastRuns {
 		last[run.CheckKey+"\x00"+run.GroupName] = run.CreatedAt
 	}
-	checks := []struct {
-		key     string
-		enabled bool
-		hours   int
-	}{
-		{model.IntelligenceCheckCandy, setting.CandyEnabled, setting.CandyIntervalHours},
-		{model.IntelligenceCheckPelican, setting.PelicanEnabled, setting.PelicanIntervalHours},
-	}
 	now := common.GetTimestamp()
 	var items []intelligenceCheckItem
 	for _, target := range setting.Targets {
+		// A question runs in a group when it is on and the group asks it.
+		checks := []struct {
+			key     string
+			enabled bool
+			hours   int
+		}{
+			{model.IntelligenceCheckCandy, setting.CandyEnabled && target.RunsCandy(), setting.CandyIntervalHours},
+			{model.IntelligenceCheckPelican, setting.PelicanEnabled && target.RunsPelican(), setting.PelicanIntervalHours},
+		}
 		for _, check := range checks {
 			if !check.enabled {
 				continue
@@ -327,11 +328,15 @@ type intelligenceCheckView struct {
 }
 
 type intelligenceCheckGroupData struct {
-	Group   string                  `json:"group"`
-	Model   string                  `json:"model"`
-	Enabled bool                    `json:"enabled"`
-	Candy   []intelligenceCheckView `json:"candy"`
-	Pelican []intelligenceCheckView `json:"pelican"`
+	Group   string `json:"group"`
+	Model   string `json:"model"`
+	Enabled bool   `json:"enabled"`
+	// CandyEnabled and PelicanEnabled say whether the group is asked each
+	// question now; the dialog shows a question that is asked or has results.
+	CandyEnabled   bool                    `json:"candy_enabled"`
+	PelicanEnabled bool                    `json:"pelican_enabled"`
+	Candy          []intelligenceCheckView `json:"candy"`
+	Pelican        []intelligenceCheckView `json:"pelican"`
 }
 
 type intelligenceCheckCacheEntry struct {
@@ -358,10 +363,13 @@ func loadIntelligenceCheckGroup(group string) (*intelligenceCheckGroupData, erro
 		return entry.data, nil
 	}
 	setting := operation_setting.GetIntelligenceCheckSetting()
+	target, _ := operation_setting.IntelligenceCheckTargetFor(group)
 	data := &intelligenceCheckGroupData{
-		Group:   group,
-		Model:   operation_setting.IntelligenceCheckTargetModel(group),
-		Enabled: setting.Enabled,
+		Group:          group,
+		Model:          target.Model,
+		Enabled:        setting.Enabled,
+		CandyEnabled:   setting.CandyEnabled && target.RunsCandy(),
+		PelicanEnabled: setting.PelicanEnabled && target.RunsPelican(),
 	}
 	for _, check := range []struct {
 		key    string

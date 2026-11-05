@@ -84,6 +84,9 @@ export interface IntelligenceCheckGroup {
   group: string
   model: string
   enabled: boolean
+  /** The group is asked this question now. */
+  candy_enabled: boolean
+  pelican_enabled: boolean
   candy: IntelligenceCheck[]
   pelican: IntelligenceCheck[]
 }
