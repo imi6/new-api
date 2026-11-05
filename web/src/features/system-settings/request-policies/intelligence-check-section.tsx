@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { FlaskConical, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -47,6 +47,11 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 import {
   SettingsForm,
@@ -61,7 +66,11 @@ import { safeNumberFieldProps } from '../utils/numeric-field'
 import { getIntelligenceCheckModels } from './api'
 import type { IntelligenceCheckSettings } from './defaults'
 import { IntelligenceCheckClear } from './intelligence-check-clear'
-import { IntelligenceCheckRunNow } from './intelligence-check-run'
+import {
+  IntelligenceCheckRunNow,
+  type IntelligenceCheckRunState,
+  useIntelligenceCheckRun,
+} from './intelligence-check-run'
 import {
   changedIntelligenceCheckOptions,
   INTELLIGENCE_CHECK_LIMITS,
@@ -86,6 +95,9 @@ interface TargetRowsProps {
   value: IntelligenceCheckTarget[]
   onChange: (value: IntelligenceCheckTarget[]) => void
   modelsByGroup: Record<string, string[]>
+  run: IntelligenceCheckRunState
+  /** Unsaved changes would not be checked, so a test waits for a save. */
+  dirty: boolean
 }
 
 /**
@@ -109,6 +121,16 @@ function TargetRows(props: TargetRowsProps) {
             row.model !== '' && !models.includes(row.model)
               ? [row.model, ...models]
               : models
+          const testingThis = props.run.running
+            ? props.run.runningGroup === row.group
+            : props.run.startingGroup === row.group
+          const testDisabled =
+            props.dirty ||
+            row.group === '' ||
+            props.run.running ||
+            props.run.starting
+          let testLabel = t('Check this group now')
+          if (props.dirty) testLabel = t('Save the settings first.')
           return (
             <div
               key={`${index}-${row.group}`}
@@ -187,17 +209,46 @@ function TargetRows(props: TargetRowsProps) {
                     {t('Pelican drawing')}
                   </label>
                 </div>
-                <Button
-                  type='button'
-                  variant='ghost'
-                  size='icon-sm'
-                  aria-label={t('Remove')}
-                  onClick={() =>
-                    props.onChange(props.value.filter((_, i) => i !== index))
-                  }
-                >
-                  <Trash2 aria-hidden='true' />
-                </Button>
+                <div className='flex items-center gap-1'>
+                  {/* Checks only this group, as "check now" does for all. */}
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon-sm'
+                          aria-label={testLabel}
+                          disabled={testDisabled}
+                          onClick={() => props.run.start(row.group)}
+                        >
+                          {testingThis ? (
+                            <Loader2
+                              className='animate-spin'
+                              aria-hidden='true'
+                            />
+                          ) : (
+                            <FlaskConical aria-hidden='true' />
+                          )}
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>{testLabel}</TooltipContent>
+                  </Tooltip>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon-sm'
+                    aria-label={t('Remove')}
+                    onClick={() =>
+                      props.onChange(
+                        props.value.filter((_, i) => i !== index)
+                      )
+                    }
+                  >
+                    <Trash2 aria-hidden='true' />
+                  </Button>
+                </div>
               </div>
             </div>
           )
@@ -247,6 +298,8 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
   })
   const { isDirty, isSubmitting } = form.formState
   const saving = updateOption.isPending || isSubmitting
+  // Shared by "check now" and each group's test button: one run at a time.
+  const run = useIntelligenceCheckRun()
 
   const onSubmit = async (values: IntelligenceCheckValues) => {
     const updates = changedIntelligenceCheckOptions(savedRef.current, values)
@@ -367,6 +420,8 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
                   value={field.value}
                   onChange={field.onChange}
                   modelsByGroup={models.data ?? {}}
+                  run={run}
+                  dirty={isDirty}
                 />
                 <FormDescription>
                   {t(
@@ -378,7 +433,7 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
             )}
           />
 
-          <IntelligenceCheckRunNow dirty={isDirty} />
+          <IntelligenceCheckRunNow run={run} dirty={isDirty} />
 
           <Separator />
           <h4 className='text-sm font-medium'>{t('Stored results')}</h4>
