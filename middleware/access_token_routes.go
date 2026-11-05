@@ -49,6 +49,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/perf-metrics":               accessTokenAnyRule,
 	"GET /api/rankings":                   accessTokenAnyRule,
 	"GET /api/group-health":               accessTokenAnyRule,
+	"GET /api/group-health/intelligence":  accessTokenAnyRule,
 	"POST /api/oauth/state":               accessTokenSessionRule,
 	"POST /api/oauth/email/bind/start":    accessTokenScopeRule("account_security:write"),
 	"POST /api/oauth/email/bind/resend":   accessTokenScopeRule("account_security:write"),
@@ -165,6 +166,8 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	// router/api-router.go: /api/option
 	"GET /api/option/":                                           accessTokenScopeRule("option:read"),
 	"GET /api/option/request_policy":                             accessTokenScopeRule("option:read"),
+	"GET /api/option/intelligence_check/models":                  accessTokenScopeRule("option:read"),
+	"POST /api/option/intelligence_check/run":                    accessTokenScopeRule("option:write"),
 	"PATCH /api/option/request_policy":                           accessTokenScopeRule("option:write"),
 	"PUT /api/option/":                                           accessTokenScopeRule("option:write"),
 	"PUT /api/option/passkey/domains":                            accessTokenScopeRule("option:write"),

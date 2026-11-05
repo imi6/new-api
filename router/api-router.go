@@ -44,6 +44,7 @@ func SetApiRouter(router *gin.Engine) {
 		}
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
 		apiRouter.GET("/group-health", middleware.HeaderNavModuleAuth(middleware.HeaderNavModuleGroupHealth), controller.GetGroupHealth)
+		apiRouter.GET("/group-health/intelligence", middleware.HeaderNavModuleAuth(middleware.HeaderNavModuleGroupHealth), controller.GetIntelligenceChecks)
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPassword)
@@ -254,6 +255,8 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			optionRoute.GET("/", controller.GetOptions)
 			optionRoute.GET("/request_policy", controller.GetRequestPolicy)
+			optionRoute.GET("/intelligence_check/models", controller.GetIntelligenceCheckModels)
+			optionRoute.POST("/intelligence_check/run", controller.RunIntelligenceChecksNow)
 			optionRoute.PATCH("/request_policy", controller.UpdateRequestPolicy)
 			optionRoute.PUT("/", controller.UpdateOption)
 			optionRoute.PUT("/passkey/domains", controller.UpdatePasskeyDomains)
