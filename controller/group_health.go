@@ -56,6 +56,9 @@ type groupHealthGroup struct {
 	// GroupRatio is the configured price ratio of the group, the one the
 	// pricing page also shows; a user's special ratio is not applied.
 	GroupRatio float64 `json:"group_ratio"`
+	// CacheHitRate is the share of input tokens read from the upstream cache
+	// over the last CacheHitRateMinutes, in percent; -1 when there is none.
+	CacheHitRate float64 `json:"cache_hit_rate"`
 	// LastSampleAt is the time of the latest check, or the start of the
 	// latest hour with real traffic, whichever is later.
 	LastSampleAt int64            `json:"last_sample_at"`
@@ -73,6 +76,10 @@ type groupHealthResponse struct {
 	ProbeEnabled       bool               `json:"probe_enabled"`
 	Total              groupHealthBar     `json:"total"`
 	Groups             []groupHealthGroup `json:"groups"`
+	// CacheHitRateEnabled shows the cache hit rates; CacheHitRateMinutes is
+	// the window of each group's card rate.
+	CacheHitRateEnabled bool `json:"cache_hit_rate_enabled"`
+	CacheHitRateMinutes int  `json:"cache_hit_rate_minutes"`
 }
 
 // healthCounters sums real requests and checks over any span of hours.
@@ -230,6 +237,18 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 
 	starts := groupHealthBarStarts(rangeName, now)
 	windowStart, windowEnd := starts[0], now.Unix()
+	cacheHitRateEnabled := operation_setting.GetChannelStatusSetting().CacheHitRateEnabled
+	cacheHitRates := map[string]float64{}
+	cacheHitRateMinutes := operation_setting.CacheHitRateMinutes()
+	if cacheHitRateEnabled {
+		// A failed lookup only blanks the cache hit rates.
+		rates, minutes, rateErr := perfmetrics.GroupCacheHitRates(groups, now)
+		if rateErr != nil {
+			common.SysError(common.LogText("failed to load cache hit rates: %s", rateErr.Error()))
+		} else {
+			cacheHitRates, cacheHitRateMinutes = rates, minutes
+		}
+	}
 	traffic, err := perfmetrics.QueryGroupTraffic(groups, windowStart, windowEnd)
 	if err != nil {
 		return nil, err
@@ -261,8 +280,11 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 			counters.realSuccesses += value.SuccessCount
 			counters.ttftSumMs += value.TtftSumMs
 			counters.ttftCount += value.TtftCount
-			counters.inputTokens += value.InputTokens
-			counters.cacheReadTokens += value.CacheReadTokens
+			// Without the switch every cache hit rate stays empty (-1).
+			if cacheHitRateEnabled {
+				counters.inputTokens += value.InputTokens
+				counters.cacheReadTokens += value.CacheReadTokens
+			}
 			lastSample[group] = max(lastSample[group], ts)
 		}
 	}
@@ -282,11 +304,13 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 	currentHour := now.Unix() - now.Unix()%3600
 	groupRatios := ratio_setting.GetGroupRatioCopy()
 	response := &groupHealthResponse{
-		UpdatedAt:          now.Unix(),
-		Range:              rangeName,
-		RealTrafficEnabled: traffic.Enabled,
-		ProbeEnabled:       operation_setting.GetMonitorSetting().AutoTestChannelEnabled,
-		Groups:             make([]groupHealthGroup, 0, len(groups)),
+		UpdatedAt:           now.Unix(),
+		Range:               rangeName,
+		RealTrafficEnabled:  traffic.Enabled,
+		ProbeEnabled:        operation_setting.GetMonitorSetting().AutoTestChannelEnabled,
+		CacheHitRateEnabled: cacheHitRateEnabled,
+		CacheHitRateMinutes: cacheHitRateMinutes,
+		Groups:              make([]groupHealthGroup, 0, len(groups)),
 	}
 	var overall healthCounters
 	for _, group := range groups {
@@ -338,6 +362,12 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 		if !ok {
 			ratio = 1
 		}
+		cacheHitRate, ok := cacheHitRates[group]
+		if ok {
+			cacheHitRate = math.Round(cacheHitRate*100) / 100
+		} else {
+			cacheHitRate = -1
+		}
 		response.Groups = append(response.Groups, groupHealthGroup{
 			Name:              group,
 			Desc:              usable[group],
@@ -345,6 +375,7 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 			Status:            status,
 			TopModel:          topModel,
 			GroupRatio:        ratio,
+			CacheHitRate:      cacheHitRate,
 			LastSampleAt:      lastSample[group],
 			Total:             total.bar(windowStart),
 			Bars:              bars,

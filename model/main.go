@@ -384,6 +384,7 @@ func migrateDB() error {
 		&InvoiceTaxPayment{},
 		&GroupHealthProbe{},
 		&IntelligenceCheckResult{},
+		&GroupCacheStat{},
 	)
 	if err != nil {
 		return err
