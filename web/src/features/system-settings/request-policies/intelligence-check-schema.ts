@@ -32,6 +32,10 @@ export const INTELLIGENCE_CHECK_LIMITS = {
 export interface IntelligenceCheckTarget {
   group: string
   model: string
+  /** Ask the candy question in this group. */
+  candy: boolean
+  /** Ask for the pelican drawing in this group. */
+  pelican: boolean
 }
 
 function rangedInt(limits: { min: number; max: number }, message: string) {
@@ -47,7 +51,14 @@ export const intelligenceCheckSchema = z
   .object({
     enabled: z.boolean(),
     targets: z
-      .array(z.object({ group: z.string(), model: z.string() }))
+      .array(
+        z.object({
+          group: z.string(),
+          model: z.string(),
+          candy: z.boolean(),
+          pelican: z.boolean(),
+        })
+      )
       .max(INTELLIGENCE_CHECK_LIMITS.targets, 'Check at most 50 groups'),
     candy_enabled: z.boolean(),
     candy_interval_hours: rangedInt(
@@ -104,6 +115,13 @@ export const intelligenceCheckSchema = z
           message: 'Each group can be checked only once',
         })
       }
+      if (!target.candy && !target.pelican) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['targets'],
+          message: 'Choose at least one question for every group',
+        })
+      }
       seen.add(target.group)
     })
   })
@@ -112,21 +130,37 @@ export type IntelligenceCheckValues = z.infer<typeof intelligenceCheckSchema>
 
 const PREFIX = 'intelligence_check_setting.'
 
+type StoredTarget = {
+  group?: unknown
+  model?: unknown
+  candy?: unknown
+  pelican?: unknown
+}
+
+/**
+ * Targets as saved. A question left unset is asked, as on the server, so
+ * targets saved before the choice existed keep both questions.
+ */
 export function parseIntelligenceCheckTargets(
   raw: string
 ): IntelligenceCheckTarget[] {
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed
+    return (parsed as StoredTarget[])
       .filter(
-        (item): item is IntelligenceCheckTarget =>
+        (item) =>
           typeof item === 'object' &&
           item !== null &&
-          typeof (item as IntelligenceCheckTarget).group === 'string' &&
-          typeof (item as IntelligenceCheckTarget).model === 'string'
+          typeof item.group === 'string' &&
+          typeof item.model === 'string'
       )
-      .map((item) => ({ group: item.group, model: item.model }))
+      .map((item) => ({
+        group: item.group as string,
+        model: item.model as string,
+        candy: item.candy !== false,
+        pelican: item.pelican !== false,
+      }))
   } catch {
     return []
   }
