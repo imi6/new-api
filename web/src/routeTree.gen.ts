@@ -59,6 +59,7 @@ import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedInvoiceIndexRouteImport } from './routes/_authenticated/invoice/index'
 import { Route as AuthenticatedChannelStatusIndexRouteImport } from './routes/_authenticated/channel-status/index'
 import { Route as AuthenticatedInvoiceManagementIndexRouteImport } from './routes/_authenticated/invoice-management/index'
+import { Route as AuthenticatedAffiliateRewardsIndexRouteImport } from './routes/_authenticated/affiliate-rewards/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -347,6 +348,12 @@ const AuthenticatedInvoiceManagementIndexRoute =
     path: '/invoice-management/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAffiliateRewardsIndexRoute =
+  AuthenticatedAffiliateRewardsIndexRouteImport.update({
+    id: '/affiliate-rewards/',
+    path: '/affiliate-rewards/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
   id: '/pricing/$modelId/',
   path: '/pricing/$modelId/',
@@ -498,6 +505,7 @@ export interface FileRoutesByFullPath {
   '/invoice/': typeof AuthenticatedInvoiceIndexRoute
   '/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
+  '/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -564,6 +572,7 @@ export interface FileRoutesByTo {
   '/invoice': typeof AuthenticatedInvoiceIndexRoute
   '/channel-status': typeof AuthenticatedChannelStatusIndexRoute
   '/invoice-management': typeof AuthenticatedInvoiceManagementIndexRoute
+  '/affiliate-rewards': typeof AuthenticatedAffiliateRewardsIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -634,6 +643,7 @@ export interface FileRoutesById {
   '/_authenticated/invoice/': typeof AuthenticatedInvoiceIndexRoute
   '/_authenticated/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/_authenticated/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
+  '/_authenticated/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -703,6 +713,7 @@ export interface FileRouteTypes {
     | '/invoice/'
     | '/channel-status/'
     | '/invoice-management/'
+    | '/affiliate-rewards/'
     | '/pricing/$modelId/'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -769,6 +780,7 @@ export interface FileRouteTypes {
     | '/invoice'
     | '/channel-status'
     | '/invoice-management'
+    | '/affiliate-rewards'
     | '/pricing/$modelId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -838,6 +850,7 @@ export interface FileRouteTypes {
     | '/_authenticated/invoice/'
     | '/_authenticated/channel-status/'
     | '/_authenticated/invoice-management/'
+    | '/_authenticated/affiliate-rewards/'
     | '/pricing/$modelId/'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
@@ -1229,6 +1242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvoiceManagementIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/affiliate-rewards/': {
+      id: '/_authenticated/affiliate-rewards/'
+      path: '/affiliate-rewards'
+      fullPath: '/affiliate-rewards/'
+      preLoaderRoute: typeof AuthenticatedAffiliateRewardsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/pricing/$modelId/': {
       id: '/pricing/$modelId/'
       path: '/pricing/$modelId'
@@ -1466,6 +1486,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInvoiceIndexRoute: typeof AuthenticatedInvoiceIndexRoute
   AuthenticatedChannelStatusIndexRoute: typeof AuthenticatedChannelStatusIndexRoute
   AuthenticatedInvoiceManagementIndexRoute: typeof AuthenticatedInvoiceManagementIndexRoute
+  AuthenticatedAffiliateRewardsIndexRoute: typeof AuthenticatedAffiliateRewardsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1496,6 +1517,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInvoiceIndexRoute: AuthenticatedInvoiceIndexRoute,
   AuthenticatedChannelStatusIndexRoute: AuthenticatedChannelStatusIndexRoute,
   AuthenticatedInvoiceManagementIndexRoute: AuthenticatedInvoiceManagementIndexRoute,
+  AuthenticatedAffiliateRewardsIndexRoute: AuthenticatedAffiliateRewardsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
