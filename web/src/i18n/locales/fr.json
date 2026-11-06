@@ -7890,6 +7890,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Les données du taux de succès du cache antérieures à {{time}} sont supprimées, pour chaque groupe. Cette action est irréversible.",
     "Cache records cleared.": "Données du cache effacées.",
     "10 minutes ago": "Il y a 10 minutes",
-    "30 minutes ago": "Il y a 30 minutes"
+    "30 minutes ago": "Il y a 30 minutes",
+    "You cannot use the group {{group}}.": "Vous ne pouvez pas utiliser le groupe {{group}}."
   }
 }

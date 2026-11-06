@@ -7890,6 +7890,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "將刪除所有分組在 {{time}} 之前的快取命中率記錄。此操作無法復原。",
     "Cache records cleared.": "快取記錄已清理。",
     "10 minutes ago": "10 分鐘前",
-    "30 minutes ago": "30 分鐘前"
+    "30 minutes ago": "30 分鐘前",
+    "You cannot use the group {{group}}.": "你目前無法使用分組 {{group}}。"
   }
 }

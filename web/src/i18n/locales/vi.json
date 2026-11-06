@@ -7890,6 +7890,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Số liệu tỷ lệ trúng bộ nhớ đệm trước {{time}} của mọi nhóm sẽ bị xóa. Không thể hoàn tác.",
     "Cache records cleared.": "Đã xóa bản ghi bộ nhớ đệm.",
     "10 minutes ago": "10 phút trước",
-    "30 minutes ago": "30 phút trước"
+    "30 minutes ago": "30 phút trước",
+    "You cannot use the group {{group}}.": "Bạn không thể dùng nhóm {{group}}."
   }
 }
