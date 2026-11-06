@@ -16,7 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, Clock, Database, Feather } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Activity, Clock, Database, Feather, KeyRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -205,19 +206,31 @@ export function GroupHealthCard(props: GroupHealthCardProps) {
                 : t('No data')}
             </span>
           </div>
-          {/* Sits above the card overlay; the results are in its dialog. */}
-          {group.intelligence_check && (
+          {/* Both sit above the card overlay. A visitor who is not signed in
+              is sent to sign in first and comes back to the key dialog. */}
+          <div className='pointer-events-auto relative flex shrink-0 flex-wrap justify-end gap-2'>
+            {group.intelligence_check && (
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='rounded-full'
+                onClick={() => props.onOpenIntelligenceCheck(group)}
+              >
+                <Feather aria-hidden='true' />
+                {t('Intelligence check')}
+              </Button>
+            )}
             <Button
-              type='button'
               variant='outline'
               size='sm'
-              className='pointer-events-auto relative shrink-0 rounded-full'
-              onClick={() => props.onOpenIntelligenceCheck(group)}
+              className='rounded-full'
+              render={<Link to='/keys' search={{ create: group.name }} />}
             >
-              <Feather aria-hidden='true' />
-              {t('Intelligence check')}
+              <KeyRound aria-hidden='true' />
+              {t('Create API Key')}
             </Button>
-          )}
+          </div>
         </div>
         <GroupHealthBars
           bars={group.bars}
