@@ -54,6 +54,8 @@ export function AffiliateRankingTab() {
   const {
     globalFilter,
     onGlobalFilterChange,
+    columnFilters,
+    onColumnFiltersChange,
     pagination,
     onPaginationChange,
     ensurePageInRange,
@@ -109,11 +111,15 @@ export function AffiliateRankingTab() {
     data: query.data?.items ?? [],
     columns,
     getRowId: (row) => String(row.user_id),
+    // The toolbar reads the column filter state, so it must be set even
+    // though this table has no column filters.
+    columnFilters,
     globalFilter,
     pagination,
     sorting,
     onPaginationChange,
     onGlobalFilterChange,
+    onColumnFiltersChange,
     onSortingChange: handleSortingChange,
     manualPagination: true,
     manualFiltering: true,
