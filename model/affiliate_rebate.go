@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -164,6 +165,18 @@ func IsGroupRebateEligible(group string) bool {
 	return false
 }
 
+// inviterHasSpecialRatio reports whether the inviter's user group has a
+// special ratio rule. It reads the group in the settlement transaction, so a
+// group change takes effect on the next charge.
+func inviterHasSpecialRatio(tx *gorm.DB, inviterID int) (bool, error) {
+	var group string
+	if err := tx.Model(&User{}).Unscoped().Where("id = ?", inviterID).
+		Select(commonGroupCol).Scan(&group).Error; err != nil {
+		return false, err
+	}
+	return group != "" && ratio_setting.HasGroupSpecialRatio(group), nil
+}
+
 // rebateEligibleGroups returns the configured groups as a list. An empty list
 // means the setting is unset and every group earns rebate.
 func rebateEligibleGroups() []string {
@@ -287,11 +300,24 @@ func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, r
 		if paidDelta == 0 || user.InviterId <= 0 {
 			return nil
 		}
+		// An inviter whose group has a special ratio earns no rebate on this
+		// charge. Like an excluded billing group, the charge still advances
+		// covered, so the rebate is not paid later either.
+		eligibleDelta := rebateDelta
+		if paidDelta > 0 && common.AffiliateRebateExcludeSpecialRatioEnabled {
+			excluded, err := inviterHasSpecialRatio(tx, user.InviterId)
+			if err != nil {
+				return err
+			}
+			if excluded {
+				eligibleDelta = 0
+			}
+		}
 		// The grant is apportioned by the eligible share of this wallet
 		// charge, so a gift-funded part never changes the ratio.
 		covered, earned := affiliateLedgerChange(
 			user.AffiliateRebateCovered, user.AffiliateRebateEarned,
-			user.PaidQuotaConsumed+paidDelta, rebateDelta, walletDelta, paidDelta > 0,
+			user.PaidQuotaConsumed+paidDelta, eligibleDelta, walletDelta, paidDelta > 0,
 		)
 		if covered == user.AffiliateRebateCovered && earned == user.AffiliateRebateEarned {
 			return nil
