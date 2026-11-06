@@ -7869,9 +7869,7 @@
     "Channel status page": "Страница состояния каналов",
     "What the channel status page shows. Changes appear within a minute.": "Что показывает страница состояния каналов. Изменения появляются в течение минуты.",
     "Show the cache hit rate": "Показывать долю попаданий в кэш",
-    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "Каждая карточка группы показывает долю входных токенов, прочитанных из кэша провайдера, по реальным запросам пользователей. При выключении счётчики не сохраняются.",
     "Cache hit rate window (minutes)": "Период доли попаданий в кэш (минуты)",
-    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "Карточка показывает долю за это число последних минут. Более старые счётчики удаляются, поэтому больший период заполняется со временем.",
     "Enter a whole number from 5 to 1440": "Введите целое число от 5 до 1440",
     "Last {{count}} minutes": "Последние {{count}} мин",
     "Check this group now": "Проверить эту группу сейчас",
@@ -7891,6 +7889,8 @@
     "Cache records cleared.": "Данные кэша очищены.",
     "10 minutes ago": "10 минут назад",
     "30 minutes ago": "30 минут назад",
-    "You cannot use the group {{group}}.": "Вы не можете использовать группу {{group}}."
+    "You cannot use the group {{group}}.": "Вы не можете использовать группу {{group}}.",
+    "Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.": "Каждая карточка группы показывает чтения кэша ÷ (вход + записи в кэш + чтения кэша) по реальным запросам пользователей. Запрос, который только записывает кэш и ничего из него не читает, не учитывается, как в статистике использования V2 sub2api. При выключении счётчики не сохраняются.",
+    "The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time.": "Карточка показывает долю за это число последних минут. Более старые счётчики удаляются, кроме счётчиков текущего часа, которые использует его столбец в деталях; больший период заполняется со временем."
   }
 }
