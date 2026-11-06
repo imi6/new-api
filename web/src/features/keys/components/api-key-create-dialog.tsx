@@ -80,6 +80,8 @@ type ApiKeyCreateDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentRow?: ApiKey
+  /** A group to select when the dialog opens, from the channel status page. */
+  initialGroup?: string
 }
 
 type SortOrder = 'default' | 'ratio-asc' | 'ratio-desc' | 'name'
@@ -125,6 +127,7 @@ export function ApiKeyCreateDialog({
   open,
   onOpenChange,
   currentRow,
+  initialGroup,
 }: ApiKeyCreateDialogProps) {
   const { t } = useTranslation()
   const { triggerRefresh } = useApiKeys()
@@ -147,6 +150,8 @@ export function ApiKeyCreateDialog({
   const [routes, setRoutes] = useState<string[]>([])
   const [crossGroupRetry, setCrossGroupRetry] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // The initial group is applied once per opening, after the groups load.
+  const [initialGroupApplied, setInitialGroupApplied] = useState(false)
   const crossGroupRetryLabelId = useId()
   const crossGroupRetryDescriptionId = useId()
 
@@ -279,7 +284,36 @@ export function ApiKeyCreateDialog({
     setChannelMode('primary')
     setRoutes([])
     setCrossGroupRetry(true)
+    setInitialGroupApplied(false)
   }, [open])
+
+  // Opened from a channel status card: select that group and its platform,
+  // or say the user cannot use it and leave the list as it is.
+  useEffect(() => {
+    if (!open || isUpdate || !initialGroup || initialGroupApplied) return
+    if (groupsLoading || !groupsData) return
+    setInitialGroupApplied(true)
+    const group = groupsByValue.get(initialGroup)
+    if (!group) {
+      toast.error(
+        t('You cannot use the group {{group}}.', { group: initialGroup })
+      )
+      return
+    }
+    setPlatform(apiKeyGroupPlatform(group.label, platformMap))
+    setChannelMode('primary')
+    setPreview(group.value)
+  }, [
+    open,
+    isUpdate,
+    initialGroup,
+    initialGroupApplied,
+    groupsLoading,
+    groupsData,
+    groupsByValue,
+    platformMap,
+    t,
+  ])
 
   useEffect(() => {
     if (!open || !currentRow || loadedKeyId === currentRow.id) return

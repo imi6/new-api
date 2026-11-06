@@ -7899,6 +7899,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "すべてのグループの {{time}} より前のキャッシュヒット率の記録を削除します。この操作は元に戻せません。",
     "Cache records cleared.": "キャッシュ記録を削除しました。",
     "10 minutes ago": "10 分前",
-    "30 minutes ago": "30 分前"
+    "30 minutes ago": "30 分前",
+    "You cannot use the group {{group}}.": "グループ {{group}} は現在利用できません。"
   }
 }
