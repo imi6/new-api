@@ -709,7 +709,7 @@ export function ApiKeyCreateDialog({
                             : setPreview(group.value)
                         }
                         className={cn(
-                          'hover:bg-muted/60 flex w-full items-start gap-3 rounded-lg px-3 py-3 text-start',
+                          'hover:bg-muted/60 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-start',
                           selected &&
                             'bg-emerald-50 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:ring-emerald-800'
                         )}
@@ -774,7 +774,8 @@ export function ApiKeyCreateDialog({
                   <p className='text-muted-foreground text-xs'>
                     {t('Your effective ratio')}
                   </p>
-                  <p className='mt-1 text-3xl font-semibold tracking-tight tabular-nums'>
+                  {/* The same amber as the ratio badges in the list. */}
+                  <p className='text-warning mt-1 text-3xl font-semibold tracking-tight tabular-nums'>
                     {formatApiKeyGroupRatio(previewGroup.ratio)}
                   </p>
                 </div>
