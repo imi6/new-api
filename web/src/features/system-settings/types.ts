@@ -278,6 +278,8 @@ export type BillingSettings = {
   AffiliateRebateDownstreamQuota: number
   AffiliateRebateUpstreamQuota: number
   AffiliateRebateGroups: string
+  /** Inviters whose group has a special ratio rule earn no rebate. */
+  AffiliateRebateExcludeSpecialRatioEnabled: boolean
   TopUpLink: string
   'quota_setting.enable_free_model_pre_consume': boolean
   'quota_setting.trust_quota_usd': number
