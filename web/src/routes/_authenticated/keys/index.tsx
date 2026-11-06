@@ -31,6 +31,8 @@ const apiKeySearchSchema = z.object({
     .catch([]),
   filter: z.string().optional().catch(''),
   token: z.string().optional().catch(''),
+  // A group to create a key for, from a channel status card.
+  create: z.string().max(64).optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_authenticated/keys/')({
