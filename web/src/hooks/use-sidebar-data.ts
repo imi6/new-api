@@ -25,6 +25,7 @@ import {
   FileText,
   FlaskConical,
   Gift,
+  HandCoins,
   HeartPulse,
   Key,
   LayoutDashboard,
@@ -182,6 +183,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Users'),
             url: '/users',
             icon: Users,
+          },
+          {
+            title: t('Referral rewards'),
+            url: '/affiliate-rewards',
+            icon: HandCoins,
           },
           {
             title: t('Redemption Codes'),
