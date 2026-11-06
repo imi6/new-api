@@ -68,6 +68,7 @@ const quotaSchema = z.object({
   AffiliateRebateDownstreamQuota: z.coerce.number().min(0),
   AffiliateRebateUpstreamQuota: z.coerce.number().min(0),
   AffiliateRebateGroups: z.string(),
+  AffiliateRebateExcludeSpecialRatioEnabled: z.boolean(),
   TopUpLink: z.string(),
   quota_setting: z.object({
     enable_free_model_pre_consume: z.boolean(),
@@ -454,6 +455,34 @@ export function QuotaSettingsSection({
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
+                )}
+              />
+            </SettingsFormGridItem>
+
+            <SettingsFormGridItem span='full'>
+              <FormField
+                control={form.control}
+                name='AffiliateRebateExcludeSpecialRatioEnabled'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>
+                        {t('No rebate for inviters with a special ratio')}
+                      </FormLabel>
+                      <FormDescription>
+                        {t(
+                          'When on, an inviter whose user group is listed in the special ratio rules earns no rebate on invitee consumption from then on. Rebate earned before stays claimable, and the signup invite reward is not affected.'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={updateOption.isPending}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
                 )}
               />
             </SettingsFormGridItem>
