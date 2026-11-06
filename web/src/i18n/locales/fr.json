@@ -7887,9 +7887,7 @@
     "Channel status page": "Page d’état des canaux",
     "What the channel status page shows. Changes appear within a minute.": "Ce qu’affiche la page d’état des canaux. Les changements apparaissent en moins d’une minute.",
     "Show the cache hit rate": "Afficher le taux de succès du cache",
-    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "Chaque carte de groupe affiche la part des jetons d’entrée lus depuis le cache amont, sur les requêtes réelles des utilisateurs. Désactivé, les comptes ne sont pas conservés.",
     "Cache hit rate window (minutes)": "Période du taux de succès du cache (minutes)",
-    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "La carte affiche le taux sur ce nombre de minutes récentes. Les comptes plus anciens sont supprimés, une période plus longue se remplit donc avec le temps.",
     "Enter a whole number from 5 to 1440": "Saisissez un nombre entier entre 5 et 1440",
     "Last {{count}} minutes": "{{count}} dernières minutes",
     "Check this group now": "Vérifier ce groupe maintenant",
@@ -7909,6 +7907,8 @@
     "Cache records cleared.": "Données du cache effacées.",
     "10 minutes ago": "Il y a 10 minutes",
     "30 minutes ago": "Il y a 30 minutes",
-    "You cannot use the group {{group}}.": "Vous ne pouvez pas utiliser le groupe {{group}}."
+    "You cannot use the group {{group}}.": "Vous ne pouvez pas utiliser le groupe {{group}}.",
+    "Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.": "Chaque carte de groupe affiche lectures du cache ÷ (entrée + écritures du cache + lectures du cache) sur les requêtes réelles des utilisateurs. Une requête qui ne fait qu’écrire le cache sans en lire est exclue, comme dans les statistiques d’usage V2 de sub2api. Désactivé, les comptes ne sont pas conservés.",
+    "The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time.": "La carte affiche le taux sur ce nombre de minutes récentes. Les comptes plus anciens sont supprimés, sauf ceux de l’heure en cours, utilisés par sa barre de détail ; une période plus longue se remplit avec le temps."
   }
 }
