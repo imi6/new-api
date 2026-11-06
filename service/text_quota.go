@@ -564,6 +564,11 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 	if summary.IsClaudeUsageSemantic || isLegacyClaudeDerivedOpenAIUsage(relayInfo, billingUsage) {
 		inputTokens += summary.CacheTokens + cacheWriteTokensTotal(summary)
 	}
+	// A request that only writes the cache and reads none of it warms the
+	// cache up; like sub2api's V2 usage statistics it is left out of the rate.
+	if summary.CacheTokens <= 0 && cacheWriteTokensTotal(summary) > 0 {
+		inputTokens = 0
+	}
 	relayInfo.PerformanceInputTokens = int64(max(inputTokens, 0))
 	relayInfo.PerformanceCacheReadTokens = int64(min(max(summary.CacheTokens, 0), max(inputTokens, 0)))
 }
