@@ -88,6 +88,7 @@ export function useAffiliateInviterColumns(
     },
     {
       id: 'invitees',
+      accessorKey: 'invitee_count',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Invited users')} />
       ),
@@ -98,6 +99,7 @@ export function useAffiliateInviterColumns(
     },
     {
       id: 'signup',
+      accessorKey: 'signup_reward',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Signup reward')} />
       ),
@@ -106,6 +108,7 @@ export function useAffiliateInviterColumns(
     },
     {
       id: 'paid',
+      accessorKey: 'invitee_paid',
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
@@ -117,6 +120,7 @@ export function useAffiliateInviterColumns(
     },
     {
       id: 'accrued',
+      accessorKey: 'accrued',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Rebate earned')} />
       ),
@@ -129,6 +133,7 @@ export function useAffiliateInviterColumns(
     },
     {
       id: 'claimed',
+      accessorKey: 'claimed',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Claimed')} />
       ),
@@ -137,6 +142,7 @@ export function useAffiliateInviterColumns(
     },
     {
       id: 'unclaimed',
+      accessorKey: 'unclaimed',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Not claimed')} />
       ),
