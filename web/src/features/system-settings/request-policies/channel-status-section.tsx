@@ -146,7 +146,7 @@ export function ChannelStatusSection(props: ChannelStatusSectionProps) {
                   <FormLabel>{t('Show the cache hit rate')}</FormLabel>
                   <FormDescription>
                     {t(
-                      'Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.'
+                      'Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.'
                     )}
                   </FormDescription>
                 </SettingsSwitchContent>
@@ -179,7 +179,7 @@ export function ChannelStatusSection(props: ChannelStatusSectionProps) {
                   </FormControl>
                   <FormDescription>
                     {t(
-                      'The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.'
+                      'The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time.'
                     )}
                   </FormDescription>
                   <FormMessage />

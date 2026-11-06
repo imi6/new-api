@@ -49,11 +49,17 @@ func cacheStatLoop() {
 	for {
 		time.Sleep(time.Minute)
 		flushCacheMinutes()
-		cutoff := cacheStatCutoff(time.Now())
-		if _, err := model.DeleteGroupCacheStatsBefore(cutoff); err != nil {
+		if _, err := model.DeleteGroupCacheStatsBefore(cacheStatKeepFrom(time.Now())); err != nil {
 			common.SysError(common.LogText("failed to delete old cache stats: %s", err.Error()))
 		}
 	}
+}
+
+// cacheStatKeepFrom is the oldest minute kept: the card's window, and at
+// least the current hour, whose detail bar is also summed from these minutes.
+func cacheStatKeepFrom(now time.Time) int64 {
+	ts := now.Unix()
+	return min(cacheStatCutoff(now), ts-ts%3600)
 }
 
 // ClearCacheStats deletes the cache counts of every group from before the
@@ -84,7 +90,7 @@ func cacheStatCutoff(now time.Time) int64 {
 func flushCacheMinutes() {
 	now := time.Now().Unix()
 	currentMinute := now - now%60
-	cutoff := cacheStatCutoff(time.Now())
+	cutoff := cacheStatKeepFrom(time.Now())
 	cacheMinutes.Range(func(rawKey, value any) bool {
 		key := rawKey.(cacheMinuteKey)
 		if key.minuteTs >= currentMinute {
@@ -114,40 +120,57 @@ func flushCacheMinutes() {
 	})
 }
 
+// GroupCacheTokens is a group's summed input and cache read tokens.
+type GroupCacheTokens struct {
+	Input     int64
+	CacheRead int64
+}
+
+// GroupCacheTotalsSince sums each group's minutes from sinceTs on: those every
+// node has written, and this node's unsaved ones.
+func GroupCacheTotalsSince(groups []string, sinceTs int64) (map[string]GroupCacheTokens, error) {
+	rows, err := model.GetGroupCacheTotals(groups, sinceTs)
+	if err != nil {
+		return nil, err
+	}
+	totals := map[string]GroupCacheTokens{}
+	for _, row := range rows {
+		total := totals[row.GroupName]
+		total.Input += row.InputTokens
+		total.CacheRead += row.CacheReadTokens
+		totals[row.GroupName] = total
+	}
+	allowed := allowedGroupSet(groups)
+	cacheMinutes.Range(func(rawKey, value any) bool {
+		key := rawKey.(cacheMinuteKey)
+		if _, ok := allowed[key.group]; !ok || key.minuteTs < sinceTs {
+			return true
+		}
+		counters := value.(*cacheMinuteCounters)
+		total := totals[key.group]
+		total.Input += counters.inputTokens.Load()
+		total.CacheRead += counters.cacheReadTokens.Load()
+		totals[key.group] = total
+		return true
+	})
+	return totals, nil
+}
+
 // GroupCacheHitRates returns each group's cache hit rate in percent over the
 // configured window, with the window in minutes. A group whose requests
 // reported no input tokens has no rate.
 func GroupCacheHitRates(groups []string, now time.Time) (map[string]float64, int, error) {
 	minutes := operation_setting.CacheHitRateMinutes()
-	cutoff := cacheStatCutoff(now)
-	rows, err := model.GetGroupCacheTotals(groups, cutoff)
+	totals, err := GroupCacheTotalsSince(groups, cacheStatCutoff(now))
 	if err != nil {
 		return nil, minutes, err
 	}
-	input := map[string]int64{}
-	cacheRead := map[string]int64{}
-	for _, row := range rows {
-		input[row.GroupName] += row.InputTokens
-		cacheRead[row.GroupName] += row.CacheReadTokens
-	}
-	// Minutes not yet flushed by this node.
-	allowed := allowedGroupSet(groups)
-	cacheMinutes.Range(func(rawKey, value any) bool {
-		key := rawKey.(cacheMinuteKey)
-		if _, ok := allowed[key.group]; !ok || key.minuteTs < cutoff {
-			return true
-		}
-		counters := value.(*cacheMinuteCounters)
-		input[key.group] += counters.inputTokens.Load()
-		cacheRead[key.group] += counters.cacheReadTokens.Load()
-		return true
-	})
 	rates := map[string]float64{}
-	for group, tokens := range input {
-		if tokens <= 0 {
+	for group, total := range totals {
+		if total.Input <= 0 {
 			continue
 		}
-		rates[group] = float64(min(cacheRead[group], tokens)) / float64(tokens) * 100
+		rates[group] = float64(min(total.CacheRead, total.Input)) / float64(total.Input) * 100
 	}
 	return rates, minutes, nil
 }
