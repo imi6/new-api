@@ -108,32 +108,38 @@ func GetAffiliateInviters(keyword string, sortBy string, sortOrder string, pageI
 
 // AffiliateAdminSummary sums the ranking over every inviter.
 type AffiliateAdminSummary struct {
-	Inviters     int64 `json:"inviters" gorm:"column:inviters"`
-	Invitees     int64 `json:"invitees" gorm:"column:invitees"`
-	SignupReward int64 `json:"signup_reward" gorm:"column:signup_reward"`
-	Accrued      int64 `json:"accrued" gorm:"column:accrued"`
-	Claimed      int64 `json:"claimed" gorm:"column:claimed"`
-	Unclaimed    int64 `json:"unclaimed" gorm:"column:unclaimed"`
+	Inviters     int64 `json:"inviters"`
+	Invitees     int64 `json:"invitees"`
+	SignupReward int64 `json:"signup_reward"`
+	Accrued      int64 `json:"accrued"`
+	Claimed      int64 `json:"claimed"`
+	Unclaimed    int64 `json:"unclaimed"`
 	// Claimers is how many users have claimed rebate at least once.
-	Claimers int64 `json:"claimers" gorm:"-"`
+	Claimers int64 `json:"claimers"`
 	// ExcludeSpecialRatio tells whether inviters with a special ratio earn
 	// no rebate now.
-	ExcludeSpecialRatio bool `json:"exclude_special_ratio" gorm:"-"`
+	ExcludeSpecialRatio bool `json:"exclude_special_ratio"`
 }
 
-// GetAffiliateAdminSummary returns the totals of the ranking.
+// GetAffiliateAdminSummary returns the totals of the ranking. The inviters'
+// rows are summed here rather than in SQL: a sum of the per-inviter sums is a
+// decimal on PostgreSQL, and one row per inviter is small.
 func GetAffiliateAdminSummary() (*AffiliateAdminSummary, error) {
-	summary := &AffiliateAdminSummary{}
+	var rows []AffiliateInviterRow
 	err := affiliateInviterQuery("").
-		Select("COUNT(*) AS inviters, " +
-			"COALESCE(SUM(COALESCE(inv.invitee_count, 0)), 0) AS invitees, " +
-			"COALESCE(SUM(u.aff_history), 0) AS signup_reward, " +
-			"COALESCE(SUM(COALESCE(inv.accrued, 0)), 0) AS accrued, " +
-			"COALESCE(SUM(u.affiliate_rebate_claimed), 0) AS claimed, " +
-			"COALESCE(SUM(CASE WHEN COALESCE(inv.accrued, 0) > u.affiliate_rebate_claimed THEN COALESCE(inv.accrued, 0) - u.affiliate_rebate_claimed ELSE 0 END), 0) AS unclaimed").
-		Scan(summary).Error
+		Select("u.aff_history AS signup_reward, u.affiliate_rebate_claimed AS claimed, " +
+			"COALESCE(inv.invitee_count, 0) AS invitee_count, COALESCE(inv.accrued, 0) AS accrued").
+		Scan(&rows).Error
 	if err != nil {
 		return nil, err
+	}
+	summary := &AffiliateAdminSummary{Inviters: int64(len(rows))}
+	for _, row := range rows {
+		summary.Invitees += row.InviteeCount
+		summary.SignupReward += row.SignupReward
+		summary.Accrued += row.Accrued
+		summary.Claimed += row.Claimed
+		summary.Unclaimed += max(row.Accrued-row.Claimed, 0)
 	}
 	if err := DB.Model(&AffiliateRebateClaim{}).
 		Select("COUNT(DISTINCT user_id)").Scan(&summary.Claimers).Error; err != nil {
