@@ -16,20 +16,44 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { getRouteApi } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+
 import { ApiKeyCreateDialog } from './api-key-create-dialog'
 import { ApiKeysDeleteDialog } from './api-keys-delete-dialog'
 import { useApiKeys } from './api-keys-provider'
 import { CCSwitchDialog } from './dialogs/cc-switch-dialog'
 
+const route = getRouteApi('/_authenticated/keys/')
+
 export function ApiKeysDialogs() {
   const { open, setOpen, currentRow, resolvedKey } = useApiKeys()
+  const search = route.useSearch()
+  const navigate = route.useNavigate()
+  // A channel status card links here with ?create=<group>: open the create
+  // dialog with that group chosen, once.
+  const [initialGroup, setInitialGroup] = useState<string | undefined>()
+  useEffect(() => {
+    if (!search.create) return
+    setInitialGroup(search.create)
+    setOpen('create')
+    void navigate({
+      search: (prev) => ({ ...prev, create: undefined }),
+      replace: true,
+    })
+  }, [search.create, setOpen, navigate])
 
   return (
     <>
       <ApiKeyCreateDialog
         open={open === 'create' || open === 'update'}
-        onOpenChange={(isOpen) => !isOpen && setOpen(null)}
+        onOpenChange={(isOpen) => {
+          if (isOpen) return
+          setOpen(null)
+          setInitialGroup(undefined)
+        }}
         currentRow={open === 'update' ? currentRow || undefined : undefined}
+        initialGroup={open === 'create' ? initialGroup : undefined}
       />
       <ApiKeysDeleteDialog />
       <CCSwitchDialog
