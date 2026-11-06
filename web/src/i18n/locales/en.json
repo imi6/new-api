@@ -7878,9 +7878,7 @@
     "Channel status page": "Channel status page",
     "What the channel status page shows. Changes appear within a minute.": "What the channel status page shows. Changes appear within a minute.",
     "Show the cache hit rate": "Show the cache hit rate",
-    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.",
     "Cache hit rate window (minutes)": "Cache hit rate window (minutes)",
-    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.",
     "Enter a whole number from 5 to 1440": "Enter a whole number from 5 to 1440",
     "Last {{count}} minutes": "Last {{count}} minutes",
     "Check this group now": "Check this group now",
@@ -7900,6 +7898,8 @@
     "Cache records cleared.": "Cache records cleared.",
     "10 minutes ago": "10 minutes ago",
     "30 minutes ago": "30 minutes ago",
-    "You cannot use the group {{group}}.": "You cannot use the group {{group}}."
+    "You cannot use the group {{group}}.": "You cannot use the group {{group}}.",
+    "Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.": "Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.",
+    "The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time.": "The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time."
   }
 }
