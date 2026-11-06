@@ -266,6 +266,7 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 
 	starts := groupHealthBarStarts(rangeName, now)
 	windowStart, windowEnd := starts[0], now.Unix()
+	thisHour := now.Unix() - now.Unix()%3600
 	cacheHitRateEnabled := operation_setting.GetChannelStatusSetting().CacheHitRateEnabled
 	cacheHitRates := map[string]float64{}
 	cacheHitRateMinutes := operation_setting.CacheHitRateMinutes()
@@ -309,12 +310,30 @@ func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, er
 			counters.realSuccesses += value.SuccessCount
 			counters.ttftSumMs += value.TtftSumMs
 			counters.ttftCount += value.TtftCount
-			// Without the switch every cache hit rate stays empty (-1).
-			if cacheHitRateEnabled {
+			// Without the switch every cache hit rate stays empty (-1). The
+			// current hour is summed from the minute counts below instead.
+			if cacheHitRateEnabled && ts < thisHour {
 				counters.inputTokens += value.InputTokens
 				counters.cacheReadTokens += value.CacheReadTokens
 			}
 			lastSample[group] = max(lastSample[group], ts)
+		}
+	}
+	// The current hour's hourly counts are only in each node's memory until
+	// the hour ends, so its cache tokens come from the minute counts, which
+	// every node writes and a restart keeps: the same counts the card uses.
+	if cacheHitRateEnabled {
+		minutes, err := perfmetrics.GroupCacheTotalsSince(groups, thisHour)
+		if err != nil {
+			common.SysError(common.LogText("failed to load cache counts of the current hour: %s", err.Error()))
+		}
+		for group, total := range minutes {
+			if total.Input <= 0 {
+				continue
+			}
+			counters := hourOf(group, thisHour)
+			counters.inputTokens += total.Input
+			counters.cacheReadTokens += total.CacheRead
 		}
 	}
 	for _, row := range probes {
