@@ -166,15 +166,16 @@ func IsGroupRebateEligible(group string) bool {
 }
 
 // inviterHasSpecialRatio reports whether the inviter's user group has a
-// special ratio rule. It reads the group in the settlement transaction, so a
-// group change takes effect on the next charge.
-func inviterHasSpecialRatio(tx *gorm.DB, inviterID int) (bool, error) {
-	var group string
-	if err := tx.Model(&User{}).Unscoped().Where("id = ?", inviterID).
-		Select(commonGroupCol).Scan(&group).Error; err != nil {
-		return false, err
+// special ratio rule. It reads the group from the user cache, outside the
+// settlement transaction, so a failed lookup cannot abort the charge being
+// recorded; it is logged and the rebate is then not withheld.
+func inviterHasSpecialRatio(inviterID int) bool {
+	group, err := GetUserGroup(inviterID, false)
+	if err != nil {
+		common.SysError(common.LogText("failed to read the group of inviter %d for referral rebate: %s", inviterID, err.Error()))
+		return false
 	}
-	return group != "" && ratio_setting.HasGroupSpecialRatio(group), nil
+	return group != "" && ratio_setting.HasGroupSpecialRatio(group)
 }
 
 // rebateEligibleGroups returns the configured groups as a list. An empty list
@@ -304,14 +305,8 @@ func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, r
 		// charge. Like an excluded billing group, the charge still advances
 		// covered, so the rebate is not paid later either.
 		eligibleDelta := rebateDelta
-		if paidDelta > 0 && common.AffiliateRebateExcludeSpecialRatioEnabled {
-			excluded, err := inviterHasSpecialRatio(tx, user.InviterId)
-			if err != nil {
-				return err
-			}
-			if excluded {
-				eligibleDelta = 0
-			}
+		if paidDelta > 0 && common.AffiliateRebateExcludeSpecialRatioEnabled && inviterHasSpecialRatio(user.InviterId) {
+			eligibleDelta = 0
 		}
 		// The grant is apportioned by the eligible share of this wallet
 		// charge, so a gift-funded part never changes the ratio.
