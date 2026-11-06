@@ -8205,9 +8205,7 @@
     "Channel status page": "渠道状态页",
     "What the channel status page shows. Changes appear within a minute.": "渠道状态页显示的内容。保存后一分钟内生效。",
     "Show the cache hit rate": "显示缓存命中率",
-    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "每个分组卡片显示真实用户请求中，从上游缓存读取的输入 token 占比。关闭后不再记录。",
     "Cache hit rate window (minutes)": "缓存命中率统计时长（分钟）",
-    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "卡片显示最近这么多分钟的命中率。超过这个时长的记录会被删除，所以调大后需要时间重新积累。",
     "Enter a whole number from 5 to 1440": "请输入 5 到 1440 之间的整数",
     "Last {{count}} minutes": "近 {{count}} 分钟",
     "Check this group now": "立即检测这个分组",
@@ -8227,6 +8225,8 @@
     "Cache records cleared.": "缓存记录已清理。",
     "10 minutes ago": "10 分钟前",
     "30 minutes ago": "30 分钟前",
-    "You cannot use the group {{group}}.": "你当前无法使用分组 {{group}}。"
+    "You cannot use the group {{group}}.": "你当前无法使用分组 {{group}}。",
+    "Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.": "每个分组卡片显示真实用户请求的缓存读取 ÷（普通输入 + 缓存写入 + 缓存读取）。只写入缓存、没有读取的预热请求不计入，与 sub2api V2 用量统计一致。关闭后不再记录。",
+    "The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time.": "卡片显示最近这么多分钟的命中率。更早的记录会被删除，但当前这一小时的记录会保留，供详情里本小时的数字使用；调大后需要时间重新积累。"
   }
 }
