@@ -52,6 +52,8 @@ export function AffiliateClaimsTab() {
   const {
     globalFilter,
     onGlobalFilterChange,
+    columnFilters,
+    onColumnFiltersChange,
     pagination,
     onPaginationChange,
     ensurePageInRange,
@@ -145,10 +147,14 @@ export function AffiliateClaimsTab() {
     data: query.data?.page.items ?? [],
     columns,
     getRowId: (row) => String(row.id),
+    // The toolbar reads the column filter state, so it must be set even
+    // though this table has no column filters.
+    columnFilters,
     globalFilter,
     pagination,
     onPaginationChange,
     onGlobalFilterChange,
+    onColumnFiltersChange,
     manualPagination: true,
     manualFiltering: true,
     totalCount: query.data?.page.total ?? 0,
