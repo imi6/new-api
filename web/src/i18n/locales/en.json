@@ -8226,6 +8226,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.",
     "Cache records cleared.": "Cache records cleared.",
     "10 minutes ago": "10 minutes ago",
-    "30 minutes ago": "30 minutes ago"
+    "30 minutes ago": "30 minutes ago",
+    "You cannot use the group {{group}}.": "You cannot use the group {{group}}."
   }
 }
