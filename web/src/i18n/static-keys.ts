@@ -962,6 +962,10 @@ export const STATIC_I18N_KEYS = [
   'Intelligence checks',
   'Channel status page',
   'Ratio change notice',
+  // Time ranges of the referral claim records, passed through t().
+  'All time',
+  'Last 7 days',
+  'Last 90 days',
   // Quick picks of the record clearing forms, passed through t().
   '24 hours ago',
   '7 days ago',
