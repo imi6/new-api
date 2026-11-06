@@ -97,6 +97,13 @@ func GetGroupGroupRatio(userGroup, usingGroup string) (float64, bool) {
 	return ratio, true
 }
 
+// HasGroupSpecialRatio reports whether users of the group have a special ratio
+// rule, that is, the group is a user group in GroupGroupRatio.
+func HasGroupSpecialRatio(userGroup string) bool {
+	rules, ok := groupGroupRatioMap.Get(userGroup)
+	return ok && len(rules) > 0
+}
+
 func GroupGroupRatio2JSONString() string {
 	return groupGroupRatioMap.MarshalJSONString()
 }
