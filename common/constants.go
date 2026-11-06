@@ -140,6 +140,12 @@ var AffiliateRebateUpstreamQuota = 0
 // in an excluded group still counts toward the downstream threshold.
 var AffiliateRebateGroups = ""
 
+// AffiliateRebateExcludeSpecialRatioEnabled withholds referral rebate from an
+// inviter whose user group has a special ratio rule (GroupGroupRatio), since
+// such users already pay less. It applies when the rebate is earned; rebate
+// earned before stays claimable. Off by default.
+var AffiliateRebateExcludeSpecialRatioEnabled = false
+
 // GroupPlatformMap stores the admin-configured platform classification for
 // each group, as a JSON object {"GroupName":"PlatformName",...}. An empty
 // value means every group falls back to the automatic name-matching rules.
