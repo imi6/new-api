@@ -8207,6 +8207,7 @@
     "You can only check in once per day": "每日仅可签到一次，请勿重复签到",
     "You can still edit non-sensitive operations fields such as models, groups, priority, and weight.": "你仍可编辑模型、分组、优先级和权重等非敏感运维字段。",
     "You cannot grant one or more of these permissions.": "你无法授予其中一项或多项权限。",
+    "You cannot use the group {{group}}.": "你当前无法使用分组 {{group}}。",
     "You commit not to use this system to implement, assist with, or indirectly implement acts that violate applicable laws and regulations, regulatory requirements, platform rules, public interests, or the lawful rights and interests of third parties.": "你承诺不会使用本系统实施、协助实施或间接实施违反适用法律法规、监管要求、平台规则、公共利益或第三方合法权益的行为。",
     "You commit to using upstream APIs, accounts, keys, quotas, and service capabilities only within the scope of lawful authorization obtained from upstream service providers, model service providers, or relevant rights holders, and will not conduct unauthorized resale, trafficking, distribution, or other non-compliant commercialization.": "你承诺仅在从上游服务提供商、模型服务提供商或相关权利人处获得合法授权的范围内使用上游 API、账户、密钥、额度和服务能力，并不会进行未经授权的转售、倒卖、分发或其他不合规商业化行为。",
     "You do not have permission to edit channels": "你没有编辑渠道的权限",
