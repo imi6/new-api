@@ -8205,9 +8205,7 @@
     "Channel status page": "チャネル状態ページ",
     "What the channel status page shows. Changes appear within a minute.": "チャネル状態ページに表示する内容です。変更は 1 分以内に反映されます。",
     "Show the cache hit rate": "キャッシュヒット率を表示",
-    "Each group card shows the share of input tokens read from the upstream cache, over real user requests. Turned off, the counts are not kept.": "各グループのカードに、実際のユーザーリクエストのうち上流キャッシュから読み込まれた入力トークンの割合を表示します。オフにすると記録しません。",
     "Cache hit rate window (minutes)": "キャッシュヒット率の集計期間（分）",
-    "The card shows the rate over this many recent minutes. Counts older than this are deleted, so a longer window fills in over time.": "カードには直近この分数のヒット率を表示します。これより古い記録は削除されるため、期間を長くすると再び蓄積されるまで時間がかかります。",
     "Enter a whole number from 5 to 1440": "5 から 1440 までの整数を入力してください",
     "Last {{count}} minutes": "直近 {{count}} 分",
     "Check this group now": "このグループを今すぐ検査",
@@ -8227,6 +8225,8 @@
     "Cache records cleared.": "キャッシュ記録を削除しました。",
     "10 minutes ago": "10 分前",
     "30 minutes ago": "30 分前",
-    "You cannot use the group {{group}}.": "グループ {{group}} は現在利用できません。"
+    "You cannot use the group {{group}}.": "グループ {{group}} は現在利用できません。",
+    "Each group card shows cache reads ÷ (input + cache writes + cache reads) over real user requests. A request that only writes the cache and reads none of it is left out, as in sub2api V2 usage statistics. Turned off, the counts are not kept.": "各グループのカードに、実際のユーザーリクエストのキャッシュ読み込み ÷（通常入力 + キャッシュ書き込み + キャッシュ読み込み）を表示します。キャッシュに書き込むだけで読み込まないウォームアップのリクエストは、sub2api の V2 使用量統計と同じく除外します。オフにすると記録しません。",
+    "The card shows the rate over this many recent minutes. Older counts are deleted, except those of the current hour, which its detail bar uses; a longer window fills in over time.": "カードには直近この分数のヒット率を表示します。それより古い記録は削除しますが、現在の 1 時間分は詳細の今時間の数値に使うため残します。期間を長くすると再び蓄積されるまで時間がかかります。"
   }
 }
