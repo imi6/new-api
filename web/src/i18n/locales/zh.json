@@ -8226,6 +8226,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "将删除所有分组在 {{time}} 之前的缓存命中率记录。此操作无法撤销。",
     "Cache records cleared.": "缓存记录已清理。",
     "10 minutes ago": "10 分钟前",
-    "30 minutes ago": "30 分钟前"
+    "30 minutes ago": "30 分钟前",
+    "You cannot use the group {{group}}.": "你当前无法使用分组 {{group}}。"
   }
 }
