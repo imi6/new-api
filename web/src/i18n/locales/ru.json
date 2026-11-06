@@ -7908,6 +7908,7 @@
     "Cache hit rate counts from before {{time}} are deleted, for every group. This cannot be undone.": "Данные о попаданиях в кэш до {{time}} удаляются для всех групп. Это действие необратимо.",
     "Cache records cleared.": "Данные кэша очищены.",
     "10 minutes ago": "10 минут назад",
-    "30 minutes ago": "30 минут назад"
+    "30 minutes ago": "30 минут назад",
+    "You cannot use the group {{group}}.": "Вы не можете использовать группу {{group}}."
   }
 }
