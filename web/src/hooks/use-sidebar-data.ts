@@ -37,6 +37,7 @@ import {
   ServerCog,
   Settings,
   ShieldCheck,
+  Store,
   Ticket,
   User,
   Users,
@@ -60,9 +61,12 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { status } = useStatus()
   const invoiceEnabled = status?.invoice_enabled === true
   // Follows the "channel status" switch in the top navigation settings.
-  const channelStatusEnabled = parseHeaderNavModulesFromStatus(
+  const headerNavModules = parseHeaderNavModulesFromStatus(
     status as Record<string, unknown> | null
-  ).groupHealth.enabled
+  )
+  const channelStatusEnabled = headerNavModules.groupHealth.enabled
+  // Follows the "supplier application" switch in the same settings.
+  const partnerEnabled = headerNavModules.partner.enabled
 
   return {
     navGroups: [
@@ -152,6 +156,15 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
                 },
               ]
             : []),
+          ...(partnerEnabled
+            ? [
+                {
+                  title: t('Supplier application'),
+                  url: '/partner-apply',
+                  icon: Store,
+                },
+              ]
+            : []),
           {
             title: t('Profile'),
             url: '/profile',
@@ -202,6 +215,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Invoice management'),
             url: '/invoice-management',
             icon: FileCheck,
+          },
+          {
+            title: t('Supplier quotes'),
+            url: '/partner-offers',
+            icon: Store,
           },
           {
             title: t('System Info'),
