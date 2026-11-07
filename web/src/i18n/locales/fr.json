@@ -8382,6 +8382,7 @@
     "Healthy first": "Opérationnels d'abord",
     "Outages first": "Incidents d'abord",
     "Sort by {{field}}": "Trier par {{field}}",
+    "Sort by {{field}} first": "Trier d'abord par {{field}}",
     "Delete announcement": "Supprimer l'annonce",
     "The announcement is deleted for everyone. To only take it down, set it to Archived instead.": "L'annonce est supprimée pour tous. Pour seulement la retirer, passez-la plutôt en « Archivé ».",
     "Scheduled": "Programmé",
