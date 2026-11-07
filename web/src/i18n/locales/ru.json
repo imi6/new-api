@@ -6717,6 +6717,7 @@
     "Sora": "Sora",
     "Sort": "Сортировать",
     "Sort by {{field}}": "Сортировать по: {{field}}",
+    "Sort by {{field}} first": "Сортировать сначала по: {{field}}",
     "Sort by ID": "Сортировать по ID",
     "Sort by priority to drag channels": "Для перетаскивания выберите сортировку по приоритету",
     "Sort channels by": "Сортировать каналы по",
