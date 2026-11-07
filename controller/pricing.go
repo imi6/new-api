@@ -75,6 +75,18 @@ func GetPricing(c *gin.Context) {
 		}
 		groupRatioChanges[name] = change
 	}
+	// The platform an administrator assigned to each shown group. A group
+	// without one is matched by name on the page, as in the key dialog.
+	groupPlatforms := map[string]string{}
+	if common.GroupPlatformMap != "" {
+		assigned := map[string]string{}
+		_ = common.UnmarshalJsonStr(common.GroupPlatformMap, &assigned)
+		for name, platform := range assigned {
+			if _, ok := usableGroup[name]; ok && platform != "" {
+				groupPlatforms[name] = platform
+			}
+		}
+	}
 
 	c.JSON(200, gin.H{
 		"success":             true,
@@ -82,6 +94,7 @@ func GetPricing(c *gin.Context) {
 		"vendors":             model.GetVendors(),
 		"group_ratio":         groupRatio,
 		"group_ratio_changes": groupRatioChanges,
+		"group_platforms":     groupPlatforms,
 		"usable_group":        usableGroup,
 		"supported_endpoint":  model.GetSupportedEndpointMap(),
 		"auto_groups":         service.GetUserAutoGroup(group),
