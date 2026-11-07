@@ -388,6 +388,8 @@ func migrateDB() error {
 		&GroupRatioChange{},
 		&PartnerSite{},
 		&PartnerOffer{},
+		&Announcement{},
+		&AnnouncementRead{},
 	)
 	if err != nil {
 		return err
