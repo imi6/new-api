@@ -415,6 +415,7 @@ func InitResources() error {
 	}
 
 	service.StartAuthArtifactCleanup()
+	service.StartPartnerSubmitIpCleanup()
 
 	return nil
 }
