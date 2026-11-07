@@ -62,14 +62,14 @@ export function filterBySearch(
 }
 
 /**
- * Filter models by vendor
+ * Keep the models enabled in at least one of the groups; null keeps all.
  */
-export function filterByVendor(
+export function filterByGroups(
   models: PricingModel[],
-  vendor: string
+  groups: ReadonlySet<string> | null
 ): PricingModel[] {
-  if (vendor === FILTER_ALL) return models
-  return models.filter((m) => m.vendor_name === vendor)
+  if (!groups) return models
+  return models.filter((m) => m.enable_groups?.some((g) => groups.has(g)))
 }
 
 /**
@@ -234,7 +234,8 @@ export function filterAndSortModels(
   models: PricingModel[],
   filters: {
     search: string
-    vendor: string
+    /** The groups of the chosen platform, or null for every platform. */
+    platformGroups: ReadonlySet<string> | null
     group: string
     quotaType: string
     endpointType: string
@@ -243,7 +244,7 @@ export function filterAndSortModels(
   }
 ): PricingModel[] {
   let result = filterBySearch(models, filters.search)
-  result = filterByVendor(result, filters.vendor)
+  result = filterByGroups(result, filters.platformGroups)
   result = filterByGroup(result, filters.group)
   result = filterByQuotaType(result, filters.quotaType)
   result = filterByEndpointType(result, filters.endpointType)
