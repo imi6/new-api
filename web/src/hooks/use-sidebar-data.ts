@@ -30,6 +30,7 @@ import {
   Key,
   LayoutDashboard,
   ListTodo,
+  Megaphone,
   MessageSquare,
   PlugZap,
   Radio,
@@ -221,6 +222,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Supplier quotes'),
             url: '/partner-offers',
             icon: Store,
+          },
+          {
+            title: t('Announcement management'),
+            url: '/announcement-management',
+            icon: Megaphone,
           },
           {
             title: t('System Info'),
