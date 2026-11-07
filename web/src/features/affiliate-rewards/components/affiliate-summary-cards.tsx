@@ -74,8 +74,9 @@ export function AffiliateSummaryCards(props: AffiliateSummaryCardsProps) {
     },
   ]
 
+  // Two a row on phones, so the table below keeps room to scroll.
   return (
-    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+    <div className='grid shrink-0 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4'>
       {cards.map((item) => (
         <div
           key={item.key}
