@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
+import { apiKeyGroupPlatform } from '@/features/keys/lib/api-key-group-platforms'
 
 import {
   LoadingSkeleton,
@@ -44,9 +45,9 @@ export function Pricing() {
 
   const {
     models,
-    vendors,
     groupRatio,
     groupRatioChanges,
+    groupPlatforms,
     usableGroup,
     endpointMap,
     autoGroups,
@@ -55,10 +56,27 @@ export function Pricing() {
     usdExchangeRate,
   } = usePricingData()
 
+  const availableGroups = useMemo(
+    () =>
+      Object.keys(usableGroup || {}).filter(
+        (g) => !EXCLUDED_GROUPS.includes(g)
+      ),
+    [usableGroup]
+  )
+  // The platform of each group, resolved as the key dialog and the channel
+  // status page do: the administrator's choice, else the group name.
+  const groupPlatformOf = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const group of availableGroups) {
+      map.set(group, apiKeyGroupPlatform(group, groupPlatforms))
+    }
+    return map
+  }, [availableGroups, groupPlatforms])
+
   const {
     searchInput,
     sortBy,
-    vendorFilter,
+    platformFilter,
     groupFilter,
     quotaTypeFilter,
     endpointTypeFilter,
@@ -68,7 +86,7 @@ export function Pricing() {
     showRechargePrice,
     setSearchInput,
     setSortBy,
-    setVendorFilter,
+    setPlatformFilter,
     setGroupFilter,
     setQuotaTypeFilter,
     setEndpointTypeFilter,
@@ -82,7 +100,7 @@ export function Pricing() {
     availableTags,
     clearFilters,
     clearSearch,
-  } = useFilters(models || [])
+  } = useFilters(models || [], groupPlatformOf)
 
   const handleModelClick = useCallback((modelName: string) => {
     setSelectedModelName(modelName)
@@ -96,14 +114,6 @@ export function Pricing() {
           ) || null
         : null,
     [models, selectedModelName]
-  )
-
-  const availableGroups = useMemo(
-    () =>
-      Object.keys(usableGroup || {}).filter(
-        (g) => !EXCLUDED_GROUPS.includes(g)
-      ),
-    [usableGroup]
   )
 
   const handleClearAll = useCallback(() => {
@@ -199,15 +209,15 @@ export function Pricing() {
             layout='bar'
             quotaTypeFilter={quotaTypeFilter}
             endpointTypeFilter={endpointTypeFilter}
-            vendorFilter={vendorFilter}
+            platformFilter={platformFilter}
             groupFilter={groupFilter}
             tagFilter={tagFilter}
             onQuotaTypeChange={setQuotaTypeFilter}
             onEndpointTypeChange={setEndpointTypeFilter}
-            onVendorChange={setVendorFilter}
+            onPlatformChange={setPlatformFilter}
             onGroupChange={setGroupFilter}
             onTagChange={setTagFilter}
-            vendors={vendors || []}
+            groupPlatformOf={groupPlatformOf}
             groups={availableGroups}
             groupRatios={groupRatio}
             groupRatioChanges={groupRatioChanges}
@@ -240,15 +250,15 @@ export function Pricing() {
               onViewModeChange={setViewMode}
               quotaTypeFilter={quotaTypeFilter}
               endpointTypeFilter={endpointTypeFilter}
-              vendorFilter={vendorFilter}
+              platformFilter={platformFilter}
               groupFilter={groupFilter}
               tagFilter={tagFilter}
               onQuotaTypeChange={setQuotaTypeFilter}
               onEndpointTypeChange={setEndpointTypeFilter}
-              onVendorChange={setVendorFilter}
+              onPlatformChange={setPlatformFilter}
               onGroupChange={setGroupFilter}
               onTagChange={setTagFilter}
-              vendors={vendors || []}
+              groupPlatformOf={groupPlatformOf}
               groups={availableGroups}
               groupRatios={groupRatio}
               groupRatioChanges={groupRatioChanges}
