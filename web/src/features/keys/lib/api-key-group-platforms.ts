@@ -94,6 +94,28 @@ export function apiKeyPlatformLabel(
   return t(label)
 }
 
+/**
+ * Count the groups of each platform from the platform of every group:
+ * other last, then the largest first, then by name.
+ */
+export function rankGroupPlatforms(
+  groupPlatforms: Iterable<string>,
+  t: (key: string) => string
+): Array<[platform: string, groups: number]> {
+  const counts = new Map<string, number>()
+  for (const platform of groupPlatforms) {
+    counts.set(platform, (counts.get(platform) ?? 0) + 1)
+  }
+  return [...counts.entries()].sort((left, right) => {
+    const leftOther = left[0] === OTHER_PLATFORM
+    if (leftOther !== (right[0] === OTHER_PLATFORM)) return leftOther ? 1 : -1
+    if (right[1] !== left[1]) return right[1] - left[1]
+    return apiKeyPlatformLabel(left[0], t).localeCompare(
+      apiKeyPlatformLabel(right[0], t)
+    )
+  })
+}
+
 export function formatApiKeyGroupRatio(ratio: number | string): string {
   if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return String(ratio)
   const text = ratio.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
