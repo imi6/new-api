@@ -133,6 +133,8 @@ export type PricingData = {
   group_ratio: Record<string, number>
   /** Recent ratio changes of the shown groups, or new groups. */
   group_ratio_changes?: Record<string, GroupRatioChange>
+  /** Platforms an administrator assigned to shown groups, as channel type ids. */
+  group_platforms?: Record<string, string>
   usable_group: Record<string, { desc: string; ratio: number }>
   supported_endpoint: Record<string, string>
   auto_groups: string[]
