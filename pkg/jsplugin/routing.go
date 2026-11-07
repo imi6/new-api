@@ -502,6 +502,7 @@ var reservedRouteNamespaces = []string{
 	"/partner",
 	"/partner-apply",
 	"/partner-offers",
+	"/announcement-management",
 }
 
 func (g *RoutingGeneration) Get(key string) (*LoadedPlugin, bool) {
