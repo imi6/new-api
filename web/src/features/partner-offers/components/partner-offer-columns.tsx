@@ -33,7 +33,7 @@ import {
   PARTNER_CONTACT_LABEL_KEYS,
   PARTNER_STATUS_META,
   type PartnerOfferRow,
-} from '../types'
+} from '@/features/partner/types'
 
 /**
  * Columns of the supplier quote table. Everything a supplier typed is shown
