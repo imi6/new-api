@@ -29,78 +29,90 @@ import {
 import { cn } from '@/lib/utils'
 
 import {
-  DEFAULT_GROUP_HEALTH_SORT,
   GROUP_HEALTH_SORT_KEYS,
   GROUP_HEALTH_SORT_META,
-  type GroupHealthSort,
   type GroupHealthSortDirection,
+  type GroupHealthSortKey,
+  type GroupHealthSortRules,
 } from '../lib/group-health-sort'
 
-// A box not in use shows this; choosing it in the box in use goes back to
-// the default order.
-const NONE = 'none'
-
 interface GroupHealthSortBarProps {
-  sort: GroupHealthSort
-  onSortChange: (sort: GroupHealthSort) => void
-  /** Without cache hit rates on the cards, that box is left out. */
-  cacheHitRateShown: boolean
+  /** Every measure with its direction, the first one deciding the order. */
+  rules: GroupHealthSortRules
+  /** Puts this measure first, with this direction. */
+  onPromote: (
+    key: GroupHealthSortKey,
+    direction: GroupHealthSortDirection
+  ) => void
 }
 
 /**
- * One box per measure, each only choosing a direction. The cards follow
- * the box chosen last; the others show "—".
+ * One box per measure, each only choosing a direction. The number before a
+ * box says where it comes in the order: the cards follow box 1, and the rest
+ * separate the cards it ties on. Choosing a direction, or clicking the name,
+ * moves that box to the front without clearing the others.
  */
 export function GroupHealthSortBar(props: GroupHealthSortBarProps) {
   const { t } = useTranslation()
-  const keys = GROUP_HEALTH_SORT_KEYS.filter(
-    (key) => key !== 'cache' || props.cacheHitRateShown
+  // The boxes stay in a fixed order so they do not jump as the order changes.
+  const keys = GROUP_HEALTH_SORT_KEYS.filter((key) =>
+    props.rules.some((rule) => rule.key === key)
   )
 
   return (
-    <div className='grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end'>
+    <div className='grid w-full grid-cols-2 gap-x-3 gap-y-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end'>
       {keys.map((key) => {
         const meta = GROUP_HEALTH_SORT_META[key]
-        const active = props.sort.key === key
+        const order = props.rules.findIndex((rule) => rule.key === key)
+        const direction = props.rules[order].direction
+        const primary = order === 0
+        const label = t(meta.labelKey)
         // The better direction comes first in each box.
         const directions: GroupHealthSortDirection[] =
           meta.better === 'asc' ? ['asc', 'desc'] : ['desc', 'asc']
-        const directionLabel = (direction: GroupHealthSortDirection) =>
-          t(direction === 'asc' ? meta.ascLabelKey : meta.descLabelKey)
-        const items = [
-          { value: NONE, label: '—' },
-          ...directions.map((direction) => ({
-            value: direction,
-            label: directionLabel(direction),
-          })),
-        ]
+        const items = directions.map((value) => ({
+          value,
+          label: t(value === 'asc' ? meta.ascLabelKey : meta.descLabelKey),
+        }))
         return (
           <div key={key} className='flex min-w-0 items-center gap-1.5'>
-            <span
+            <button
+              type='button'
+              onClick={() => props.onPromote(key, direction)}
+              aria-label={t('Sort by {{field}} first', { field: label })}
+              aria-pressed={primary}
               className={cn(
-                'shrink-0 text-xs',
-                active ? 'text-foreground font-medium' : 'text-muted-foreground'
+                'flex shrink-0 cursor-pointer items-center gap-1 text-xs',
+                primary
+                  ? 'text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {t(meta.labelKey)}
-            </span>
+              <span
+                className={cn(
+                  'tabular-nums',
+                  primary ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                {order + 1}
+              </span>
+              {label}
+            </button>
             <Select
               items={items}
-              value={active ? props.sort.direction : NONE}
+              value={direction}
               onValueChange={(value) => {
                 if (value === 'asc' || value === 'desc') {
-                  props.onSortChange({ key, direction: value })
-                } else if (value === NONE && active) {
-                  props.onSortChange(DEFAULT_GROUP_HEALTH_SORT)
+                  props.onPromote(key, value)
                 }
               }}
             >
               <SelectTrigger
                 className={cn(
                   'h-8 min-w-0 flex-1 sm:w-28 sm:flex-none',
-                  active && 'border-primary text-primary'
+                  primary && 'border-primary text-primary'
                 )}
-                aria-label={t('Sort by {{field}}', { field: t(meta.labelKey) })}
+                aria-label={t('Sort by {{field}}', { field: label })}
               >
                 <SelectValue />
               </SelectTrigger>
