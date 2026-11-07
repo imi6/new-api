@@ -59,6 +59,21 @@ func SetApiRouter(router *gin.Engine) {
 				partnerAdminRoute.DELETE("/sites/:id", controller.AdminDeletePartnerSite)
 			}
 		}
+		// Announcements that pop up: public, with the reads of a signed-in user.
+		announcementRoute := apiRouter.Group("/announcements")
+		{
+			announcementRoute.GET("", middleware.TryUserAuth(), controller.GetPublicAnnouncements)
+			announcementRoute.POST("/read", middleware.UserAuth(), controller.MarkMyAnnouncementsRead)
+			announcementAdminRoute := announcementRoute.Group("/admin")
+			announcementAdminRoute.Use(middleware.AdminAuth())
+			{
+				announcementAdminRoute.GET("", controller.AdminGetAnnouncements)
+				announcementAdminRoute.POST("", controller.AdminCreateAnnouncement)
+				announcementAdminRoute.PUT("/setting", controller.AdminUpdateAnnouncementSetting)
+				announcementAdminRoute.PUT("/:id", controller.AdminUpdateAnnouncement)
+				announcementAdminRoute.DELETE("/:id", controller.AdminDeleteAnnouncement)
+			}
+		}
 		apiRouter.GET("/group-health/intelligence", middleware.HeaderNavModuleAuth(middleware.HeaderNavModuleGroupHealth), controller.GetIntelligenceChecks)
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
