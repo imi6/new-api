@@ -81,6 +81,11 @@ export interface PricingSidebarProps {
   models: PricingModel[]
   hasActiveFilters: boolean
   onClearFilters: () => void
+  /**
+   * `panel` stacks collapsible sections, for a narrow column or drawer.
+   * `bar` puts one labelled row of chips per filter, for the full page width.
+   */
+  layout?: 'panel' | 'bar'
   className?: string
 }
 
@@ -96,15 +101,29 @@ function FilterChip(props: {
   option: FilterOption
   active: boolean
   onClick: () => void
+  /** Pill chips with a filled selection, for the horizontal bar. */
+  pill?: boolean
 }) {
+  let variant: 'outline' | 'secondary' | 'default' = 'outline'
+  let countClassName = 'bg-muted text-muted-foreground'
+  if (props.active && props.pill) {
+    variant = 'default'
+    countClassName = 'bg-primary-foreground/20 text-primary-foreground'
+  } else if (props.active) {
+    variant = 'secondary'
+    countClassName = 'bg-background text-foreground'
+  }
   return (
     <Button
       type='button'
-      variant={props.active ? 'secondary' : 'outline'}
+      variant={variant}
       size='sm'
       onClick={props.onClick}
       aria-pressed={props.active}
-      className='h-auto max-w-full gap-1.5 px-2 py-1 text-xs'
+      className={cn(
+        'h-auto max-w-full gap-1.5 px-2 py-1 text-xs',
+        props.pill && 'rounded-full px-3'
+      )}
       title={props.option.label}
     >
       {props.option.icon && (
@@ -115,9 +134,8 @@ function FilterChip(props: {
         <span
           className={cn(
             'rounded-md px-1.5 py-0.5 text-[12px]',
-            props.active
-              ? 'bg-background text-foreground'
-              : 'bg-muted text-muted-foreground'
+            props.pill && 'rounded-full',
+            countClassName
           )}
         >
           {props.option.suffix ?? props.option.count}
@@ -267,6 +285,101 @@ export const PricingSidebar = memo(function PricingSidebar(
         count: counts.endpoints.get(value) ?? 0,
       })),
   ]
+
+  if (props.layout === 'bar') {
+    // A row whose only chip is "All" has nothing to choose, so it is left out.
+    const rows = [
+      {
+        key: 'vendor',
+        title: t('Vendor'),
+        value: props.vendorFilter,
+        options: vendorOptions,
+        onChange: props.onVendorChange,
+      },
+      {
+        key: 'group',
+        title: t('Group'),
+        value: props.groupFilter,
+        options: groupOptions,
+        onChange: props.onGroupChange,
+      },
+      {
+        key: 'tag',
+        title: t('Tags'),
+        value: props.tagFilter,
+        options: tagOptions,
+        onChange: props.onTagChange,
+      },
+      {
+        key: 'quota',
+        title: t('Pricing Type'),
+        value: props.quotaTypeFilter,
+        options: quotaOptions,
+        onChange: props.onQuotaTypeChange,
+      },
+      {
+        key: 'endpoint',
+        title: t('Endpoint Type'),
+        value: props.endpointTypeFilter,
+        options: endpointOptions,
+        onChange: props.onEndpointTypeChange,
+      },
+    ].filter((row) => row.options.length > 1)
+
+    return (
+      <section
+        aria-label={t('Filter')}
+        className={cn('bg-card rounded-xl border p-3 sm:p-4', props.className)}
+      >
+        <div className='grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-4 gap-y-3'>
+          {rows.map((row) => (
+            <div
+              key={row.key}
+              role='group'
+              aria-labelledby={`pricing-filter-${row.key}`}
+              className='col-span-2 grid grid-cols-subgrid items-start'
+            >
+              <span
+                id={`pricing-filter-${row.key}`}
+                className='text-muted-foreground pt-1.5 text-sm whitespace-nowrap'
+              >
+                {row.title}
+              </span>
+              <div className='flex flex-wrap gap-2'>
+                {row.options.map((option, index) => (
+                  <FilterChip
+                    key={option.value}
+                    // The row title already names the filter, so its first
+                    // chip says just "All".
+                    option={
+                      index === 0 ? { ...option, label: t('All') } : option
+                    }
+                    active={row.value === option.value}
+                    onClick={() => row.onChange(option.value)}
+                    pill
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        {props.hasActiveFilters && (
+          <div className='mt-3 flex justify-end border-t pt-3'>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={props.onClearFilters}
+              className='h-7 gap-1.5 px-2 text-xs'
+            >
+              <RotateCcw className='size-3.5' aria-hidden='true' />
+              {t('Reset')}
+            </Button>
+          </div>
+        )}
+      </section>
+    )
+  }
 
   return (
     <aside className={cn('bg-card rounded-xl border p-3', props.className)}>
