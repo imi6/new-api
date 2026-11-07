@@ -44,6 +44,21 @@ func SetApiRouter(router *gin.Engine) {
 		}
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
 		apiRouter.GET("/group-health", middleware.HeaderNavModuleAuth(middleware.HeaderNavModuleGroupHealth), controller.GetGroupHealth)
+		// Supplier applications: open to visitors only when the "partner" top
+		// navigation switch does not ask for a sign-in.
+		partnerRoute := apiRouter.Group("/partner")
+		{
+			partnerRoute.GET("/config", middleware.HeaderNavModuleAuth(middleware.HeaderNavModulePartner), controller.GetPartnerConfig)
+			partnerRoute.POST("/sites", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.HeaderNavModuleAuth(middleware.HeaderNavModulePartner), middleware.TurnstileCheck(), controller.SubmitPartnerSite)
+			partnerRoute.GET("/sites", middleware.UserAuth(), controller.GetMyPartnerSites)
+			partnerAdminRoute := partnerRoute.Group("/admin")
+			partnerAdminRoute.Use(middleware.AdminAuth())
+			{
+				partnerAdminRoute.GET("/offers", controller.AdminGetPartnerOffers)
+				partnerAdminRoute.PATCH("/sites/:id", controller.AdminUpdatePartnerSite)
+				partnerAdminRoute.DELETE("/sites/:id", controller.AdminDeletePartnerSite)
+			}
+		}
 		apiRouter.GET("/group-health/intelligence", middleware.HeaderNavModuleAuth(middleware.HeaderNavModuleGroupHealth), controller.GetIntelligenceChecks)
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)

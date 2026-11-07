@@ -89,6 +89,16 @@ export function useTopNavLinks(): TopNavLink[] {
     })
   }
 
+  const partner = modules?.partner
+  if (partner && typeof partner === 'object' && partner.enabled) {
+    const requiresAuth = partner.requireAuth && !isAuthed
+    links.push({
+      title: t('Supplier application'),
+      href: '/partner',
+      requiresAuth,
+    })
+  }
+
   // Rankings
   const rankings = modules?.rankings
   if (rankings && typeof rankings === 'object' && rankings.enabled) {
