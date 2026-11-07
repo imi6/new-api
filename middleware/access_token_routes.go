@@ -42,14 +42,22 @@ func accessTokenScopeRule(scope string) accessTokenRouteRule {
 // DeclareAccessTokenPermissionRoute when they are registered.
 var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	// router/api-router.go: top level
-	"GET /api/models":                     accessTokenScopeRule("profile:read"),
-	"GET /api/status/test":                accessTokenScopeRule("log:read"),
-	"GET /api/pricing":                    accessTokenAnyRule,
-	"GET /api/perf-metrics/summary":       accessTokenAnyRule,
-	"GET /api/perf-metrics":               accessTokenAnyRule,
-	"GET /api/rankings":                   accessTokenAnyRule,
-	"GET /api/group-health":               accessTokenAnyRule,
-	"GET /api/group-health/intelligence":  accessTokenAnyRule,
+	"GET /api/models":                    accessTokenScopeRule("profile:read"),
+	"GET /api/status/test":               accessTokenScopeRule("log:read"),
+	"GET /api/pricing":                   accessTokenAnyRule,
+	"GET /api/perf-metrics/summary":      accessTokenAnyRule,
+	"GET /api/perf-metrics":              accessTokenAnyRule,
+	"GET /api/rankings":                  accessTokenAnyRule,
+	"GET /api/group-health":              accessTokenAnyRule,
+	"GET /api/group-health/intelligence": accessTokenAnyRule,
+	// Supplier applications. A submission is a browser form, so an access
+	// token cannot make one.
+	"GET /api/partner/config":             accessTokenAnyRule,
+	"POST /api/partner/sites":             accessTokenSessionRule,
+	"GET /api/partner/sites":              accessTokenScopeRule("profile:read"),
+	"GET /api/partner/admin/offers":       accessTokenScopeRule("user:read"),
+	"PATCH /api/partner/admin/sites/:id":  accessTokenScopeRule("user:write"),
+	"DELETE /api/partner/admin/sites/:id": accessTokenScopeRule("user:write"),
 	"POST /api/oauth/state":               accessTokenSessionRule,
 	"POST /api/oauth/email/bind/start":    accessTokenScopeRule("account_security:write"),
 	"POST /api/oauth/email/bind/resend":   accessTokenScopeRule("account_security:write"),
