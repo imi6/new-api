@@ -36,9 +36,13 @@ export function ApiKeys() {
           <ApiKeysPrimaryButtons />
         </SectionPageLayout.Actions>
         <SectionPageLayout.Content>
-          <div className='flex flex-col gap-2'>
+          {/* The content area does not scroll, so the table needs a bounded
+              height to scroll its own rows, as on the models page. */}
+          <div className='flex h-full min-h-0 flex-col gap-2'>
             <ApiAddressBar />
-            <ApiKeysTable />
+            <div className='min-h-0 flex-1'>
+              <ApiKeysTable />
+            </div>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>

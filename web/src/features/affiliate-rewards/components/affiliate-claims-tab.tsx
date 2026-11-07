@@ -162,8 +162,8 @@ export function AffiliateClaimsTab() {
   })
 
   return (
-    <div className='flex flex-col gap-3'>
-      <p className='text-muted-foreground text-sm'>
+    <div className='flex h-full min-h-0 flex-col gap-3'>
+      <p className='text-muted-foreground shrink-0 text-sm'>
         {t('{{count}} claims, {{sum}} in total', {
           count: query.data?.page.total ?? 0,
           sum: formatQuota(query.data?.sum ?? 0),
@@ -178,6 +178,8 @@ export function AffiliateClaimsTab() {
         emptyDescription={t(
           'Rebate that users transfer to their wallet appears here.'
         )}
+        // The space left under the count line; the table scrolls inside it.
+        className='min-h-0 flex-1'
         skeletonKeyPrefix='affiliate-claims-skeleton'
         applyHeaderSize
         toolbarProps={{
