@@ -61,6 +61,9 @@ var reservedRouteNamespaces = []string{
 	"/invoice-management",
 	"/channel-status",
 	"/health",
+	"/partner",
+	"/partner-apply",
+	"/partner-offers",
 }
 
 // The settings are read on every use, so values loaded from the environment

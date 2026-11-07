@@ -25,6 +25,7 @@ import {
 } from '../maintenance/config'
 import { HeaderNavigationSection } from '../maintenance/header-navigation-section'
 import { NoticeSection } from '../maintenance/notice-section'
+import { PartnerSettingsSection } from '../maintenance/partner-settings-section'
 import { SidebarModulesSection } from '../maintenance/sidebar-modules-section'
 import type { SiteSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
@@ -90,6 +91,23 @@ const SITE_SECTIONS = [
         />
       )
     },
+  },
+  {
+    id: 'partner',
+    titleKey: 'Supplier application',
+    build: (settings: SiteSettings) => (
+      <PartnerSettingsSection
+        defaultValues={{
+          partner_setting: {
+            max_sites_per_user: settings['partner_setting.max_sites_per_user'],
+            max_offers_per_site:
+              settings['partner_setting.max_offers_per_site'],
+            guest_hourly_limit: settings['partner_setting.guest_hourly_limit'],
+            intro: settings['partner_setting.intro'],
+          },
+        }}
+      />
+    ),
   },
 ] as const
 
