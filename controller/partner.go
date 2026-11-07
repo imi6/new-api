@@ -54,8 +54,8 @@ type partnerSiteRequest struct {
 	Offers      []partnerOfferRequest `json:"offers"`
 }
 
-// partnerText trims a field and checks it is within limit characters.
-func partnerText(value string, limit int, required bool) (string, bool) {
+// boundedText trims a field and checks it is within limit characters.
+func boundedText(value string, limit int, required bool) (string, bool) {
 	value = strings.TrimSpace(value)
 	if required && value == "" {
 		return "", false
@@ -90,10 +90,10 @@ func partnerSiteURL(raw string) (string, bool) {
 	return normalized, true
 }
 
-// respondPartnerError sends a refusal from the model as it is, and logs any
+// respondStoreError sends a refusal from the model as it is, and logs any
 // other error and answers with fallbackKey, so a database error never
 // reaches the client.
-func respondPartnerError(c *gin.Context, err error, action string, fallbackKey string) {
+func respondStoreError(c *gin.Context, err error, action string, fallbackKey string) {
 	var message *common.Message
 	if errors.As(err, &message) {
 		common.ApiError(c, err)
@@ -108,7 +108,7 @@ func respondPartnerError(c *gin.Context, err error, action string, fallbackKey s
 func validatePartnerSite(req partnerSiteRequest) (*model.PartnerSite, []model.PartnerOffer, error) {
 	site := &model.PartnerSite{}
 	var ok bool
-	if site.SiteName, ok = partnerText(req.SiteName, partnerMaxSiteName, true); !ok {
+	if site.SiteName, ok = boundedText(req.SiteName, partnerMaxSiteName, true); !ok {
 		return nil, nil, common.NewMessage("Enter a site name of at most {{max}} characters", map[string]any{"max": partnerMaxSiteName})
 	}
 	if site.SiteUrl, ok = partnerSiteURL(req.SiteUrl); !ok {
@@ -118,10 +118,10 @@ func validatePartnerSite(req partnerSiteRequest) (*model.PartnerSite, []model.Pa
 		return nil, nil, common.NewMessage("Choose a contact type")
 	}
 	site.ContactType = req.ContactType
-	if site.Contact, ok = partnerText(req.Contact, partnerMaxContact, true); !ok {
+	if site.Contact, ok = boundedText(req.Contact, partnerMaxContact, true); !ok {
 		return nil, nil, common.NewMessage("Enter a contact of at most {{max}} characters", map[string]any{"max": partnerMaxContact})
 	}
-	if site.Remark, ok = partnerText(req.Remark, partnerMaxRemark, false); !ok {
+	if site.Remark, ok = boundedText(req.Remark, partnerMaxRemark, false); !ok {
 		return nil, nil, common.NewMessage("The text can have at most {{max}} characters", map[string]any{"max": partnerMaxRemark})
 	}
 
@@ -132,7 +132,7 @@ func validatePartnerSite(req partnerSiteRequest) (*model.PartnerSite, []model.Pa
 	offers := make([]model.PartnerOffer, 0, len(req.Offers))
 	for _, item := range req.Offers {
 		offer := model.PartnerOffer{}
-		if offer.GroupName, ok = partnerText(item.GroupName, partnerMaxGroupName, true); !ok {
+		if offer.GroupName, ok = boundedText(item.GroupName, partnerMaxGroupName, true); !ok {
 			return nil, nil, common.NewMessage("Enter a group name of at most {{max}} characters", map[string]any{"max": partnerMaxGroupName})
 		}
 		if _, known := constant.ChannelTypeNames[item.ChannelType]; !known || item.ChannelType <= 0 {
@@ -158,7 +158,7 @@ func validatePartnerSite(req partnerSiteRequest) (*model.PartnerSite, []model.Pa
 			models = append(models, name)
 		}
 		offer.Models = strings.Join(models, ",")
-		if offer.Description, ok = partnerText(item.Description, partnerMaxDescription, false); !ok {
+		if offer.Description, ok = boundedText(item.Description, partnerMaxDescription, false); !ok {
 			return nil, nil, common.NewMessage("The text can have at most {{max}} characters", map[string]any{"max": partnerMaxDescription})
 		}
 		offers = append(offers, offer)
@@ -200,7 +200,7 @@ func SubmitPartnerSite(c *gin.Context) {
 		limit := operation_setting.PartnerGuestHourlyLimit()
 		count, err := model.CountGuestPartnerSitesSince(site.SubmitIp, now-3600)
 		if err != nil {
-			respondPartnerError(c, err, "count supplier submissions", "Failed to submit, please try again later")
+			respondStoreError(c, err, "count supplier submissions", "Failed to submit, please try again later")
 			return
 		}
 		if count >= int64(limit) {
@@ -209,7 +209,7 @@ func SubmitPartnerSite(c *gin.Context) {
 		}
 	}
 	if err := model.CreatePartnerSite(site, offers, operation_setting.PartnerMaxSites()); err != nil {
-		respondPartnerError(c, err, "store supplier submission", "Failed to submit, please try again later")
+		respondStoreError(c, err, "store supplier submission", "Failed to submit, please try again later")
 		return
 	}
 	common.ApiSuccess(c, gin.H{"id": site.Id})
@@ -219,7 +219,7 @@ func SubmitPartnerSite(c *gin.Context) {
 func GetMyPartnerSites(c *gin.Context) {
 	sites, err := model.GetUserPartnerSites(c.GetInt("id"))
 	if err != nil {
-		respondPartnerError(c, err, "list supplier submissions", "Failed to load submissions, please try again later")
+		respondStoreError(c, err, "list supplier submissions", "Failed to load submissions, please try again later")
 		return
 	}
 	common.ApiSuccess(c, sites)
@@ -240,7 +240,7 @@ func AdminGetPartnerOffers(c *gin.Context) {
 		SortDesc:    c.Query("sort_order") == "desc",
 	}, pageInfo)
 	if err != nil {
-		respondPartnerError(c, err, "list supplier quotes", "Failed to load quotes, please try again later")
+		respondStoreError(c, err, "list supplier quotes", "Failed to load quotes, please try again later")
 		return
 	}
 	pageInfo.SetTotal(int(total))
@@ -265,13 +265,13 @@ func AdminUpdatePartnerSite(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
-	note, ok := partnerText(req.AdminNote, partnerMaxAdminNote, false)
+	note, ok := boundedText(req.AdminNote, partnerMaxAdminNote, false)
 	if !ok {
 		common.ApiError(c, common.NewMessage("The text can have at most {{max}} characters", map[string]any{"max": partnerMaxAdminNote}))
 		return
 	}
 	if err := model.UpdatePartnerSiteMark(id, req.AdminStatus, note); err != nil {
-		respondPartnerError(c, err, "mark supplier submission", "Failed to save")
+		respondStoreError(c, err, "mark supplier submission", "Failed to save")
 		return
 	}
 	common.ApiSuccess(c, nil)
@@ -285,7 +285,7 @@ func AdminDeletePartnerSite(c *gin.Context) {
 		return
 	}
 	if err := model.DeletePartnerSite(id); err != nil {
-		respondPartnerError(c, err, "delete supplier submission", "Failed to delete submission")
+		respondStoreError(c, err, "delete supplier submission", "Failed to delete submission")
 		return
 	}
 	common.ApiSuccess(c, nil)
