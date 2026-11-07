@@ -8055,6 +8055,7 @@
     "Healthy first": "Сначала работающие",
     "Outages first": "Сначала со сбоями",
     "Sort by {{field}}": "Сортировать по: {{field}}",
+    "Sort by {{field}} first": "Сортировать сначала по: {{field}}",
     "Delete announcement": "Удалить объявление",
     "The announcement is deleted for everyone. To only take it down, set it to Archived instead.": "Объявление будет удалено для всех. Чтобы только снять его, установите статус «В архиве».",
     "Scheduled": "Запланировано",
