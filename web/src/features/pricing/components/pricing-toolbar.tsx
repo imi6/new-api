@@ -53,7 +53,7 @@ import {
   type SortOption,
   type ViewMode,
 } from '../constants'
-import type { PricingModel, PricingVendor, TokenUnit } from '../types'
+import type { PricingModel, TokenUnit } from '../types'
 import { PricingSidebar } from './pricing-sidebar'
 
 export interface PricingToolbarProps {
@@ -69,16 +69,16 @@ export interface PricingToolbarProps {
   onViewModeChange: (value: ViewMode) => void
   quotaTypeFilter: string
   endpointTypeFilter: string
-  vendorFilter: string
+  platformFilter: string
   groupFilter: string
   tagFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
-  onVendorChange: (value: string) => void
+  onPlatformChange: (value: string) => void
   onGroupChange: (value: string) => void
   onTagChange: (value: string) => void
-  vendors: PricingVendor[]
   groups: string[]
+  groupPlatformOf?: ReadonlyMap<string, string>
   groupRatios?: Record<string, number>
   groupRatioChanges?: Record<string, GroupRatioChange>
   tags: string[]
@@ -230,16 +230,16 @@ export function PricingToolbar(props: PricingToolbarProps) {
             <PricingSidebar
               quotaTypeFilter={props.quotaTypeFilter}
               endpointTypeFilter={props.endpointTypeFilter}
-              vendorFilter={props.vendorFilter}
+              platformFilter={props.platformFilter}
               groupFilter={props.groupFilter}
               tagFilter={props.tagFilter}
               onQuotaTypeChange={props.onQuotaTypeChange}
               onEndpointTypeChange={props.onEndpointTypeChange}
-              onVendorChange={props.onVendorChange}
+              onPlatformChange={props.onPlatformChange}
               onGroupChange={props.onGroupChange}
               onTagChange={props.onTagChange}
-              vendors={props.vendors}
               groups={props.groups}
+              groupPlatformOf={props.groupPlatformOf}
               groupRatios={props.groupRatios}
               groupRatioChanges={props.groupRatioChanges}
               tags={props.tags}

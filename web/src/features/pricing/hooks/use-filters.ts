@@ -36,7 +36,7 @@ import type { ModelOrder, PricingModel, TokenUnit } from '../types'
 type FilterState = {
   search?: string
   sort?: string
-  vendor?: string
+  platform?: string
   group?: string
   quotaType?: string
   endpointType?: string
@@ -53,12 +53,20 @@ function normalizeViewMode(value: unknown): ViewMode {
   return VIEW_MODES.CARD
 }
 
-export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
+/**
+ * @param groupPlatformOf the platform of each shown group, which the platform
+ * filter narrows the groups and models by.
+ */
+export function useFilters(
+  models: PricingModel[],
+  groupPlatformOf: ReadonlyMap<string, string>,
+  modelOrder?: ModelOrder
+) {
   const search = useSearch({ from: '/pricing/' })
   const [filterState, setFilterState] = useState<FilterState>(() => ({
     search: search.search,
     sort: search.sort,
-    vendor: search.vendor,
+    platform: search.platform,
     group: search.group,
     quotaType: search.quotaType,
     endpointType: search.endpointType,
@@ -71,8 +79,25 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
   const searchInput = filterState.search || ''
   const debouncedSearchInput = useDebounce(searchInput, 200)
   const sortBy = filterState.sort || SORT_OPTIONS.RECOMMENDED
-  const vendorFilter = filterState.vendor || FILTER_ALL
-  const groupFilter = filterState.group || FILTER_ALL
+  // The groups of the chosen platform, or null for every platform. A platform
+  // that no shown group has, such as one from an old link, means all.
+  const platformGroups = useMemo(() => {
+    const platform = filterState.platform
+    if (!platform || platform === FILTER_ALL) return null
+    const groups = new Set<string>()
+    for (const [group, groupPlatform] of groupPlatformOf) {
+      if (groupPlatform === platform) groups.add(group)
+    }
+    return groups.size > 0 ? groups : null
+  }, [filterState.platform, groupPlatformOf])
+  const platformFilter =
+    platformGroups && filterState.platform ? filterState.platform : FILTER_ALL
+  // A group outside the chosen platform is not offered, so it means all.
+  const chosenGroup = filterState.group
+  const groupFilter =
+    chosenGroup && (!platformGroups || platformGroups.has(chosenGroup))
+      ? chosenGroup
+      : FILTER_ALL
   const quotaTypeFilter = filterState.quotaType || QUOTA_TYPES.ALL
   const endpointTypeFilter = filterState.endpointType || ENDPOINT_TYPES.ALL
   const tagFilter = filterState.tag || FILTER_ALL
@@ -102,9 +127,16 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
       updateFilters({ sort: v === SORT_OPTIONS.RECOMMENDED ? undefined : v }),
     [updateFilters]
   )
-  const setVendorFilter = useCallback(
-    (v: string) => updateFilters({ vendor: v === FILTER_ALL ? undefined : v }),
-    [updateFilters]
+  // Choosing a platform drops a chosen group of another platform.
+  const setPlatformFilter = useCallback(
+    (v: string) => {
+      const platform = v === FILTER_ALL ? undefined : v
+      const group = filterState.group
+      const keepGroup =
+        !platform || !group || groupPlatformOf.get(group) === platform
+      updateFilters({ platform, group: keepGroup ? group : undefined })
+    },
+    [filterState.group, groupPlatformOf, updateFilters]
   )
   const setGroupFilter = useCallback(
     (v: string) => updateFilters({ group: v === FILTER_ALL ? undefined : v }),
@@ -151,7 +183,7 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
 
     return filterAndSortModels(models, {
       search: debouncedSearchInput,
-      vendor: vendorFilter,
+      platformGroups,
       group: groupFilter,
       quotaType: quotaTypeFilter,
       endpointType: endpointTypeFilter,
@@ -163,7 +195,7 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
     models,
     modelOrder,
     debouncedSearchInput,
-    vendorFilter,
+    platformGroups,
     groupFilter,
     quotaTypeFilter,
     endpointTypeFilter,
@@ -171,29 +203,17 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
     sortBy,
   ])
 
-  const hasActiveFilters = useMemo(
-    () =>
-      vendorFilter !== FILTER_ALL ||
-      groupFilter !== FILTER_ALL ||
-      quotaTypeFilter !== QUOTA_TYPES.ALL ||
-      endpointTypeFilter !== ENDPOINT_TYPES.ALL ||
-      tagFilter !== FILTER_ALL,
-    [vendorFilter, groupFilter, quotaTypeFilter, endpointTypeFilter, tagFilter]
-  )
-
-  const activeFilterCount = useMemo(
-    () =>
-      (vendorFilter !== FILTER_ALL ? 1 : 0) +
-      (groupFilter !== FILTER_ALL ? 1 : 0) +
-      (quotaTypeFilter !== QUOTA_TYPES.ALL ? 1 : 0) +
-      (endpointTypeFilter !== ENDPOINT_TYPES.ALL ? 1 : 0) +
-      (tagFilter !== FILTER_ALL ? 1 : 0),
-    [vendorFilter, groupFilter, quotaTypeFilter, endpointTypeFilter, tagFilter]
-  )
+  const activeFilterCount =
+    (platformFilter !== FILTER_ALL ? 1 : 0) +
+    (groupFilter !== FILTER_ALL ? 1 : 0) +
+    (quotaTypeFilter !== QUOTA_TYPES.ALL ? 1 : 0) +
+    (endpointTypeFilter !== ENDPOINT_TYPES.ALL ? 1 : 0) +
+    (tagFilter !== FILTER_ALL ? 1 : 0)
+  const hasActiveFilters = activeFilterCount > 0
 
   const clearFilters = useCallback(() => {
     updateFilters({
-      vendor: undefined,
+      platform: undefined,
       group: undefined,
       quotaType: undefined,
       endpointType: undefined,
@@ -208,7 +228,7 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
   return {
     searchInput,
     sortBy,
-    vendorFilter,
+    platformFilter,
     groupFilter,
     quotaTypeFilter,
     endpointTypeFilter,
@@ -218,7 +238,7 @@ export function useFilters(models: PricingModel[], modelOrder?: ModelOrder) {
     showRechargePrice,
     setSearchInput,
     setSortBy,
-    setVendorFilter,
+    setPlatformFilter,
     setGroupFilter,
     setQuotaTypeFilter,
     setEndpointTypeFilter,
