@@ -38,6 +38,7 @@ import {
   apiKeyGroupPlatform,
   apiKeyPlatformLabel,
   OTHER_PLATFORM,
+  rankGroupPlatforms,
 } from '@/features/keys/lib/api-key-group-platforms'
 
 import { useGroupHealth } from '../hooks/use-group-health'
@@ -96,20 +97,10 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
     }
     return map
   }, [allGroups])
-  const platforms = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const name of platformOf.values()) {
-      counts.set(name, (counts.get(name) ?? 0) + 1)
-    }
-    return [...counts.entries()].sort((left, right) => {
-      const leftOther = left[0] === OTHER_PLATFORM
-      if (leftOther !== (right[0] === OTHER_PLATFORM)) return leftOther ? 1 : -1
-      if (right[1] !== left[1]) return right[1] - left[1]
-      return apiKeyPlatformLabel(left[0], t).localeCompare(
-        apiKeyPlatformLabel(right[0], t)
-      )
-    })
-  }, [platformOf, t])
+  const platforms = useMemo(
+    () => rankGroupPlatforms(platformOf.values(), t),
+    [platformOf, t]
+  )
   // A platform whose groups all left falls back to every platform.
   const activePlatform = platforms.some((entry) => entry[0] === platform)
     ? platform
