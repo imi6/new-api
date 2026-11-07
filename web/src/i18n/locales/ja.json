@@ -8055,7 +8055,6 @@
     "Healthy first": "正常を先に",
     "Outages first": "異常を先に",
     "Sort by {{field}}": "{{field}}で並べ替え",
-    "Sort by {{field}} first": "{{field}}を優先して並べ替え",
     "Delete announcement": "お知らせを削除",
     "The announcement is deleted for everyone. To only take it down, set it to Archived instead.": "お知らせは全員から削除されます。取り下げるだけなら「アーカイブ済み」にしてください。",
     "Scheduled": "公開予定",
