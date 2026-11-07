@@ -63,6 +63,7 @@ import { Route as AuthenticatedInvoiceManagementIndexRouteImport } from './route
 import { Route as AuthenticatedAffiliateRewardsIndexRouteImport } from './routes/_authenticated/affiliate-rewards/index'
 import { Route as AuthenticatedPartnerApplyIndexRouteImport } from './routes/_authenticated/partner-apply/index'
 import { Route as AuthenticatedPartnerOffersIndexRouteImport } from './routes/_authenticated/partner-offers/index'
+import { Route as AuthenticatedAnnouncementManagementIndexRouteImport } from './routes/_authenticated/announcement-management/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -374,6 +375,12 @@ const AuthenticatedPartnerOffersIndexRoute =
     path: '/partner-offers/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAnnouncementManagementIndexRoute =
+  AuthenticatedAnnouncementManagementIndexRouteImport.update({
+    id: '/announcement-management/',
+    path: '/announcement-management/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
   id: '/pricing/$modelId/',
   path: '/pricing/$modelId/',
@@ -529,6 +536,7 @@ export interface FileRoutesByFullPath {
   '/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
   '/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
   '/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
+  '/announcement-management/': typeof AuthenticatedAnnouncementManagementIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -599,6 +607,7 @@ export interface FileRoutesByTo {
   '/affiliate-rewards': typeof AuthenticatedAffiliateRewardsIndexRoute
   '/partner-apply': typeof AuthenticatedPartnerApplyIndexRoute
   '/partner-offers': typeof AuthenticatedPartnerOffersIndexRoute
+  '/announcement-management': typeof AuthenticatedAnnouncementManagementIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -673,6 +682,7 @@ export interface FileRoutesById {
   '/_authenticated/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
   '/_authenticated/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
   '/_authenticated/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
+  '/_authenticated/announcement-management/': typeof AuthenticatedAnnouncementManagementIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -746,6 +756,7 @@ export interface FileRouteTypes {
     | '/affiliate-rewards/'
     | '/partner-apply/'
     | '/partner-offers/'
+    | '/announcement-management/'
     | '/pricing/$modelId/'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -816,6 +827,7 @@ export interface FileRouteTypes {
     | '/affiliate-rewards'
     | '/partner-apply'
     | '/partner-offers'
+    | '/announcement-management'
     | '/pricing/$modelId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -889,6 +901,7 @@ export interface FileRouteTypes {
     | '/_authenticated/affiliate-rewards/'
     | '/_authenticated/partner-apply/'
     | '/_authenticated/partner-offers/'
+    | '/_authenticated/announcement-management/'
     | '/pricing/$modelId/'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
@@ -1309,6 +1322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPartnerOffersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/announcement-management/': {
+      id: '/_authenticated/announcement-management/'
+      path: '/announcement-management'
+      fullPath: '/announcement-management/'
+      preLoaderRoute: typeof AuthenticatedAnnouncementManagementIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/pricing/$modelId/': {
       id: '/pricing/$modelId/'
       path: '/pricing/$modelId'
@@ -1549,6 +1569,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAffiliateRewardsIndexRoute: typeof AuthenticatedAffiliateRewardsIndexRoute
   AuthenticatedPartnerApplyIndexRoute: typeof AuthenticatedPartnerApplyIndexRoute
   AuthenticatedPartnerOffersIndexRoute: typeof AuthenticatedPartnerOffersIndexRoute
+  AuthenticatedAnnouncementManagementIndexRoute: typeof AuthenticatedAnnouncementManagementIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1582,6 +1603,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAffiliateRewardsIndexRoute: AuthenticatedAffiliateRewardsIndexRoute,
   AuthenticatedPartnerApplyIndexRoute: AuthenticatedPartnerApplyIndexRoute,
   AuthenticatedPartnerOffersIndexRoute: AuthenticatedPartnerOffersIndexRoute,
+  AuthenticatedAnnouncementManagementIndexRoute: AuthenticatedAnnouncementManagementIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

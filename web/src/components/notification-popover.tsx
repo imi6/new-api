@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { TFunction } from 'i18next'
-import { Bell, Megaphone } from 'lucide-react'
+import { Bell, Megaphone, Newspaper } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { RichContent } from '@/components/rich-content'
@@ -40,9 +40,16 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  useBulletins,
+  useMarkBulletinsRead,
+} from '@/features/bulletins/hooks/use-bulletins'
+import type { Bulletin } from '@/features/bulletins/types'
+import type { NotificationTab } from '@/hooks/use-notifications'
 import { getAnnouncementColorClass } from '@/lib/colors'
 import { formatDateTimeObject } from '@/lib/time'
 import { cn } from '@/lib/utils'
+import { useBulletinSessionStore } from '@/stores/bulletin-store'
 
 interface AnnouncementItem {
   id?: number | string
@@ -56,8 +63,8 @@ interface NotificationPopoverProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   unreadCount: number
-  activeTab: 'notice' | 'announcements'
-  onTabChange: (tab: 'notice' | 'announcements') => void
+  activeTab: NotificationTab
+  onTabChange: (tab: NotificationTab) => void
   notice: string
   announcements: AnnouncementItem[]
   loading: boolean
@@ -288,7 +295,68 @@ function AnnouncementsContent({
 }
 
 /**
- * Notification popover with Notice and Announcements tabs
+ * The announcements that pop up, newest first; unread ones have a dot.
+ * Opening one shows it in full and counts as reading it.
+ */
+function BulletinsContent({
+  onOpen,
+  t,
+}: {
+  onOpen: (item: Bulletin) => void
+  t: TFunction
+}) {
+  const bulletins = useBulletins()
+  if (bulletins.isLoading) {
+    return <EmptyState icon={<Newspaper />} title={t('Loading...')} />
+  }
+  if (bulletins.items.length === 0) {
+    return (
+      <EmptyState
+        icon={<Newspaper />}
+        title={t('No announcements at this time')}
+      />
+    )
+  }
+  return (
+    <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
+      <div className='flex flex-col gap-1'>
+        {bulletins.items.map((item) => (
+          <Button
+            key={item.id}
+            type='button'
+            variant='ghost'
+            onClick={() => onOpen(item)}
+            className='h-auto w-full items-start justify-start gap-3 px-2 py-2.5 text-left whitespace-normal'
+          >
+            <span
+              className={cn(
+                'mt-1.5 inline-block size-2 shrink-0 rounded-full',
+                item.read ? 'bg-muted-foreground/30' : 'bg-primary'
+              )}
+              aria-hidden='true'
+            />
+            <span className='flex min-w-0 flex-1 flex-col gap-1'>
+              <span
+                className={cn('text-sm break-words', !item.read && 'font-semibold')}
+              >
+                {item.title}
+              </span>
+              {item.shown_at > 0 && (
+                <span className='text-muted-foreground text-xs font-normal'>
+                  {getRelativeTime(new Date(item.shown_at * 1000), t)}
+                </span>
+              )}
+              {!item.read && <span className='sr-only'>{t('Unread')}</span>}
+            </span>
+          </Button>
+        ))}
+      </div>
+    </ScrollArea>
+  )
+}
+
+/**
+ * Notification popover with Notice, Announcements and Timeline tabs
  */
 export function NotificationPopover({
   open,
@@ -302,6 +370,15 @@ export function NotificationPopover({
   className,
 }: NotificationPopoverProps) {
   const { t } = useTranslation()
+  const bulletinUnread = useBulletins().unreadCount
+  const markBulletinsRead = useMarkBulletinsRead()
+  const openBulletin = useBulletinSessionStore((state) => state.open)
+  // The dialog opens over the page, so the popover closes first.
+  const handleOpenBulletin = (item: Bulletin) => {
+    markBulletinsRead([item.id])
+    onOpenChange(false)
+    openBulletin(item.id)
+  }
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
@@ -341,10 +418,22 @@ export function NotificationPopover({
           value={activeTab}
           onValueChange={onTabChange as (value: string) => void}
         >
-          <TabsList className='grid w-full grid-cols-2'>
+          <TabsList className='grid w-full grid-cols-3'>
             <TabsTrigger value='notice' className='gap-1.5'>
               <Bell className='size-3.5' />
               {t('Notice')}
+            </TabsTrigger>
+            <TabsTrigger value='bulletins' className='gap-1.5'>
+              <Newspaper className='size-3.5' />
+              {t('Announcements')}
+              {bulletinUnread > 0 && (
+                <Badge
+                  variant='destructive'
+                  className='h-4 min-w-4 px-1 text-[10px] tabular-nums'
+                >
+                  {bulletinUnread > 99 ? '99+' : bulletinUnread}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value='announcements' className='gap-1.5'>
               <Megaphone className='size-3.5' />
@@ -354,6 +443,10 @@ export function NotificationPopover({
 
           <TabsContent value='notice' className='mt-2'>
             <NoticeContent notice={notice} loading={loading} t={t} />
+          </TabsContent>
+
+          <TabsContent value='bulletins' className='mt-2'>
+            <BulletinsContent onOpen={handleOpenBulletin} t={t} />
           </TabsContent>
 
           <TabsContent value='announcements' className='mt-2'>
