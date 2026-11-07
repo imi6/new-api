@@ -154,6 +154,10 @@ export type SiteSettings = {
   'legal.privacy_policy': string
   HeaderNavModules: string
   SidebarModulesAdmin: string
+  'partner_setting.max_sites_per_user': number
+  'partner_setting.max_offers_per_site': number
+  'partner_setting.guest_hourly_limit': number
+  'partner_setting.intro': string
 }
 
 export type AuthSettings = {
