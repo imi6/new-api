@@ -68,7 +68,9 @@ export function AffiliateRewards() {
         </Button>
       </SectionPageLayout.Actions>
       <SectionPageLayout.Content>
-        <div className='flex flex-col gap-4'>
+        {/* The content area does not scroll, so each tab's table needs a
+            bounded height to scroll its own rows, as on the plugins page. */}
+        <div className='flex h-full min-h-0 flex-col gap-4'>
           <AffiliateSummaryCards
             summary={summary.data}
             loading={summary.isLoading}
@@ -92,15 +94,16 @@ export function AffiliateRewards() {
                 replace: true,
               })
             }
+            className='flex min-h-0 flex-1 flex-col gap-3'
           >
             <TabsList>
               <TabsTrigger value='ranking'>{t('Invite ranking')}</TabsTrigger>
               <TabsTrigger value='claims'>{t('Claim records')}</TabsTrigger>
             </TabsList>
-            <TabsContent value='ranking' className='pt-3'>
+            <TabsContent value='ranking' className='min-h-0 flex-1'>
               <AffiliateRankingTab />
             </TabsContent>
-            <TabsContent value='claims' className='pt-3'>
+            <TabsContent value='claims' className='min-h-0 flex-1'>
               <AffiliateClaimsTab />
             </TabsContent>
           </Tabs>
