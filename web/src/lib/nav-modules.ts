@@ -22,7 +22,11 @@ import { readCachedStatus, statusQueryOptions } from '@/lib/status-query'
 
 export type ModuleAccess = { enabled: boolean; requireAuth: boolean }
 
-export type HeaderNavModule = 'rankings' | 'pricing' | 'groupHealth'
+export type HeaderNavModule =
+  | 'rankings'
+  | 'pricing'
+  | 'groupHealth'
+  | 'partner'
 
 export type HeaderNavModules = {
   home: boolean
@@ -30,6 +34,7 @@ export type HeaderNavModules = {
   pricing: ModuleAccess
   rankings: ModuleAccess
   groupHealth: ModuleAccess
+  partner: ModuleAccess
   docs: boolean
   about: boolean
   [key: string]: boolean | ModuleAccess
@@ -42,6 +47,8 @@ const DEFAULT_HEADER_NAV_MODULES: HeaderNavModules = {
   rankings: { enabled: true, requireAuth: false },
   // Closed until an administrator opens it, unlike the other pages.
   groupHealth: { enabled: false, requireAuth: false },
+  // The supplier application page; closed, and asks for a sign-in.
+  partner: { enabled: false, requireAuth: true },
   docs: true,
   about: true,
 }
@@ -50,6 +57,7 @@ const DEFAULTS: Record<HeaderNavModule, ModuleAccess> = {
   pricing: DEFAULT_HEADER_NAV_MODULES.pricing,
   rankings: DEFAULT_HEADER_NAV_MODULES.rankings,
   groupHealth: DEFAULT_HEADER_NAV_MODULES.groupHealth,
+  partner: DEFAULT_HEADER_NAV_MODULES.partner,
 }
 
 function cloneHeaderNavDefaults(): HeaderNavModules {
@@ -58,6 +66,7 @@ function cloneHeaderNavDefaults(): HeaderNavModules {
     pricing: { ...DEFAULT_HEADER_NAV_MODULES.pricing },
     rankings: { ...DEFAULT_HEADER_NAV_MODULES.rankings },
     groupHealth: { ...DEFAULT_HEADER_NAV_MODULES.groupHealth },
+    partner: { ...DEFAULT_HEADER_NAV_MODULES.partner },
   }
 }
 
@@ -127,6 +136,10 @@ export function parseHeaderNavModules(raw: unknown): HeaderNavModules {
     }
     if (key === 'groupHealth') {
       result.groupHealth = parseAccess(value, result.groupHealth)
+      return
+    }
+    if (key === 'partner') {
+      result.partner = parseAccess(value, result.partner)
       return
     }
 

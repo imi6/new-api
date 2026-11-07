@@ -18,10 +18,14 @@ type headerNavAccess struct {
 // square and rankings it stays closed until an administrator opens it.
 const HeaderNavModuleGroupHealth = "groupHealth"
 
+// HeaderNavModulePartner is the supplier application page. It stays closed
+// until an administrator opens it, and asks for a sign-in until told not to.
+const HeaderNavModulePartner = "partner"
+
 func getHeaderNavAccess(module string) headerNavAccess {
 	fallback := headerNavAccess{
-		Enabled:     module != HeaderNavModuleGroupHealth,
-		RequireAuth: false,
+		Enabled:     module != HeaderNavModuleGroupHealth && module != HeaderNavModulePartner,
+		RequireAuth: module == HeaderNavModulePartner,
 	}
 
 	common.OptionMapRWMutex.RLock()
