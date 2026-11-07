@@ -31,7 +31,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { getLobeIcon } from '@/lib/lobe-icon'
+import { ChannelTypeLogo } from '@/features/channels/components/channel-type-badge'
+import {
+  apiKeyPlatformLabel,
+  OTHER_PLATFORM,
+  rankGroupPlatforms,
+} from '@/features/keys/lib/api-key-group-platforms'
 import { cn } from '@/lib/utils'
 
 import {
@@ -42,7 +47,7 @@ import {
   getQuotaTypeLabels,
 } from '../constants'
 import { getModelQuotaType, parseTags } from '../lib/filters'
-import type { PricingModel, PricingVendor } from '../types'
+import type { PricingModel } from '../types'
 
 type FilterOption = {
   value: string
@@ -64,16 +69,20 @@ type FilterSectionProps = {
 export interface PricingSidebarProps {
   quotaTypeFilter: string
   endpointTypeFilter: string
-  vendorFilter: string
+  platformFilter: string
   groupFilter: string
   tagFilter: string
   onQuotaTypeChange: (value: string) => void
   onEndpointTypeChange: (value: string) => void
-  onVendorChange: (value: string) => void
+  onPlatformChange: (value: string) => void
   onGroupChange: (value: string) => void
   onTagChange: (value: string) => void
-  vendors: PricingVendor[]
   groups: string[]
+  /**
+   * The platform of each group, a channel type id or OTHER_PLATFORM. Each
+   * platform chip counts its groups, and a chosen platform lists only its own.
+   */
+  groupPlatformOf?: ReadonlyMap<string, string>
   groupRatios?: Record<string, number>
   /** Recent ratio changes, marked on each group's chip. */
   groupRatioChanges?: Record<string, GroupRatioChange>
@@ -179,17 +188,10 @@ export const PricingSidebar = memo(function PricingSidebar(
 ) {
   const { t } = useTranslation()
   const counts = useMemo(() => {
-    const vendors = new Map<string, number>()
     const tags = new Map<string, number>()
     const endpoints = new Map<string, number>()
     const quotas = { token: 0, request: 0, task: 0 }
     for (const model of props.models) {
-      if (model.vendor_name) {
-        vendors.set(
-          model.vendor_name,
-          (vendors.get(model.vendor_name) ?? 0) + 1
-        )
-      }
       for (const tag of new Set(
         parseTags(model.tags).map((tag) => tag.toLowerCase())
       )) {
@@ -201,36 +203,51 @@ export const PricingSidebar = memo(function PricingSidebar(
       const quotaType = getModelQuotaType(model)
       if (quotaType) quotas[quotaType]++
     }
-    return { vendors, tags, endpoints, quotas }
+    return { tags, endpoints, quotas }
   }, [props.models])
   const quotaTypeLabels = getQuotaTypeLabels(t)
   const endpointTypeLabels = getEndpointTypeLabels(t)
 
-  const vendorOptions: FilterOption[] = [
+  const platformOf = (group: string) =>
+    props.groupPlatformOf?.get(group) ?? OTHER_PLATFORM
+  const platformIcon = (platform: string) =>
+    platform === OTHER_PLATFORM ? undefined : (
+      <ChannelTypeLogo type={Number(platform)} size={14} />
+    )
+
+  // Each platform chip counts its groups, not its models.
+  const platformOptions: FilterOption[] = [
     {
       value: FILTER_ALL,
-      label: t('All Vendors'),
-      count: props.models.length,
+      label: t('All platforms'),
+      count: props.groups.length,
     },
-    ...props.vendors
-      .map((vendor) => ({
-        value: vendor.name,
-        label: vendor.name,
-        count: counts.vendors.get(vendor.name) ?? 0,
-        icon: vendor.icon ? getLobeIcon(vendor.icon, 14) : undefined,
-      }))
-      .filter((vendor) => vendor.count > 0),
+    ...(props.groupPlatformOf
+      ? rankGroupPlatforms(props.groups.map(platformOf), t).map(
+          ([platform, count]) => ({
+            value: platform,
+            label: apiKeyPlatformLabel(platform, t),
+            count,
+            icon: platformIcon(platform),
+          })
+        )
+      : []),
   ]
 
+  const shownGroups =
+    props.platformFilter === FILTER_ALL
+      ? props.groups
+      : props.groups.filter((group) => platformOf(group) === props.platformFilter)
   const groupOptions: FilterOption[] = [
     {
       value: FILTER_ALL,
       label: t('All Groups'),
     },
-    ...props.groups.map((group) => ({
+    ...shownGroups.map((group) => ({
       value: group,
       label: group,
       suffix: formatGroupRatio(props.groupRatios?.[group]),
+      icon: props.groupPlatformOf ? platformIcon(platformOf(group)) : undefined,
       badge: <RatioChangeBadge change={props.groupRatioChanges?.[group]} />,
     })),
   ]
@@ -290,11 +307,11 @@ export const PricingSidebar = memo(function PricingSidebar(
     // A row whose only chip is "All" has nothing to choose, so it is left out.
     const rows = [
       {
-        key: 'vendor',
-        title: t('Vendor'),
-        value: props.vendorFilter,
-        options: vendorOptions,
-        onChange: props.onVendorChange,
+        key: 'platform',
+        title: t('Platform'),
+        value: props.platformFilter,
+        options: platformOptions,
+        onChange: props.onPlatformChange,
       },
       {
         key: 'group',
@@ -410,17 +427,19 @@ export const PricingSidebar = memo(function PricingSidebar(
       )}
 
       <div className='space-y-1'>
+        {platformOptions.length > 1 && (
+          <FilterSection
+            title={t('Platform')}
+            value={props.platformFilter}
+            options={platformOptions}
+            onChange={props.onPlatformChange}
+          />
+        )}
         <FilterSection
           title={t('Groups')}
           value={props.groupFilter}
           options={groupOptions}
           onChange={props.onGroupChange}
-        />
-        <FilterSection
-          title={t('All Vendors')}
-          value={props.vendorFilter}
-          options={vendorOptions}
-          onChange={props.onVendorChange}
         />
         <FilterSection
           title={t('Model Tags')}

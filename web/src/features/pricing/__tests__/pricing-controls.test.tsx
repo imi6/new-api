@@ -38,7 +38,7 @@ function toolbarProps(): PricingToolbarProps {
     viewMode: 'card',
     quotaTypeFilter: 'all',
     endpointTypeFilter: 'all',
-    vendorFilter: 'all',
+    platformFilter: 'all',
     groupFilter: 'all',
     tagFilter: 'all',
     onSortChange: vi.fn(),
@@ -47,10 +47,9 @@ function toolbarProps(): PricingToolbarProps {
     onViewModeChange: vi.fn(),
     onQuotaTypeChange: vi.fn(),
     onEndpointTypeChange: vi.fn(),
-    onVendorChange: vi.fn(),
+    onPlatformChange: vi.fn(),
     onGroupChange: vi.fn(),
     onTagChange: vi.fn(),
-    vendors: [],
     groups: ['default', 'premium'],
     groupRatios: { default: 1, premium: 3 },
     tags: [],
@@ -261,21 +260,12 @@ describe('pricing controls', () => {
     ]
     const sidebarProps = {
       ...props,
-      vendors: [
-        { id: 1, name: 'Vendor A' },
-        { id: 2, name: 'Vendor B' },
-      ],
       tags: ['Chat', 'Image', 'Video'],
     }
     const { rerender } = render(
       <PricingSidebar {...sidebarProps} models={models} />
     )
 
-    expect(
-      screen.getByRole('button', { name: /^All Vendors\s*3$/ })
-    ).toBeVisible()
-    expect(screen.getByRole('button', { name: /^Vendor A\s*2$/ })).toBeVisible()
-    expect(screen.getByRole('button', { name: /^Vendor B\s*1$/ })).toBeVisible()
     expect(screen.getByRole('button', { name: /^Chat\s*2$/ })).toBeVisible()
     expect(screen.getByRole('button', { name: /^Chat\s*1$/ })).toBeVisible()
     expect(
@@ -289,11 +279,6 @@ describe('pricing controls', () => {
     ).toBeVisible()
 
     rerender(<PricingSidebar {...sidebarProps} models={[models[1]]} />)
-    expect(
-      screen.getByRole('button', { name: /^All Vendors\s*1$/ })
-    ).toBeVisible()
-    expect(screen.getByRole('button', { name: /^Vendor A\s*1$/ })).toBeVisible()
-    expect(screen.queryByRole('button', { name: /^Vendor B\s*1$/ })).toBeNull()
     expect(screen.getByRole('button', { name: /^Chat\s*1$/ })).toBeVisible()
     expect(screen.getByRole('button', { name: /^Chat\s*0$/ })).toBeVisible()
     expect(
