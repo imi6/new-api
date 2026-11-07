@@ -8382,7 +8382,6 @@
     "Healthy first": "Bình thường trước",
     "Outages first": "Bất thường trước",
     "Sort by {{field}}": "Sắp xếp theo {{field}}",
-    "Sort by {{field}} first": "Ưu tiên sắp xếp theo {{field}}",
     "Delete announcement": "Xóa thông báo",
     "The announcement is deleted for everyone. To only take it down, set it to Archived instead.": "Thông báo sẽ bị xóa với mọi người. Nếu chỉ muốn gỡ xuống, hãy đặt thành \"Đã lưu trữ\".",
     "Scheduled": "Đã lên lịch",
