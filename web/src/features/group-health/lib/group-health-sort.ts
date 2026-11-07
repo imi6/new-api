@@ -18,8 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import type { GroupHealthGroup } from '../types'
 
-// The order of the channel status cards. One measure at a time, by the same
-// number its card shows; a card without that number always goes last.
+// The order of the channel status cards. Every measure has a direction and
+// they all count: the first decides the order and the rest separate the cards
+// it ties on. Each measure reads the same number its card shows, and a card
+// without that number goes last whichever way the measure points.
 
 export type GroupHealthSortKey =
   | 'ratio'
@@ -30,10 +32,17 @@ export type GroupHealthSortKey =
 
 export type GroupHealthSortDirection = 'asc' | 'desc'
 
-export type GroupHealthSort = {
+export type GroupHealthSortRule = {
   key: GroupHealthSortKey
   direction: GroupHealthSortDirection
 }
+
+/**
+ * Every measure with its direction, in the order they are applied: the first
+ * decides the order and the next ones only separate cards the earlier ones
+ * tie on.
+ */
+export type GroupHealthSortRules = GroupHealthSortRule[]
 
 /** Each measure's name, its better direction, and the words of each way. */
 export const GROUP_HEALTH_SORT_META: Record<
@@ -82,9 +91,24 @@ export const GROUP_HEALTH_SORT_KEYS = Object.keys(
   GROUP_HEALTH_SORT_META
 ) as GroupHealthSortKey[]
 
-export const DEFAULT_GROUP_HEALTH_SORT: GroupHealthSort = {
-  key: 'ratio',
-  direction: 'asc',
+/** Every measure pointing its better way, cheapest groups first. */
+export const DEFAULT_GROUP_HEALTH_SORT_RULES: GroupHealthSortRules =
+  GROUP_HEALTH_SORT_KEYS.map((key) => ({
+    key,
+    direction: GROUP_HEALTH_SORT_META[key].better,
+  }))
+
+/**
+ * Puts one measure first, with the direction just chosen for it, and leaves
+ * the others in their order behind it. Choosing a measure therefore decides
+ * the order without dropping what the other boxes say.
+ */
+export function promoteGroupHealthSort(
+  rules: GroupHealthSortRules,
+  key: GroupHealthSortKey,
+  direction: GroupHealthSortDirection
+): GroupHealthSortRules {
+  return [{ key, direction }, ...rules.filter((rule) => rule.key !== key)]
 }
 
 /** The number a card shows for the measure, or null when it shows "—". */
@@ -107,53 +131,73 @@ function sortValue(
   }
 }
 
+/** Which of two cards comes first by one measure, or 0 when they tie. */
+function compareBy(
+  left: GroupHealthGroup,
+  right: GroupHealthGroup,
+  rule: GroupHealthSortRule
+): number {
+  const leftValue = sortValue(left, rule.key)
+  const rightValue = sortValue(right, rule.key)
+  if (leftValue === rightValue) return 0
+  if (leftValue === null) return 1
+  if (rightValue === null) return -1
+  const sign = rule.direction === 'asc' ? 1 : -1
+  return (leftValue - rightValue) * sign
+}
+
 /**
- * Sorts a copy of the groups. Cards without the number go last either way;
- * equal numbers keep the group name order, so a refresh with the same
- * numbers does not move the cards.
+ * Sorts a copy of the groups by each measure in turn, moving on to the next
+ * only where the earlier ones tie. Cards without a number go last by that
+ * measure either way; cards every measure ties on keep the group name order,
+ * so a refresh with the same numbers does not move the cards.
  */
 export function sortGroupHealth(
   groups: GroupHealthGroup[],
-  sort: GroupHealthSort
+  rules: GroupHealthSortRules
 ): GroupHealthGroup[] {
-  const sign = sort.direction === 'asc' ? 1 : -1
-  return groups
-    .map((group) => ({ group, value: sortValue(group, sort.key) }))
-    .sort((left, right) => {
-      if (left.value !== right.value) {
-        if (left.value === null) return 1
-        if (right.value === null) return -1
-        return (left.value - right.value) * sign
-      }
-      return left.group.name.localeCompare(right.group.name)
-    })
-    .map((entry) => entry.group)
+  return [...groups].sort((left, right) => {
+    for (const rule of rules) {
+      const order = compareBy(left, right, rule)
+      if (order !== 0) return order
+    }
+    return left.name.localeCompare(right.name)
+  })
 }
 
-const SORT_STORAGE_KEY = 'group-health-sort'
+const SORT_STORAGE_KEY = 'group-health-sort-rules'
 
-/** The last chosen order in this browser, or the default. */
-export function readGroupHealthSort(): GroupHealthSort {
+/**
+ * The last chosen order in this browser, with any measure it does not name
+ * appended in its better direction, so every box always has a direction.
+ */
+export function readGroupHealthSortRules(): GroupHealthSortRules {
+  const rules: GroupHealthSortRules = []
   try {
     const raw = window.localStorage.getItem(SORT_STORAGE_KEY)
-    const saved = raw ? (JSON.parse(raw) as Partial<GroupHealthSort>) : null
-    if (
-      saved &&
-      saved.key &&
-      saved.key in GROUP_HEALTH_SORT_META &&
-      (saved.direction === 'asc' || saved.direction === 'desc')
-    ) {
-      return { key: saved.key, direction: saved.direction }
+    const saved: unknown = raw ? JSON.parse(raw) : null
+    if (Array.isArray(saved)) {
+      for (const entry of saved as Partial<GroupHealthSortRule>[]) {
+        const key = entry?.key
+        const direction = entry?.direction
+        if (!key || !(key in GROUP_HEALTH_SORT_META)) continue
+        if (direction !== 'asc' && direction !== 'desc') continue
+        if (rules.some((rule) => rule.key === key)) continue
+        rules.push({ key, direction })
+      }
     }
   } catch {
     /* storage may be unavailable or hold something else */
   }
-  return DEFAULT_GROUP_HEALTH_SORT
+  for (const rule of DEFAULT_GROUP_HEALTH_SORT_RULES) {
+    if (!rules.some((kept) => kept.key === rule.key)) rules.push(rule)
+  }
+  return rules
 }
 
-export function saveGroupHealthSort(sort: GroupHealthSort): void {
+export function saveGroupHealthSortRules(rules: GroupHealthSortRules): void {
   try {
-    window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort))
+    window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(rules))
   } catch {
     /* storage may be unavailable */
   }
