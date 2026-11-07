@@ -33,6 +33,7 @@ import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
 import { Route as HealthIndexRouteImport } from './routes/health/index'
+import { Route as PartnerIndexRouteImport } from './routes/partner/index'
 import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
@@ -60,6 +61,8 @@ import { Route as AuthenticatedInvoiceIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedChannelStatusIndexRouteImport } from './routes/_authenticated/channel-status/index'
 import { Route as AuthenticatedInvoiceManagementIndexRouteImport } from './routes/_authenticated/invoice-management/index'
 import { Route as AuthenticatedAffiliateRewardsIndexRouteImport } from './routes/_authenticated/affiliate-rewards/index'
+import { Route as AuthenticatedPartnerApplyIndexRouteImport } from './routes/_authenticated/partner-apply/index'
+import { Route as AuthenticatedPartnerOffersIndexRouteImport } from './routes/_authenticated/partner-offers/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -195,6 +198,11 @@ const RankingsIndexRoute = RankingsIndexRouteImport.update({
 const HealthIndexRoute = HealthIndexRouteImport.update({
   id: '/health/',
   path: '/health/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnerIndexRoute = PartnerIndexRouteImport.update({
+  id: '/partner/',
+  path: '/partner/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupIndexRoute = SetupIndexRouteImport.update({
@@ -354,6 +362,18 @@ const AuthenticatedAffiliateRewardsIndexRoute =
     path: '/affiliate-rewards/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPartnerApplyIndexRoute =
+  AuthenticatedPartnerApplyIndexRouteImport.update({
+    id: '/partner-apply/',
+    path: '/partner-apply/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPartnerOffersIndexRoute =
+  AuthenticatedPartnerOffersIndexRouteImport.update({
+    id: '/partner-offers/',
+    path: '/partner-offers/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
   id: '/pricing/$modelId/',
   path: '/pricing/$modelId/',
@@ -479,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/health/': typeof HealthIndexRoute
+  '/partner/': typeof PartnerIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -506,6 +527,8 @@ export interface FileRoutesByFullPath {
   '/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
   '/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
+  '/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
+  '/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -546,6 +569,7 @@ export interface FileRoutesByTo {
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
   '/health': typeof HealthIndexRoute
+  '/partner': typeof PartnerIndexRoute
   '/setup': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -573,6 +597,8 @@ export interface FileRoutesByTo {
   '/channel-status': typeof AuthenticatedChannelStatusIndexRoute
   '/invoice-management': typeof AuthenticatedInvoiceManagementIndexRoute
   '/affiliate-rewards': typeof AuthenticatedAffiliateRewardsIndexRoute
+  '/partner-apply': typeof AuthenticatedPartnerApplyIndexRoute
+  '/partner-offers': typeof AuthenticatedPartnerOffersIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -617,6 +643,7 @@ export interface FileRoutesById {
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/health/': typeof HealthIndexRoute
+  '/partner/': typeof PartnerIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
   '/_authenticated/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -644,6 +671,8 @@ export interface FileRoutesById {
   '/_authenticated/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/_authenticated/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
   '/_authenticated/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
+  '/_authenticated/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
+  '/_authenticated/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -687,6 +716,7 @@ export interface FileRouteTypes {
     | '/pricing/'
     | '/rankings/'
     | '/health/'
+    | '/partner/'
     | '/setup/'
     | '/user/reset'
     | '/chat/$chatId'
@@ -714,6 +744,8 @@ export interface FileRouteTypes {
     | '/channel-status/'
     | '/invoice-management/'
     | '/affiliate-rewards/'
+    | '/partner-apply/'
+    | '/partner-offers/'
     | '/pricing/$modelId/'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -754,6 +786,7 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/rankings'
     | '/health'
+    | '/partner'
     | '/setup'
     | '/user/reset'
     | '/chat/$chatId'
@@ -781,6 +814,8 @@ export interface FileRouteTypes {
     | '/channel-status'
     | '/invoice-management'
     | '/affiliate-rewards'
+    | '/partner-apply'
+    | '/partner-offers'
     | '/pricing/$modelId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -824,6 +859,7 @@ export interface FileRouteTypes {
     | '/pricing/'
     | '/rankings/'
     | '/health/'
+    | '/partner/'
     | '/setup/'
     | '/(auth)/user/reset'
     | '/_authenticated/chat/$chatId'
@@ -851,6 +887,8 @@ export interface FileRouteTypes {
     | '/_authenticated/channel-status/'
     | '/_authenticated/invoice-management/'
     | '/_authenticated/affiliate-rewards/'
+    | '/_authenticated/partner-apply/'
+    | '/_authenticated/partner-offers/'
     | '/pricing/$modelId/'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
@@ -886,6 +924,7 @@ export interface RootRouteChildren {
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
   HealthIndexRoute: typeof HealthIndexRoute
+  PartnerIndexRoute: typeof PartnerIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
   PricingModelIdIndexRoute: typeof PricingModelIdIndexRoute
 }
@@ -1058,6 +1097,13 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health/'
       preLoaderRoute: typeof HealthIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partner/': {
+      id: '/partner/'
+      path: '/partner'
+      fullPath: '/partner/'
+      preLoaderRoute: typeof PartnerIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup/': {
@@ -1247,6 +1293,20 @@ declare module '@tanstack/react-router' {
       path: '/affiliate-rewards'
       fullPath: '/affiliate-rewards/'
       preLoaderRoute: typeof AuthenticatedAffiliateRewardsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/partner-apply/': {
+      id: '/_authenticated/partner-apply/'
+      path: '/partner-apply'
+      fullPath: '/partner-apply/'
+      preLoaderRoute: typeof AuthenticatedPartnerApplyIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/partner-offers/': {
+      id: '/_authenticated/partner-offers/'
+      path: '/partner-offers'
+      fullPath: '/partner-offers/'
+      preLoaderRoute: typeof AuthenticatedPartnerOffersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/pricing/$modelId/': {
@@ -1487,6 +1547,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChannelStatusIndexRoute: typeof AuthenticatedChannelStatusIndexRoute
   AuthenticatedInvoiceManagementIndexRoute: typeof AuthenticatedInvoiceManagementIndexRoute
   AuthenticatedAffiliateRewardsIndexRoute: typeof AuthenticatedAffiliateRewardsIndexRoute
+  AuthenticatedPartnerApplyIndexRoute: typeof AuthenticatedPartnerApplyIndexRoute
+  AuthenticatedPartnerOffersIndexRoute: typeof AuthenticatedPartnerOffersIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1518,6 +1580,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChannelStatusIndexRoute: AuthenticatedChannelStatusIndexRoute,
   AuthenticatedInvoiceManagementIndexRoute: AuthenticatedInvoiceManagementIndexRoute,
   AuthenticatedAffiliateRewardsIndexRoute: AuthenticatedAffiliateRewardsIndexRoute,
+  AuthenticatedPartnerApplyIndexRoute: AuthenticatedPartnerApplyIndexRoute,
+  AuthenticatedPartnerOffersIndexRoute: AuthenticatedPartnerOffersIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -1539,6 +1603,7 @@ const rootRouteChildren: RootRouteChildren = {
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,
   HealthIndexRoute: HealthIndexRoute,
+  PartnerIndexRoute: PartnerIndexRoute,
   SetupIndexRoute: SetupIndexRoute,
   PricingModelIdIndexRoute: PricingModelIdIndexRoute,
 }
