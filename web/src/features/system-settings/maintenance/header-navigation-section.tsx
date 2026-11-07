@@ -57,6 +57,8 @@ const headerNavSchema = z.object({
   rankingsRequireAuth: z.boolean(),
   groupHealthEnabled: z.boolean(),
   groupHealthRequireAuth: z.boolean(),
+  partnerEnabled: z.boolean(),
+  partnerRequireAuth: z.boolean(),
   docs: z.boolean(),
   about: z.boolean(),
 })
@@ -99,6 +101,14 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.groupHealth?.requireAuth === undefined
       ? HEADER_NAV_DEFAULT.groupHealth.requireAuth
       : Boolean(config.groupHealth.requireAuth),
+  partnerEnabled:
+    config.partner?.enabled === undefined
+      ? HEADER_NAV_DEFAULT.partner.enabled
+      : Boolean(config.partner.enabled),
+  partnerRequireAuth:
+    config.partner?.requireAuth === undefined
+      ? HEADER_NAV_DEFAULT.partner.requireAuth
+      : Boolean(config.partner.requireAuth),
   docs:
     config.docs === undefined ? HEADER_NAV_DEFAULT.docs : Boolean(config.docs),
   about:
@@ -145,6 +155,11 @@ export function HeaderNavigationSection({
         ...(config.groupHealth ?? HEADER_NAV_DEFAULT.groupHealth),
         enabled: values.groupHealthEnabled,
         requireAuth: values.groupHealthRequireAuth,
+      },
+      partner: {
+        ...(config.partner ?? HEADER_NAV_DEFAULT.partner),
+        enabled: values.partnerEnabled,
+        requireAuth: values.partnerRequireAuth,
       },
     }
 
@@ -197,6 +212,7 @@ export function HeaderNavigationSection({
       | 'pricingEnabled'
       | 'rankingsEnabled'
       | 'groupHealthEnabled'
+      | 'partnerEnabled'
     title: string
     description: string
     requireAuthTitle: string
@@ -235,6 +251,19 @@ export function HeaderNavigationSection({
       requireAuthTitle: t('Require login to view channel status'),
       requireAuthDescription: t(
         'Visitors must authenticate before accessing the channel status page.'
+      ),
+    },
+    {
+      enabledKey: 'partnerEnabled',
+      requireAuthKey: 'partnerRequireAuth',
+      requireAuthDependsOn: 'partnerEnabled',
+      title: t('Supplier application'),
+      description: t(
+        'Page where other sites submit the groups and ratios they can supply. Also shown in the Personal menu.'
+      ),
+      requireAuthTitle: t('Require login to submit'),
+      requireAuthDescription: t(
+        'Turned off, visitors who are not signed in can submit too, limited per IP.'
       ),
     },
   ]

@@ -38,6 +38,10 @@ const defaultSiteSettings: SiteSettings = {
   'legal.privacy_policy': '',
   HeaderNavModules: '',
   SidebarModulesAdmin: '',
+  'partner_setting.max_sites_per_user': 10,
+  'partner_setting.max_offers_per_site': 20,
+  'partner_setting.guest_hourly_limit': 3,
+  'partner_setting.intro': '',
 }
 
 export function SiteSettings() {
