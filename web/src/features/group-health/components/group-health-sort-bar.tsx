@@ -47,10 +47,10 @@ interface GroupHealthSortBarProps {
 }
 
 /**
- * One box per measure, each only choosing a direction. The number before a
- * box says where it comes in the order: the cards follow box 1, and the rest
- * separate the cards it ties on. Choosing a direction, or clicking the name,
- * moves that box to the front without clearing the others.
+ * One box per measure, carrying its name and the direction it points. The
+ * cards follow the box used last, outlined here, and the others only separate
+ * the cards it ties on. Picking in a box moves it to the front, so picking
+ * the direction it already shows is how a measure is brought back in front.
  */
 export function GroupHealthSortBar(props: GroupHealthSortBarProps) {
   const { t } = useTranslation()
@@ -60,11 +60,10 @@ export function GroupHealthSortBar(props: GroupHealthSortBarProps) {
   )
 
   return (
-    <div className='grid w-full grid-cols-2 gap-x-3 gap-y-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end'>
+    <div className='flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:justify-end'>
       {keys.map((key) => {
         const meta = GROUP_HEALTH_SORT_META[key]
         const order = props.rules.findIndex((rule) => rule.key === key)
-        const direction = props.rules[order].direction
         const primary = order === 0
         const label = t(meta.labelKey)
         // The better direction comes first in each box.
@@ -75,58 +74,46 @@ export function GroupHealthSortBar(props: GroupHealthSortBarProps) {
           label: t(value === 'asc' ? meta.ascLabelKey : meta.descLabelKey),
         }))
         return (
-          <div key={key} className='flex min-w-0 items-center gap-1.5'>
-            <button
-              type='button'
-              onClick={() => props.onPromote(key, direction)}
-              aria-label={t('Sort by {{field}} first', { field: label })}
-              aria-pressed={primary}
+          <Select
+            key={key}
+            items={items}
+            value={props.rules[order].direction}
+            onValueChange={(value) => {
+              if (value === 'asc' || value === 'desc') {
+                props.onPromote(key, value)
+              }
+            }}
+          >
+            <SelectTrigger
+              size='sm'
               className={cn(
-                'flex shrink-0 cursor-pointer items-center gap-1 text-xs',
-                primary
-                  ? 'text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
+                'gap-1 py-1 pr-1.5 pl-2 text-xs [&_svg]:size-3',
+                primary && 'border-primary text-primary'
               )}
+              aria-label={t('Sort by {{field}}', { field: label })}
             >
-              <span
-                className={cn(
-                  'tabular-nums',
-                  primary ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
-                {order + 1}
+              <span className={primary ? undefined : 'text-muted-foreground'}>
+                {label}
               </span>
-              {label}
-            </button>
-            <Select
-              items={items}
-              value={direction}
-              onValueChange={(value) => {
-                if (value === 'asc' || value === 'desc') {
-                  props.onPromote(key, value)
-                }
-              }}
-            >
-              <SelectTrigger
-                className={cn(
-                  'h-8 min-w-0 flex-1 sm:w-28 sm:flex-none',
-                  primary && 'border-primary text-primary'
-                )}
-                aria-label={t('Sort by {{field}}', { field: label })}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false}>
-                <SelectGroup>
-                  {items.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              <SelectGroup>
+                {items.map((item) => (
+                  <SelectItem
+                    key={item.value}
+                    value={item.value}
+                    className='text-xs'
+                    // Also fires on the direction already shown, which is
+                    // what moves this measure back in front of the others.
+                    onClick={() => props.onPromote(key, item.value)}
+                  >
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         )
       })}
     </div>
