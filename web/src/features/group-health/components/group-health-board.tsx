@@ -47,11 +47,12 @@ import {
   GROUP_HEALTH_REFRESH_OPTIONS,
 } from '../lib/group-health'
 import {
-  DEFAULT_GROUP_HEALTH_SORT,
-  readGroupHealthSort,
-  saveGroupHealthSort,
+  promoteGroupHealthSort,
+  readGroupHealthSortRules,
+  saveGroupHealthSortRules,
   sortGroupHealth,
-  type GroupHealthSort,
+  type GroupHealthSortDirection,
+  type GroupHealthSortKey,
 } from '../lib/group-health-sort'
 import { GroupHealthCard } from './group-health-card'
 import { GroupHealthDetailDialog } from './group-health-detail-dialog'
@@ -87,7 +88,7 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
   const [detailGroup, setDetailGroup] = useState<string | null>(null)
   const [checkGroup, setCheckGroup] = useState<string | null>(null)
   const [platform, setPlatform] = useState(ALL_PLATFORMS)
-  const [sort, setSort] = useState(readGroupHealthSort)
+  const [sortRules, setSortRules] = useState(readGroupHealthSortRules)
   const query = useGroupHealth('hour')
   const data = query.data
   const allGroups = useMemo(() => data?.groups ?? [], [data?.groups])
@@ -120,21 +121,24 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
       : allGroups.filter((group) => platformOf.get(group.name) === platform)
   const anyDown = groups.some((group) => group.status === 'down')
   const rangeLabel = t(GROUP_HEALTH_RANGE_LABEL_KEYS.hour)
-  // The chosen order is kept; while the cards show no cache hit rate, an
-  // order by it falls back to the default without forgetting the choice.
+  // The chosen order is kept; while the cards show no cache hit rate, that
+  // measure is skipped without forgetting where the user put it.
   const cacheHitRateShown = data?.cache_hit_rate_enabled ?? false
-  const activeSort =
-    sort.key === 'cache' && !cacheHitRateShown
-      ? DEFAULT_GROUP_HEALTH_SORT
-      : sort
-  const sortedGroups = sortGroupHealth(groups, activeSort)
+  const activeSortRules = cacheHitRateShown
+    ? sortRules
+    : sortRules.filter((rule) => rule.key !== 'cache')
+  const sortedGroups = sortGroupHealth(groups, activeSortRules)
   // Only above cards: not while loading, failing or without any health data.
   const showSortBar =
     Boolean(data?.real_traffic_enabled || data?.probe_enabled) &&
     groups.length > 0
-  const changeSort = (next: GroupHealthSort) => {
-    setSort(next)
-    saveGroupHealthSort(next)
+  const promoteSort = (
+    key: GroupHealthSortKey,
+    direction: GroupHealthSortDirection
+  ) => {
+    const next = promoteGroupHealthSort(sortRules, key, direction)
+    setSortRules(next)
+    saveGroupHealthSortRules(next)
   }
 
   const refetch = query.refetch
@@ -283,45 +287,49 @@ export function GroupHealthBoard(props: GroupHealthBoardProps) {
         </div>
       </div>
 
-      {platforms.length > 1 && (
-        <ToggleGroup
-          value={[activePlatform]}
-          onValueChange={(values) => {
-            const next = values.find((value) => value !== activePlatform)
-            if (next) setPlatform(next)
-          }}
-          aria-label={t('Platform')}
-          variant='outline'
-          size='sm'
-          spacing={2}
-          className='w-full flex-wrap'
-        >
-          <ToggleGroupItem value={ALL_PLATFORMS}>
-            {t('All platforms')}
-            <span className='text-muted-foreground tabular-nums'>
-              {allGroups.length}
-            </span>
-          </ToggleGroupItem>
-          {platforms.map(([name, count]) => (
-            <ToggleGroupItem key={name} value={name}>
-              {name !== OTHER_PLATFORM && (
-                <ChannelTypeLogo type={Number(name)} size={14} />
-              )}
-              {apiKeyPlatformLabel(name, t)}
-              <span className='text-muted-foreground tabular-nums'>
-                {count}
-              </span>
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      )}
+      {/* The platforms and the sort boxes share a row, wrapping when narrow. */}
+      {(platforms.length > 1 || showSortBar) && (
+        <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
+          {platforms.length > 1 && (
+            <ToggleGroup
+              value={[activePlatform]}
+              onValueChange={(values) => {
+                const next = values.find((value) => value !== activePlatform)
+                if (next) setPlatform(next)
+              }}
+              aria-label={t('Platform')}
+              variant='outline'
+              size='sm'
+              spacing={2}
+              className='flex-wrap'
+            >
+              <ToggleGroupItem value={ALL_PLATFORMS}>
+                {t('All platforms')}
+                <span className='text-muted-foreground tabular-nums'>
+                  {allGroups.length}
+                </span>
+              </ToggleGroupItem>
+              {platforms.map(([name, count]) => (
+                <ToggleGroupItem key={name} value={name}>
+                  {name !== OTHER_PLATFORM && (
+                    <ChannelTypeLogo type={Number(name)} size={14} />
+                  )}
+                  {apiKeyPlatformLabel(name, t)}
+                  <span className='text-muted-foreground tabular-nums'>
+                    {count}
+                  </span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          )}
 
-      {showSortBar && (
-        <GroupHealthSortBar
-          sort={activeSort}
-          onSortChange={changeSort}
-          cacheHitRateShown={cacheHitRateShown}
-        />
+          {showSortBar && (
+            <GroupHealthSortBar
+              rules={activeSortRules}
+              onPromote={promoteSort}
+            />
+          )}
+        </div>
       )}
 
       {renderBody()}
