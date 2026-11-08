@@ -16,15 +16,22 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Dialog } from '@/components/dialog'
+import { EmptyState } from '@/components/empty-state'
 import { LoadingState } from '@/components/loading-state'
 import { RatioChangeBadge } from '@/components/ratio-change-badge'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { toIntlLocale } from '@/i18n/languages'
 import { hasPermission } from '@/lib/admin-permissions'
 import { formatNumber, formatTimestampToDate } from '@/lib/format'
@@ -35,59 +42,74 @@ import { useUpstreamRateRefresh } from './hooks'
 import { upstreamRateErrorKeys, upstreamRateStatusKeys } from './status'
 import type { UpstreamRate, UpstreamRateKey } from './types'
 
-function UpstreamRateKeyItem(props: { item: UpstreamRateKey }) {
+function UpstreamRateKeyItem(props: {
+  item: UpstreamRateKey
+  showIndex: boolean
+}) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const format = new Intl.NumberFormat(locale, { maximumSignificantDigits: 15 })
     .format
   const item = props.item
   const historical = item.ratio !== undefined && item.status !== 'matched'
+  const statusKey =
+    upstreamRateStatusKeys[item.status] ?? 'Upstream data unavailable'
+  const errorKey = item.error
+    ? (upstreamRateErrorKeys[item.error] ?? 'Upstream data unavailable')
+    : undefined
+  let variant: 'neutral' | 'success' | 'warning' =
+    item.status === 'matched' ? 'success' : 'warning'
+  if (!item.enabled) variant = 'neutral'
   return (
-    <article className='space-y-2 rounded-lg border p-3'>
-      <div className='flex flex-wrap items-center gap-2 text-sm'>
-        <span>{t('Key #{{index}}', { index: item.index })}</span>
-        {!item.enabled && (
+    <article
+      aria-label={t('Key #{{index}}', { index: item.index })}
+      className='min-w-0 space-y-4 rounded-xl border p-4'
+    >
+      <div className='flex flex-wrap items-center justify-between gap-2'>
+        <span className='text-muted-foreground text-xs font-medium'>
+          {props.showIndex
+            ? t('Key #{{index}}', { index: item.index })
+            : t('Upstream rates')}
+        </span>
+        <div className='flex flex-wrap items-center gap-2'>
           <StatusBadge
             copyable={false}
-            label={t('Disabled')}
-            variant='neutral'
+            label={item.enabled ? t(statusKey) : t('Disabled')}
+            variant={variant}
+            type='text'
           />
-        )}
-        <StatusBadge
-          copyable={false}
-          label={t(
-            upstreamRateStatusKeys[item.status] ?? 'Upstream data unavailable'
+          {historical && (
+            <StatusBadge
+              copyable={false}
+              label={t('Historical value')}
+              variant='warning'
+              type='text'
+            />
           )}
-          variant={item.status === 'matched' ? 'success' : 'warning'}
-        />
-        {historical && (
-          <StatusBadge
-            copyable={false}
-            label={t('Historical value')}
-            variant='warning'
-          />
-        )}
+        </div>
       </div>
-      {item.source_id && (
-        <p className='text-muted-foreground text-xs break-all'>
-          {item.source_name} / #{item.upstream_channel_id}{' '}
-          {item.upstream_channel_name}
+      <div className='space-y-1'>
+        <p className='text-3xl leading-tight font-semibold break-all tabular-nums'>
+          {item.ratio === undefined ? '—' : format(item.ratio)}
         </p>
-      )}
-      {item.site_url && (
-        <p className='text-muted-foreground text-xs break-all'>
-          {item.site_url}
+        <p className='text-sm font-medium break-words'>
+          {item.group_name ?? '—'}
         </p>
+      </div>
+      {(item.source_id || item.site_url) && (
+        <div className='text-muted-foreground space-y-1 text-xs'>
+          {item.source_id && (
+            <p className='break-words'>
+              {item.source_name} / #{item.upstream_channel_id}{' '}
+              {item.upstream_channel_name}
+            </p>
+          )}
+          {item.site_url && <p className='break-all'>{item.site_url}</p>}
+        </div>
       )}
-      {item.error && (
-        <p className='text-destructive text-xs'>
-          {t(upstreamRateErrorKeys[item.error] ?? 'Upstream data unavailable')}
-        </p>
+      {errorKey && errorKey !== statusKey && (
+        <p className='text-destructive text-xs'>{t(errorKey)}</p>
       )}
-      <p className='text-sm break-all'>
-        {item.group_name ?? '—'} ·{' '}
-        {item.ratio === undefined ? '—' : format(item.ratio)}
-      </p>
       {item.change && item.status === 'matched' && (
         <RatioChangeBadge
           change={item.change}
@@ -120,16 +142,18 @@ function UpstreamRateKeyItem(props: { item: UpstreamRateKey }) {
           })}
         </p>
       )}
-      <dl className='text-muted-foreground space-y-1 text-xs'>
-        <div>
-          <dt className='inline'>{t('Rate collection time')}: </dt>
-          <dd className='inline'>
+      <dl className='grid grid-cols-1 gap-3 border-t pt-3 text-xs sm:grid-cols-2'>
+        <div className='min-w-0 space-y-1'>
+          <dt className='text-muted-foreground'>{t('Rate collection time')}</dt>
+          <dd className='break-words tabular-nums'>
             {item.collected_at ? formatTimestampToDate(item.collected_at) : '—'}
           </dd>
         </div>
-        <div>
-          <dt className='inline'>{t('Key synchronization time')}: </dt>
-          <dd className='inline'>
+        <div className='min-w-0 space-y-1'>
+          <dt className='text-muted-foreground'>
+            {t('Key synchronization time')}
+          </dt>
+          <dd className='break-words tabular-nums'>
             {item.key_synced_at
               ? formatTimestampToDate(item.key_synced_at)
               : '—'}
@@ -181,108 +205,149 @@ export function UpstreamRateDetailsDialog(props: {
       }}
       title={t('Upstream rates')}
       description={props.channel.name}
+      contentClassName='sm:max-w-xl'
+      headerClassName='pr-6'
+      descriptionClassName='break-all'
+      footerClassName='flex-row flex-wrap justify-end'
+      footer={
+        (rate?.refresh_available || props.error) && (
+          <>
+            {rate?.refresh_available && (
+              <Button
+                type='button'
+                variant='outline'
+                className='flex-1 sm:flex-none'
+                disabled={
+                  !canOperate || refresh.busy || !rate.force_refresh_available
+                }
+                title={
+                  !rate.force_refresh_available
+                    ? t(
+                        'Force refresh requires a uniquely identified upstream account channel.'
+                      )
+                    : undefined
+                }
+                onClick={() => setConfirmForce(true)}
+              >
+                {t('Force refresh upstream')}
+              </Button>
+            )}
+            {props.error ? (
+              <Button
+                type='button'
+                className='flex-1 sm:flex-none'
+                onClick={props.onRetry}
+              >
+                {t('Retry')}
+              </Button>
+            ) : (
+              <Button
+                type='button'
+                className='flex-1 sm:flex-none'
+                disabled={!canOperate || refresh.busy}
+                onClick={() =>
+                  refresh.refresh({ channel_id: props.channel.id })
+                }
+              >
+                {refresh.busy ? t('Refreshing...') : t('Update display')}
+              </Button>
+            )}
+          </>
+        )
+      }
     >
-      <div className='space-y-4'>
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'Read upstream snapshots without changing local prices, priorities, or weights.'
-          )}
-        </p>
+      <div className='space-y-3'>
         {props.loading && <LoadingState inline />}
-        {props.error && (
-          <Button type='button' variant='outline' onClick={props.onRetry}>
-            {t('Retry')}
-          </Button>
-        )}
-        {rate && (
-          <section className='space-y-2 text-sm'>
-            <StatusBadge
-              copyable={false}
-              label={t(
-                upstreamRateStatusKeys[status] ?? 'Upstream data unavailable'
-              )}
-              variant={status === 'matched' ? 'success' : 'warning'}
-            />
-            <p className='break-all'>
-              {rate.source_name}{' '}
-              {rate.upstream_channel_id
-                ? ` / #${rate.upstream_channel_id} ${rate.upstream_channel_name ?? ''}`
-                : ''}
-            </p>
-            {rate.site_url && (
-              <p className='text-muted-foreground text-xs break-all'>
-                {rate.site_url}
-              </p>
+        {!props.loading && enabled.length === 0 && (
+          <EmptyState
+            title={t(
+              upstreamRateStatusKeys[status] ?? 'Upstream data unavailable'
             )}
-            <p className='text-muted-foreground text-xs break-all'>
-              {t('Base URL')}: {props.channel.base_url || t('Default')}
-            </p>
-            <p>
-              {t('Enabled key coverage: {{matched}}/{{total}}', {
-                matched: rate.matched_keys,
-                total: rate.enabled_keys,
-              })}
-            </p>
-            {rate.error && (
-              <p className='text-destructive text-xs'>
-                {t(
-                  upstreamRateErrorKeys[rate.error] ??
-                    'Upstream data unavailable'
-                )}
-              </p>
-            )}
-            <p className='text-muted-foreground text-xs'>
-              {t('Local snapshot read')}:{' '}
-              {rate.read_at ? formatTimestampToDate(rate.read_at) : '—'}
-            </p>
-            <p className='text-muted-foreground text-xs'>
-              {t('Groups with keys only')}: {groupsWithKeysOnly}
-            </p>
-            {rate.refresh_available && (
-              <div className='flex flex-wrap gap-2'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  disabled={!canOperate || refresh.busy}
-                  onClick={() =>
-                    refresh.refresh({ channel_id: props.channel.id })
-                  }
-                >
-                  {refresh.busy ? t('Refreshing...') : t('Update display')}
-                </Button>
-                <Button
-                  type='button'
-                  variant='outline'
-                  disabled={
-                    !canOperate || refresh.busy || !rate.force_refresh_available
-                  }
-                  title={
-                    !rate.force_refresh_available
-                      ? t(
-                          'Force refresh requires a uniquely identified upstream account channel.'
-                        )
-                      : undefined
-                  }
-                  onClick={() => setConfirmForce(true)}
-                >
-                  {t('Force refresh upstream')}
-                </Button>
-              </div>
-            )}
-          </section>
+            className='min-h-32 py-6'
+          />
         )}
         {enabled.map((item) => (
-          <UpstreamRateKeyItem key={item.index} item={item} />
+          <UpstreamRateKeyItem
+            key={item.index}
+            item={item}
+            showIndex={(rate?.keys.length ?? 0) > 1}
+          />
         ))}
-        {disabled.length > 0 && (
-          <section className='space-y-2'>
-            <h3 className='text-muted-foreground text-sm'>
-              {t('Disabled keys (excluded from range)')}
-            </h3>
-            {disabled.map((item) => (
-              <UpstreamRateKeyItem key={item.index} item={item} />
-            ))}
-          </section>
+        {rate?.error && !enabled.some((item) => item.error === rate.error) && (
+          <p className='text-destructive text-xs'>
+            {t(
+              upstreamRateErrorKeys[rate.error] ?? 'Upstream data unavailable'
+            )}
+          </p>
+        )}
+        {rate && (
+          <Collapsible className='border-t pt-1'>
+            <CollapsibleTrigger
+              render={
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='sm'
+                  className='group text-muted-foreground w-full justify-between px-0 hover:bg-transparent'
+                />
+              }
+            >
+              {t('Details')}
+              <ChevronDown
+                className='size-4 transition-transform group-aria-expanded:rotate-180'
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className='space-y-4 pt-3'>
+              <dl className='grid gap-4 text-xs sm:grid-cols-2'>
+                <div className='min-w-0 space-y-1 sm:col-span-2'>
+                  <dt className='text-muted-foreground'>{t('Base URL')}</dt>
+                  <dd className='break-all'>
+                    {props.channel.base_url || t('Default')}
+                  </dd>
+                </div>
+                <div className='min-w-0 space-y-1'>
+                  <dt className='text-muted-foreground'>
+                    {t('Local snapshot read')}
+                  </dt>
+                  <dd className='break-words tabular-nums'>
+                    {rate.read_at ? formatTimestampToDate(rate.read_at) : '—'}
+                  </dd>
+                </div>
+                <div className='min-w-0 space-y-1'>
+                  <dt className='text-muted-foreground'>
+                    {t('Groups with keys only')}
+                  </dt>
+                  <dd>{groupsWithKeysOnly}</dd>
+                </div>
+              </dl>
+              <p className='text-muted-foreground text-xs'>
+                {t('Enabled key coverage: {{matched}}/{{total}}', {
+                  matched: rate.matched_keys,
+                  total: rate.enabled_keys,
+                })}
+              </p>
+              <p className='text-muted-foreground text-xs'>
+                {t(
+                  'Read upstream snapshots without changing local prices, priorities, or weights.'
+                )}
+              </p>
+              {disabled.length > 0 && (
+                <section className='space-y-2'>
+                  <h3 className='text-muted-foreground text-sm'>
+                    {t('Disabled keys (excluded from range)')}
+                  </h3>
+                  {disabled.map((item) => (
+                    <UpstreamRateKeyItem
+                      key={item.index}
+                      item={item}
+                      showIndex
+                    />
+                  ))}
+                </section>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </div>
       <ConfirmDialog
