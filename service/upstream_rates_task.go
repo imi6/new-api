@@ -234,7 +234,7 @@ func (upstreamRateTaskHandler) Run(ctx context.Context, task *model.SystemTask, 
 			seen := map[int]bool{}
 			for _, channel := range channels {
 				seen[channel.ID] = true
-				snapshot.Channels[channel.ID] = mergeUpstreamRateRecord(snapshot.Channels[channel.ID], channel, now, int64((source.ScanMinutes*2+5)*60))
+				snapshot.Channels[channel.ID] = mergeUpstreamRateRecord(snapshot.Channels[channel.ID], channel, now)
 				if code, exists := channelErrors[channel.ID]; exists {
 					record := snapshot.Channels[channel.ID]
 					record.Error = code
