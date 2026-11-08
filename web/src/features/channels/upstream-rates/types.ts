@@ -23,7 +23,6 @@ export type UpstreamRateSource = {
   enabled: boolean
   token_configured: boolean
   poll_seconds: number
-  scan_minutes: number
   read_at: number
   error: string
   complete: boolean
@@ -36,7 +35,7 @@ export type UpstreamRateConfig = {
 
 export type UpstreamRateSourceInput = Pick<
   UpstreamRateSource,
-  'id' | 'name' | 'base_url' | 'enabled' | 'poll_seconds' | 'scan_minutes'
+  'id' | 'name' | 'base_url' | 'enabled' | 'poll_seconds'
 > & { token: string }
 
 export type UpstreamRateKey = {
