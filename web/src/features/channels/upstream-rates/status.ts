@@ -23,7 +23,7 @@ export const upstreamRateStatusKeys: Record<string, string> = {
   not_synced: 'Not yet synchronized',
   unmatched: 'No matching key',
   conflict: 'Key matching conflict',
-  partial: 'Partial upstream synchronization',
+  partial: 'Not yet synchronized',
   unavailable: 'Upstream data unavailable',
   disabled: 'Disabled',
   read_failed: 'Upstream snapshot read failed',
