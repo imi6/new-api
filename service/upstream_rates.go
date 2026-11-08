@@ -22,7 +22,7 @@ const upstreamRatesTaskType = "upstream_rates"
 
 var (
 	ErrUpstreamRateConfig     = errors.New("Invalid upstream rate configuration")
-	ErrUpstreamRateEncryption = errors.New("Set CRYPTO_SECRET or SESSION_SECRET before saving upstream rate credentials")
+	ErrUpstreamRateEncryption = errors.New("Upstream rate credential unavailable")
 	ErrUpstreamRateBusy       = errors.New("An upstream rate refresh is already running")
 	ErrUpstreamRateCooldown   = errors.New("Wait 60 seconds before forcing another upstream refresh")
 )
@@ -42,6 +42,7 @@ type upstreamRateSource struct {
 	Name            string `json:"name"`
 	BaseURL         string `json:"base_url"`
 	TokenCiphertext string `json:"token_ciphertext"`
+	TokenPlaintext  string `json:"token_plaintext,omitempty"`
 	Enabled         bool   `json:"enabled"`
 	PollSeconds     int    `json:"poll_seconds"`
 	ScanMinutes     int    `json:"scan_minutes"`
@@ -83,7 +84,7 @@ func upstreamRateEncryptionReady() bool {
 	return os.Getenv("CRYPTO_SECRET") != "" || os.Getenv("SESSION_SECRET") != ""
 }
 
-// upstreamRateCipher 只使用已配置的稳定密钥，避免重启后无法解密。
+// upstreamRateCipher 仅用于已配置稳定密钥的加密令牌，兼容既有密文。
 func upstreamRateCipher() (cipher.AEAD, error) {
 	if !upstreamRateEncryptionReady() {
 		return nil, ErrUpstreamRateEncryption
@@ -107,7 +108,7 @@ func GetUpstreamRateConfig(ctx context.Context) (*UpstreamRateConfigView, error)
 		if err != nil {
 			return nil, err
 		}
-		item := UpstreamRateSourceView{ID: source.ID, Name: source.Name, BaseURL: source.BaseURL, Enabled: source.Enabled, TokenConfigured: source.TokenCiphertext != "", PollSeconds: source.PollSeconds, ScanMinutes: source.ScanMinutes, ReadAt: snapshot.ReadAt, Error: snapshot.Error, Complete: snapshot.Complete}
+		item := UpstreamRateSourceView{ID: source.ID, Name: source.Name, BaseURL: source.BaseURL, Enabled: source.Enabled, TokenConfigured: source.TokenCiphertext != "" || source.TokenPlaintext != "", PollSeconds: source.PollSeconds, ScanMinutes: source.ScanMinutes, ReadAt: snapshot.ReadAt, Error: snapshot.Error, Complete: snapshot.Complete}
 		view.Sources = append(view.Sources, item)
 	}
 	return view, nil
@@ -162,21 +163,27 @@ func SaveUpstreamRateSource(ctx context.Context, input UpstreamRateSourceInput) 
 			}
 			source.ID = id
 		}
-		if (source.BaseURL != "" && source.BaseURL != input.BaseURL && input.Token == "") || (source.TokenCiphertext == "" && input.Token == "") {
+		if (source.BaseURL != "" && source.BaseURL != input.BaseURL && input.Token == "") || (source.TokenCiphertext == "" && source.TokenPlaintext == "" && input.Token == "") {
 			return "", ErrUpstreamRateConfig
 		}
 		changed := source.BaseURL != input.BaseURL || input.Token != "" || source.Enabled != input.Enabled
 		if input.Token != "" {
-			aead, err := upstreamRateCipher()
-			if err != nil {
-				return "", err
+			// 未配置环境密钥时允许明文保存，不能使用重启即变的临时密钥。
+			source.TokenCiphertext, source.TokenPlaintext = "", ""
+			if upstreamRateEncryptionReady() {
+				aead, err := upstreamRateCipher()
+				if err != nil {
+					return "", err
+				}
+				nonce := make([]byte, aead.NonceSize())
+				if _, err := rand.Read(nonce); err != nil {
+					return "", err
+				}
+				sealed := aead.Seal(nonce, nonce, []byte(input.Token), []byte(source.ID))
+				source.TokenCiphertext = base64.StdEncoding.EncodeToString(sealed)
+			} else {
+				source.TokenPlaintext = input.Token
 			}
-			nonce := make([]byte, aead.NonceSize())
-			if _, err := rand.Read(nonce); err != nil {
-				return "", err
-			}
-			sealed := aead.Seal(nonce, nonce, []byte(input.Token), []byte(source.ID))
-			source.TokenCiphertext = base64.StdEncoding.EncodeToString(sealed)
 		}
 		if changed || source.Revision == "" {
 			revision, err := common.GenerateRandomCharsKey(16)
