@@ -95,6 +95,7 @@ import {
 } from '../lib/channel-balance'
 import { parseUpstreamUpdateMeta } from '../lib/upstream-update-utils'
 import type { Channel } from '../types'
+import { UpstreamRateCell } from '../upstream-rates/rates-context'
 import { ChannelBalanceDetails } from './channel-balance-details'
 import { ChannelRowActionsLayoutContext } from './channel-row-actions-context'
 import { TaskPluginChannelBadge } from './channel-type-badge'
@@ -1201,6 +1202,16 @@ export function useChannelsColumns(
           )
         },
         size: 120,
+        enableSorting: false,
+      },
+
+      {
+        id: 'upstream_rate',
+        header: t('Upstream rates'),
+        cell: ({ row }) => (
+          <UpstreamRateCell channel={row.original} visible={sensitiveVisible} />
+        ),
+        size: 170,
         enableSorting: false,
       },
 

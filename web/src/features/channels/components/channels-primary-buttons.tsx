@@ -67,6 +67,7 @@ import {
   handleUpdateAllBalances,
 } from '../lib'
 import type { ChannelSortBy } from '../types'
+import { UpstreamRateSourcesDialog } from '../upstream-rates/sources-dialog'
 import { ChannelSortControl } from './channel-priority-controls'
 import { useChannels } from './channels-provider'
 
@@ -86,9 +87,11 @@ export function ChannelsPrimaryButtons() {
     setBatchMode,
     setPriorityActionContainer,
     upstream,
+    sensitiveVisible,
   } = useChannels()
   const queryClient = useQueryClient()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showRateSources, setShowRateSources] = useState(false)
   const [showConsistencyDialog, setShowConsistencyDialog] = useState(false)
   const [isRepairingConsistency, setIsRepairingConsistency] = useState(false)
   const currentUser = useAuthStore((s) => s.auth.user)
@@ -111,6 +114,20 @@ export function ChannelsPrimaryButtons() {
     <>
       <div className='flex flex-wrap items-center gap-2'>
         <NodeSyncIndicator topics={['channels']} />
+        <Button
+          type='button'
+          variant='outline'
+          disabled={!sensitiveVisible}
+          onClick={() => setShowRateSources(true)}
+        >
+          {t('Upstream rate sources')}
+        </Button>
+        {showRateSources && sensitiveVisible && (
+          <UpstreamRateSourcesDialog
+            open={showRateSources}
+            onOpenChange={setShowRateSources}
+          />
+        )}
         <div ref={setPriorityActionContainer} className='empty:hidden' />
         {/* Desktop: Toggle switches visible */}
         <div className='bg-muted/40 hidden h-8 shrink-0 items-center gap-2.5 rounded-lg border px-2.5 sm:flex'>
