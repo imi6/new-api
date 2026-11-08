@@ -54,14 +54,14 @@ func TestUpstreamRateHistoryRejectsUntrustedSnapshotsAndSeparatesGroupMoves(t *t
 		KeySyncedAt: time.Unix(now, 0).UTC().Format(time.RFC3339),
 		Groups:      []upstreamRateGroup{{ID: 1, Name: "原分组", Ratio: common.GetPointer(0.1), UpdatedAt: time.Unix(now, 0).UTC().Format(time.RFC3339), Keys: []upstreamRateAPIKey{{ID: 11, Fingerprint: fingerprint}}}},
 	}
-	record := mergeUpstreamRateRecord(upstreamRateRecord{}, channel, now, 3900)
+	record := mergeUpstreamRateRecord(upstreamRateRecord{}, channel, now)
 	require.Contains(t, record.Known, "trim_strip_sk_prefix:"+fingerprint)
 	assert.Nil(t, record.Known["trim_strip_sk_prefix:"+fingerprint].Change)
 
 	channel.KeySyncedAt = time.Unix(now+60, 0).UTC().Format(time.RFC3339)
 	channel.Groups[0].UpdatedAt = channel.KeySyncedAt
 	channel.Groups[0].Ratio = common.GetPointer(0.12)
-	record = mergeUpstreamRateRecord(record, channel, now+60, 3900)
+	record = mergeUpstreamRateRecord(record, channel, now+60)
 	change := record.Known["trim_strip_sk_prefix:"+fingerprint].Change
 	require.NotNil(t, change)
 	assert.Equal(t, UpstreamRateChange{From: 0.1, To: 0.12, At: now + 60}, *change)
@@ -70,7 +70,7 @@ func TestUpstreamRateHistoryRejectsUntrustedSnapshotsAndSeparatesGroupMoves(t *t
 	channel.Groups[0].UpdatedAt = channel.KeySyncedAt
 	channel.Groups[0].ID, channel.Groups[0].Name = 2, "目标分组"
 	channel.Groups[0].Ratio = common.GetPointer(0.08)
-	record = mergeUpstreamRateRecord(record, channel, now+120, 3900)
+	record = mergeUpstreamRateRecord(record, channel, now+120)
 	known := record.Known["trim_strip_sk_prefix:"+fingerprint]
 	assert.Equal(t, "原分组", known.MovedFrom)
 	assert.Equal(t, now+120, known.MovedAt)
@@ -78,12 +78,12 @@ func TestUpstreamRateHistoryRejectsUntrustedSnapshotsAndSeparatesGroupMoves(t *t
 
 	channel.Status, channel.Complete, channel.UnavailableIDs = "partial", common.GetPointer(false), []int{11}
 	channel.Groups[0].Ratio = common.GetPointer(0.5)
-	record = mergeUpstreamRateRecord(record, channel, now+180, 3900)
+	record = mergeUpstreamRateRecord(record, channel, now+180)
 	assert.Equal(t, 0.08, record.Known["trim_strip_sk_prefix:"+fingerprint].Ratio, "不可用 Key 的旧指纹不能更新可信历史")
 
 	channel.Status, channel.Complete, channel.UnavailableIDs = "ready", common.GetPointer(true), nil
 	channel.KeySyncedAt = time.Unix(now-60, 0).UTC().Format(time.RFC3339)
-	record = mergeUpstreamRateRecord(record, channel, now+240, 3900)
+	record = mergeUpstreamRateRecord(record, channel, now+240)
 	assert.Equal(t, "older_snapshot", record.Error)
 	assert.Equal(t, 0.08, record.Known["trim_strip_sk_prefix:"+fingerprint].Ratio)
 }
@@ -100,7 +100,7 @@ func TestUpstreamRateConflictsAndQuality(t *testing.T) {
 	assert.Len(t, upstreamRateCandidateIndex(channel)[fingerprint], 2, "跨组冲突不能任选第一项")
 	channel.Groups[1].ID, channel.Groups[1].Name = 1, "分组甲"
 	channel.Groups[1].Ratio = common.GetPointer(0.2)
-	record := mergeUpstreamRateRecord(upstreamRateRecord{}, channel, now, 3900)
+	record := mergeUpstreamRateRecord(upstreamRateRecord{}, channel, now)
 	assert.Empty(t, record.Known, "同组矛盾数据不能建立基线")
 	for _, tc := range []struct {
 		name     string
@@ -112,10 +112,65 @@ func TestUpstreamRateConflictsAndQuality(t *testing.T) {
 		{"缺少完整性标记", upstreamRateRemoteChannel{Status: "ready", Algorithm: "sha256", Normalization: "trim"}, "unsupported_protocol"},
 		{"正常快照", channel, "ready"},
 	} {
-		t.Run(tc.name, func(t *testing.T) { assert.Equal(t, tc.expected, upstreamRateChannelQuality(tc.input, now, 3900)) })
+		t.Run(tc.name, func(t *testing.T) { assert.Equal(t, tc.expected, upstreamRateChannelQuality(tc.input, now)) })
 	}
 	channel.KeySyncedAt = time.Unix(now-3901, 0).UTC().Format(time.RFC3339)
-	assert.Equal(t, "stale", upstreamRateChannelQuality(channel, now, 3900))
+	assert.Equal(t, "ready", upstreamRateChannelQuality(channel, now), "采集时间较旧不再判定过期")
+	channel.KeySyncedAt = time.Unix(now+61, 0).UTC().Format(time.RFC3339)
+	assert.Equal(t, "invalid_time", upstreamRateChannelQuality(channel, now), "仍拒绝异常的未来时间")
+}
+
+func TestUpstreamRateOldSnapshotsRemainMatchedAndRecoverable(t *testing.T) {
+	now := int64(1794096000)
+	source := upstreamRateSource{ID: "source-a", Enabled: true, PollSeconds: 300}
+	fingerprint, err := upstreamRateFingerprint("sk-abc", "trim")
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		name      string
+		collected int64
+		readAt    int64
+	}{
+		{"采集时间超过原过期阈值仍可匹配", now - 4000, now},
+		{"采集时间超过七天仍保留可信回退倍率", now - 8*86400, now},
+		{"本地读取时间超过三次间隔不自动判定失败", now - 4000, now - 901},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			at := time.Unix(tc.collected, 0).UTC().Format(time.RFC3339)
+			remote := upstreamRateRemoteChannel{
+				ID: 4, Algorithm: "sha256", Normalization: "trim", Status: "ready", Complete: common.GetPointer(true), KeySyncedAt: at,
+				Groups: []upstreamRateGroup{{ID: 1, Name: "实际分组", Ratio: common.GetPointer(1.9), UpdatedAt: at, Keys: []upstreamRateAPIKey{{ID: 11, Fingerprint: fingerprint}}}},
+			}
+			record := mergeUpstreamRateRecord(upstreamRateRecord{}, remote, tc.readAt)
+			require.Contains(t, record.Known, "trim:"+fingerprint)
+			require.Contains(t, record.History, upstreamRateGroupIdentity(1, "实际分组"))
+			snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: tc.readAt, Complete: true, Channels: map[int]upstreamRateRecord{4: record}}}
+			item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-abc", now)
+			assert.Equal(t, "matched", item.Status)
+			require.NotNil(t, item.Ratio)
+			assert.Equal(t, 1.9, *item.Ratio)
+			assert.Equal(t, tc.collected, item.CollectedAt)
+			assert.Equal(t, tc.collected, item.KeySyncedAt)
+			assert.Equal(t, tc.readAt, item.ReadAt)
+
+			record.Error = "request_failed"
+			snapshots[source.ID].Channels[4] = record
+			item = buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-abc", now)
+			assert.Equal(t, "read_failed", item.Status, "实际请求失败仍应明确标记")
+			require.NotNil(t, item.Ratio)
+			assert.Equal(t, 1.9, *item.Ratio, "读取失败时保留最近一次可信倍率")
+		})
+	}
+}
+
+func TestUpstreamRateConfigIgnoresLegacyScanInterval(t *testing.T) {
+	var config upstreamRateConfig
+	require.NoError(t, common.UnmarshalJsonStr(`{"sources":[{"id":"source-a","name":"来源甲","base_url":"https://rates.example.com","enabled":true,"poll_seconds":300,"scan_minutes":30,"revision":"existing-revision"}]}`, &config))
+	require.Len(t, config.Sources, 1)
+	assert.Equal(t, 300, config.Sources[0].PollSeconds)
+	assert.Equal(t, "existing-revision", config.Sources[0].Revision, "忽略旧字段不影响已有快照的版本")
+	encoded, err := common.Marshal(config)
+	require.NoError(t, err)
+	assert.NotContains(t, string(encoded), "scan_minutes")
 }
 
 func TestUpstreamRateEncryptedCredentialBindsSource(t *testing.T) {
@@ -150,7 +205,7 @@ func TestUpstreamRateEncryptedCredentialBindsSource(t *testing.T) {
 
 func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 	now := int64(1794096000)
-	source := upstreamRateSource{ID: "source-a", Name: "来源甲", Enabled: true, PollSeconds: 60, ScanMinutes: 30}
+	source := upstreamRateSource{ID: "source-a", Name: "来源甲", Enabled: true, PollSeconds: 60}
 	fingerprint, err := upstreamRateFingerprint("sk-abc", "trim_strip_sk_prefix")
 	require.NoError(t, err)
 	remote := upstreamRateRemoteChannel{ID: 4, Name: "上游账号", Algorithm: "sha256", Normalization: "trim_strip_sk_prefix", Status: "ready", Complete: common.GetPointer(true), KeySyncedAt: time.Unix(now, 0).UTC().Format(time.RFC3339), Groups: []upstreamRateGroup{{ID: 1, Name: "实际分组", Ratio: common.GetPointer(0.1), UpdatedAt: time.Unix(now, 0).UTC().Format(time.RFC3339), Keys: []upstreamRateAPIKey{{ID: 11, Fingerprint: fingerprint}}}}}
@@ -162,7 +217,7 @@ func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 		{"相同 Key 跨上游渠道出现时返回冲突", "conflict", func(sources []upstreamRateSource, snapshots map[string]upstreamRateSnapshot) []upstreamRateSource {
 			other := remote
 			other.ID = 7
-			snapshots[source.ID].Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, other, now, 3900)
+			snapshots[source.ID].Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, other, now)
 			return sources
 		}},
 		{"相同 Key 跨来源出现时返回冲突", "conflict", func(sources []upstreamRateSource, snapshots map[string]upstreamRateSnapshot) []upstreamRateSource {
@@ -189,13 +244,13 @@ func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 			snapshots[source.ID].Channels[4] = record
 			other := remote
 			other.ID = 7
-			snapshots[source.ID].Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, other, now, 3900)
+			snapshots[source.ID].Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, other, now)
 			return sources
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sources := []upstreamRateSource{source}
-			snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: now, Complete: true, Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now, 3900)}}}
+			snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: now, Complete: true, Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)}}}
 			if tc.setup != nil {
 				sources = tc.setup(sources, snapshots)
 			}
@@ -216,7 +271,7 @@ func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 	t.Run("搜索范围不完整且当前 Key 未命中时返回未同步", func(t *testing.T) {
 		snapshots := map[string]upstreamRateSnapshot{source.ID: {
 			ReadAt: now, Complete: false,
-			Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now, 3900)},
+			Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)},
 		}}
 		item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-missing", now)
 		assert.Equal(t, "not_synced", item.Status)
@@ -264,7 +319,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 				t.Cleanup(func() { common.CryptoSecret = previousSecret })
 				ctx := context.Background()
 				const token = "test-only-plaintext-token-0123456789"
-				input := UpstreamRateSourceInput{Name: "未加密来源", BaseURL: "https://rates.example.com", Token: token, Enabled: true, PollSeconds: 60, ScanMinutes: 30}
+				input := UpstreamRateSourceInput{Name: "未加密来源", BaseURL: "https://rates.example.com", Token: token, Enabled: true, PollSeconds: 60}
 				require.NoError(t, SaveUpstreamRateSource(ctx, input))
 				config, err := loadUpstreamRateConfig(ctx)
 				require.NoError(t, err)
@@ -325,7 +380,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 			t.Cleanup(func() { common.CryptoSecret = previousSecret })
 			ctx := context.Background()
 			const token = "test-only-external-token-0123456789"
-			require.NoError(t, SaveUpstreamRateSource(ctx, UpstreamRateSourceInput{Name: strings.Repeat("源", 80), BaseURL: "https://rates.example.com", Token: token, Enabled: true, PollSeconds: 60, ScanMinutes: 30}))
+			require.NoError(t, SaveUpstreamRateSource(ctx, UpstreamRateSourceInput{Name: strings.Repeat("源", 80), BaseURL: "https://rates.example.com", Token: token, Enabled: true, PollSeconds: 60}))
 			config, err := loadUpstreamRateConfig(ctx)
 			require.NoError(t, err)
 			require.Len(t, config.Sources, 1)
@@ -353,7 +408,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 			require.NoError(t, err)
 			remote := upstreamRateRemoteChannel{ID: 4, Name: "上游账号", Algorithm: "sha256", Normalization: "trim", Status: "ready", Complete: common.GetPointer(true), KeySyncedAt: time.Unix(now, 0).UTC().Format(time.RFC3339), Groups: []upstreamRateGroup{{Name: "实际分组", Ratio: common.GetPointer(0.1), UpdatedAt: time.Unix(now, 0).UTC().Format(time.RFC3339), Keys: []upstreamRateAPIKey{{ID: 11, Fingerprint: fingerprint}}}}}
 			require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
-				snapshot.Channels[4] = mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now, 3900)
+				snapshot.Channels[4] = mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
 				snapshot.ReadAt = now
 				snapshot.Complete = true
 				return nil
@@ -378,7 +433,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 			secondRemote.ID, secondRemote.Name = 7, "第二上游账号"
 			secondRemote.Groups = []upstreamRateGroup{{ID: 1, Name: "另一分组", Ratio: common.GetPointer(0.2), UpdatedAt: remote.KeySyncedAt, Keys: []upstreamRateAPIKey{{ID: 22, Fingerprint: secondFingerprint}}}}
 			require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
-				snapshot.Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, secondRemote, now, 3900)
+				snapshot.Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, secondRemote, now)
 				return nil
 			}))
 			multi, err := GetUpstreamRates(ctx, []int{channel.Id})
@@ -418,7 +473,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 					require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
 						delete(snapshot.Channels, 99)
 						snapshot.Complete = true
-						snapshot.Channels[4] = mergeUpstreamRateRecord(snapshot.Channels[4], remote, now, 3900)
+						snapshot.Channels[4] = mergeUpstreamRateRecord(snapshot.Channels[4], remote, now)
 						return nil
 					}))
 				})
@@ -435,7 +490,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 				name, status string
 				change       func(*upstreamRateRemoteChannel)
 			}{
-				{"倍率过期仍显示过期状态", "stale", func(input *upstreamRateRemoteChannel) {
+				{"早于已知记录的采集时间不会覆盖历史倍率", "older_snapshot", func(input *upstreamRateRemoteChannel) {
 					input.Groups[0].UpdatedAt = time.Unix(now-4000, 0).UTC().Format(time.RFC3339)
 				}},
 				{"无效倍率不误报未匹配", "invalid_response", func(input *upstreamRateRemoteChannel) { input.Groups[0].Ratio = nil }},
@@ -447,7 +502,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 					input.Groups = append([]upstreamRateGroup{}, remote.Groups...)
 					tc.change(&input)
 					require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
-						snapshot.Channels[4] = mergeUpstreamRateRecord(snapshot.Channels[4], input, now, 3900)
+						snapshot.Channels[4] = mergeUpstreamRateRecord(snapshot.Channels[4], input, now)
 						return nil
 					}))
 					actual, err := GetUpstreamRates(ctx, []int{single.Id})
