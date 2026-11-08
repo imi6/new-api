@@ -27,7 +27,6 @@ const source = {
   token: 'test-only-token-01234567890123456789',
   enabled: true,
   poll_seconds: 60,
-  scan_minutes: 30,
 }
 
 test('来源地址只接受 HTTPS 标准端口，拒绝 URL 凭据和查询参数', () => {
@@ -60,14 +59,22 @@ test('新来源需要令牌，已保存来源可以留空且不接受带空白�
   ).toBe(false)
 })
 
-test('轮询和上游扫描周期必须是允许范围内的整数', () => {
+test('只需填写读取周期，旧扫描周期字段被忽略', () => {
+  expect(upstreamRateSourceSchema.parse(source)).toEqual(source)
   expect(
-    upstreamRateSourceSchema.safeParse({ ...source, poll_seconds: 29 }).success
-  ).toBe(false)
-  expect(
-    upstreamRateSourceSchema.safeParse({ ...source, scan_minutes: 0 }).success
-  ).toBe(false)
-  expect(
-    upstreamRateSourceSchema.safeParse({ ...source, scan_minutes: 1.5 }).success
-  ).toBe(false)
+    upstreamRateSourceSchema.parse({ ...source, scan_minutes: 0 })
+  ).toEqual(source)
+})
+
+test('读取周期必须是 30 到 3600 秒内的整数', () => {
+  for (const poll_seconds of [29, 3601, 30.5, Number.NaN]) {
+    expect(
+      upstreamRateSourceSchema.safeParse({ ...source, poll_seconds }).success
+    ).toBe(false)
+  }
+  for (const poll_seconds of [30, 300, 3600]) {
+    expect(
+      upstreamRateSourceSchema.safeParse({ ...source, poll_seconds }).success
+    ).toBe(true)
+  }
 })
