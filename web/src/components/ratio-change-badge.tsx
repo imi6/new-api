@@ -46,6 +46,8 @@ function trimRatio(value: number): string {
 interface RatioChangeBadgeProps {
   change?: GroupRatioChange | null
   className?: string
+  formatValue?: (value: number) => string
+  tooltip?: string
 }
 
 /**
@@ -56,6 +58,7 @@ export function RatioChangeBadge(props: RatioChangeBadgeProps) {
   const { t } = useTranslation()
   const change = props.change
   if (!change) return null
+  const formatValue = props.formatValue ?? trimRatio
   const date = formatTimestampToDate(change.at).slice(0, 10)
 
   let badge = (
@@ -72,7 +75,7 @@ export function RatioChangeBadge(props: RatioChangeBadgeProps) {
     const cheaper = change.to < change.from
     badge = (
       <StatusBadge
-        label={trimRatio(Math.abs(change.to - change.from))}
+        label={formatValue(Math.abs(change.to - change.from))}
         icon={cheaper ? ArrowDown : ArrowUp}
         variant={cheaper ? 'success' : 'warning'}
         size='sm'
@@ -80,11 +83,12 @@ export function RatioChangeBadge(props: RatioChangeBadgeProps) {
       />
     )
     tooltip = t('Ratio changed from {{from}}x to {{to}}x on {{date}}', {
-      from: trimRatio(change.from),
-      to: trimRatio(change.to),
+      from: formatValue(change.from),
+      to: formatValue(change.to),
       date,
     })
   }
+  tooltip = props.tooltip ?? tooltip
 
   return (
     <Tooltip>

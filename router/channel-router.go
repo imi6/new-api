@@ -55,6 +55,12 @@ func registerChannelRoutes(apiRouter *gin.RouterGroup) {
 }
 
 var channelPermissionRoutes = []permissionRoute{
+	{method: http.MethodGet, path: "/upstream_rates/config", permission: authz.ChannelRead, handler: controller.GetUpstreamRateConfig},
+	{method: http.MethodPut, path: "/upstream_rates/sources", permission: authz.ChannelSensitiveWrite, handler: controller.SaveUpstreamRateSource},
+	{method: http.MethodDelete, path: "/upstream_rates/sources/:source_id", permission: authz.ChannelSensitiveWrite, handler: controller.DeleteUpstreamRateSource},
+	{method: http.MethodGet, path: "/upstream_rates", permission: authz.ChannelRead, handler: controller.GetUpstreamRates},
+	{method: http.MethodPost, path: "/upstream_rates/refresh", permission: authz.ChannelOperate, handler: controller.RefreshUpstreamRates},
+	{method: http.MethodGet, path: "/upstream_rates/tasks/:task_id", permission: authz.ChannelRead, handler: controller.GetUpstreamRateTask},
 	{method: http.MethodGet, path: "/priority/order", permission: authz.ChannelRead, handler: controller.GetChannelPriorityOrder},
 	{method: http.MethodPost, path: "/priority/reorder", permission: authz.ChannelWrite, handler: controller.ReorderChannelPriority},
 	{method: http.MethodGet, path: "/", permission: authz.ChannelRead, handler: controller.GetAllChannels},
