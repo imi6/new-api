@@ -29,16 +29,12 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import { GroupMultiplierBadge } from '@/components/group-badge'
-import { RatioChangeBadge } from '@/components/ratio-change-badge'
-import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { toIntlLocale } from '@/i18n/languages'
-import { formatTimestampToDate } from '@/lib/format'
 
 import { isTagAggregateRow } from '../lib/channel-utils'
 import type { Channel } from '../types'
 import { getUpstreamRates, upstreamRateQueryKey } from './api'
-import { upstreamRateStatusKeys } from './status'
 import { summarizeUpstreamRate } from './summary'
 import type { UpstreamRate } from './types'
 
@@ -141,90 +137,43 @@ export function UpstreamRateCell(props: {
   const context = useContext(Context)
   if (!props.visible) return <span className='text-muted-foreground'>••••</span>
   if (isTagAggregateRow(props.channel)) {
-    return (
-      <span className='text-muted-foreground text-xs'>
-        {t('Expand channels to view rates')}
-      </span>
-    )
+    return <span className='text-muted-foreground'>—</span>
   }
   if (!context || context.loading) {
-    return (
-      <span className='text-muted-foreground text-xs'>{t('Loading...')}</span>
-    )
+    return <span className='text-muted-foreground'>—</span>
   }
   const rate = context.rates.get(props.channel.id)
-  let status = rate?.status ?? 'unavailable'
-  if (context.error) status = 'read_failed'
   const summary = rate ? summarizeUpstreamRate(rate) : undefined
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const format = new Intl.NumberFormat(locale, { maximumSignificantDigits: 15 })
     .format
   let label: string | undefined
-  if (summary?.min !== undefined && summary.max !== undefined) {
+  if (
+    !context.error &&
+    !summary?.historical &&
+    summary?.min !== undefined &&
+    summary.max !== undefined
+  ) {
     label =
       summary.min === summary.max
-        ? `${format(summary.min)}×`
-        : `${format(summary.min)}–${format(summary.max)}×`
+        ? format(summary.min)
+        : `${format(summary.min)}–${format(summary.max)}`
   }
   return (
     <Button
       type='button'
       variant='ghost'
       size='sm'
-      className='h-auto max-w-full flex-col items-start gap-1 px-1 py-1 text-start'
+      className='h-auto max-w-full px-1 py-1'
       onClick={() => context.select(props.channel)}
       aria-label={t('View upstream rates for {{name}}', {
         name: props.channel.name,
       })}
     >
-      {label && <GroupMultiplierBadge ratio={summary?.min} label={label} />}
-      {summary && summary.groupCount > 1 && (
-        <span className='text-muted-foreground text-xs'>
-          {t('{{count}} upstream groups', { count: summary.groupCount })}
-        </span>
-      )}
-      {(status !== 'matched' || !label) && (
-        <StatusBadge
-          copyable={false}
-          size='sm'
-          label={t(
-            upstreamRateStatusKeys[status] ?? 'Upstream data unavailable'
-          )}
-          variant='neutral'
-        />
-      )}
-      {rate && rate.enabled_keys > 1 && (
-        <span className='text-muted-foreground text-xs'>
-          {t('Key coverage {{matched}}/{{total}}', {
-            matched: rate.matched_keys,
-            total: rate.enabled_keys,
-          })}
-        </span>
-      )}
-      {(summary?.historical || (context.error && label)) && (
-        <span className='text-warning text-xs'>{t('Historical value')}</span>
-      )}
-      {summary?.change && (
-        <RatioChangeBadge
-          change={summary.change}
-          formatValue={format}
-          tooltip={t(
-            'Observed ratio change: {{from}}× → {{to}}×. Local detection: {{date}}',
-            {
-              from: format(summary.change.from),
-              to: format(summary.change.to),
-              date: formatTimestampToDate(summary.change.at),
-            }
-          )}
-        />
-      )}
-      {summary?.changed && !summary.change && (
-        <span className='text-warning text-xs'>
-          {t('Recent upstream ratio change')}
-        </span>
-      )}
-      {summary?.moved && (
-        <span className='text-warning text-xs'>{t('Key group changed')}</span>
+      {label ? (
+        <GroupMultiplierBadge ratio={summary?.min} label={label} />
+      ) : (
+        <span className='text-muted-foreground'>—</span>
       )}
     </Button>
   )

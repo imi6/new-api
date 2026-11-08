@@ -213,6 +213,15 @@ func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 			assert.Equal(t, "实际分组", item.GroupName)
 		})
 	}
+	t.Run("搜索范围不完整且当前 Key 未命中时返回未同步", func(t *testing.T) {
+		snapshots := map[string]upstreamRateSnapshot{source.ID: {
+			ReadAt: now, Complete: false,
+			Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now, 3900)},
+		}}
+		item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-missing", now)
+		assert.Equal(t, "not_synced", item.Status)
+		assert.Nil(t, item.Ratio)
+	})
 }
 
 func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
@@ -352,7 +361,7 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 			views, err := GetUpstreamRates(ctx, []int{channel.Id})
 			require.NoError(t, err)
 			require.Len(t, views, 1)
-			assert.Equal(t, "partial", views[0].Status)
+			assert.Equal(t, "not_synced", views[0].Status)
 			assert.Equal(t, 2, views[0].EnabledKeys)
 			assert.Equal(t, 1, views[0].MatchedKeys)
 			assert.Equal(t, 4, views[0].Keys[0].UpstreamChannelID, "旧绑定不会限制自动搜索范围")
@@ -380,6 +389,40 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 			assert.Equal(t, 4, multi[0].Keys[0].UpstreamChannelID)
 			assert.Equal(t, 7, multi[0].Keys[1].UpstreamChannelID)
 			assert.False(t, multi[0].ForceRefreshAvailable, "多账号归属不能静默挑选一个强刷")
+			for _, tc := range []struct {
+				name   string
+				change func(*upstreamRateSnapshot)
+			}{
+				{"无关账号失败不影响当前 Key 命中", func(snapshot *upstreamRateSnapshot) {
+					snapshot.Channels[99] = upstreamRateRecord{Error: "request_failed"}
+					snapshot.Complete = false
+				}},
+				{"同账号其他 Key 不完整不影响当前 Key 命中", func(snapshot *upstreamRateSnapshot) {
+					record := snapshot.Channels[4]
+					record.Data.Complete = common.GetPointer(false)
+					snapshot.Channels[4] = record
+				}},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
+						tc.change(snapshot)
+						return nil
+					}))
+					actual, err := GetUpstreamRates(ctx, []int{channel.Id})
+					require.NoError(t, err)
+					require.Len(t, actual, 1)
+					assert.Equal(t, "matched", actual[0].Status)
+					assert.Equal(t, 2, actual[0].MatchedKeys)
+					assert.Equal(t, "matched", actual[0].Keys[0].Status)
+					assert.Equal(t, "matched", actual[0].Keys[1].Status)
+					require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
+						delete(snapshot.Channels, 99)
+						snapshot.Complete = true
+						snapshot.Channels[4] = mergeUpstreamRateRecord(snapshot.Channels[4], remote, now, 3900)
+						return nil
+					}))
+				})
+			}
 			_, err = EnqueueUpstreamRateRefresh(ctx, "", channel.Id, true)
 			require.ErrorIs(t, err, ErrUpstreamRateConfig)
 			require.NoError(t, mutateUpstreamRateSnapshot(ctx, source, func(snapshot *upstreamRateSnapshot) error {
