@@ -341,11 +341,83 @@ test('其他上游不完整但当前 Key 已命中时列表仅显示倍率，详
   })
   const dialog = await screen.findByRole('dialog')
   expect(within(dialog).getAllByText('Matched')).toHaveLength(1)
+  expect(
+    within(dialog).queryByText('Approximate match')
+  ).not.toBeInTheDocument()
   expect(within(dialog).getByText('A')).toBeVisible()
   expect(within(dialog).getByText('1.9')).toBeVisible()
   expect(
     within(dialog).queryByText('Partial upstream synchronization')
   ).not.toBeInTheDocument()
+  client.clear()
+})
+
+test('脱敏唯一命中时列表和详情均标记近似匹配，倍率不附加乘号', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        {
+          ...rate,
+          keys: [{ ...rate.keys[0], ratio: 1.9, match_method: 'masked' }],
+        },
+      ],
+    },
+  } as Awaited<ReturnType<typeof api.get>>)
+  const user = userEvent.setup()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  const cell = await screen.findByRole('button', {
+    name: /View upstream rates/,
+  })
+  expect(within(cell).getByText('1.9')).toBeVisible()
+  expect(within(cell).getByText('Approximate match')).toBeVisible()
+  await user.click(cell)
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('1.9')).toBeVisible()
+  expect(within(dialog).getByText('Approximate match')).toBeVisible()
+  expect(within(dialog).queryByText('Matched')).not.toBeInTheDocument()
+  client.clear()
+})
+
+test('近似匹配读取失败时列表隐藏倍率，详情保留历史值和近似标记', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        {
+          ...rate,
+          keys: [{ ...rate.keys[0], ratio: 1.9, match_method: 'masked' }],
+        },
+      ],
+    },
+  } as Awaited<ReturnType<typeof api.get>>)
+  const user = userEvent.setup()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  await screen.findByText('1.9')
+  vi.mocked(api.get).mockRejectedValue(new Error('offline'))
+  await act(async () => {
+    await client.refetchQueries({ queryKey: upstreamRateQueryKey })
+  })
+  const cell = screen.getByRole('button', { name: /View upstream rates/ })
+  expect(await within(cell).findByText('—')).toBeVisible()
+  expect(cell).toHaveTextContent(/^—$/)
+  await user.click(cell)
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('1.9')).toBeVisible()
+  expect(within(dialog).getByText('Historical value')).toBeVisible()
+  expect(within(dialog).getByText('Approximate match')).toBeVisible()
   client.clear()
 })
 

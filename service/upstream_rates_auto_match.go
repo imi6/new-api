@@ -18,12 +18,14 @@ type upstreamRateKeyMatch struct {
 	Candidate upstreamRateCandidate
 }
 
-// 指纹索引以来源声明的归一化规则分区，不使用渠道名称或 URL 猜测归属。
+// 精确指纹按归一化规则分区；脱敏提示另按完整站点范围索引。
 type upstreamRateMatchIndex struct {
-	Current map[string]map[string][]upstreamRateKeyMatch
-	Known   map[string]map[string][]upstreamRateKeyMatch
-	Status  string
-	Enabled bool
+	Current         map[string]map[string][]upstreamRateKeyMatch
+	Known           map[string]map[string][]upstreamRateKeyMatch
+	Hints           map[string]*upstreamRateHintSite
+	HintsIncomplete bool
+	Status          string
+	Enabled         bool
 }
 
 func upstreamRateRecordStatus(record upstreamRateRecord, now int64) string {
@@ -42,6 +44,7 @@ func upstreamRateRecordStatus(record upstreamRateRecord, now int64) string {
 
 func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[string]upstreamRateSnapshot, now int64) upstreamRateMatchIndex {
 	index := upstreamRateMatchIndex{Current: map[string]map[string][]upstreamRateKeyMatch{}, Known: map[string]map[string][]upstreamRateKeyMatch{}}
+	index.Hints = map[string]*upstreamRateHintSite{}
 	for _, rule := range []string{"trim", "trim_strip_sk_prefix"} {
 		index.Current[rule] = map[string][]upstreamRateKeyMatch{}
 		index.Known[rule] = map[string][]upstreamRateKeyMatch{}
@@ -52,6 +55,7 @@ func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[str
 		}
 		index.Enabled = true
 		snapshot := snapshots[source.ID]
+		index.addHintSource(source, snapshot, now)
 		status := "unmatched"
 		if snapshot.Error != "" {
 			status = "read_failed"
@@ -105,7 +109,7 @@ func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[str
 	return index
 }
 
-func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRateKeyView {
+func (index upstreamRateMatchIndex) match(rawKey, siteURL string, localKeys []string, now int64) UpstreamRateKeyView {
 	item := UpstreamRateKeyView{Status: index.Status}
 	if item.Status == "partial" {
 		item.Status = "not_synced"
@@ -131,8 +135,17 @@ func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRate
 		item.Status = "conflict"
 		return item
 	}
-	if len(current) == 0 && len(historical) == 0 {
-		return item
+	if len(current) == 0 {
+		hint, found := index.matchHint(rawKey, siteURL, localKeys, now)
+		if found {
+			return hint
+		}
+		if len(historical) == 0 {
+			if hint.Status != "unmatched" {
+				return hint
+			}
+			return item
+		}
 	}
 	var match upstreamRateKeyMatch
 	if len(current) == 1 {
@@ -141,6 +154,7 @@ func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRate
 		match = historical[0]
 	}
 	source, record := match.Source, match.Record
+	item.MatchMethod = "fingerprint"
 	quality := upstreamRateRecordStatus(record, now)
 	item.SourceID, item.SourceName = source.ID, source.Name
 	item.UpstreamChannelID, item.UpstreamChannelName = record.Data.ID, record.Data.Name
@@ -229,7 +243,7 @@ func GetUpstreamRates(ctx context.Context, ids []int) ([]UpstreamRateView, error
 		targets := map[string]UpstreamRateKeyView{}
 		conflict := false
 		for i, rawKey := range keys {
-			item := index.match(rawKey, now)
+			item := index.match(rawKey, channel.GetBaseURL(), keys, now)
 			item.Index, item.Enabled = i+1, true
 			if channel.ChannelInfo.IsMultiKey {
 				if status, exists := channel.ChannelInfo.MultiKeyStatusList[i]; exists {
