@@ -29,6 +29,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import { GroupMultiplierBadge } from '@/components/group-badge'
+import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { toIntlLocale } from '@/i18n/languages'
 
@@ -171,7 +172,18 @@ export function UpstreamRateCell(props: {
       })}
     >
       {label ? (
-        <GroupMultiplierBadge ratio={summary?.min} label={label} />
+        <span className='inline-flex max-w-full min-w-0 flex-col items-start gap-1'>
+          <GroupMultiplierBadge ratio={summary?.min} label={label} />
+          {summary?.approximate && (
+            <StatusBadge
+              copyable={false}
+              label={t('Approximate match')}
+              variant='warning'
+              type='text'
+              className='text-xs'
+            />
+          )}
+        </span>
       ) : (
         <span className='text-muted-foreground'>—</span>
       )}
