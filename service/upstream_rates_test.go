@@ -118,7 +118,7 @@ func TestUpstreamRateConflictsAndQuality(t *testing.T) {
 	assert.Equal(t, "stale", upstreamRateChannelQuality(channel, now, 3900))
 }
 
-func TestUpstreamRateCredentialRequiresStableSecretAndBindsSource(t *testing.T) {
+func TestUpstreamRateEncryptedCredentialBindsSource(t *testing.T) {
 	t.Setenv("CRYPTO_SECRET", "")
 	t.Setenv("SESSION_SECRET", "")
 	_, err := upstreamRateCipher()
@@ -137,6 +137,14 @@ func TestUpstreamRateCredentialRequiresStableSecretAndBindsSource(t *testing.T) 
 	assert.Equal(t, "test-only-token", plaintext)
 	source.ID = "source-b"
 	_, err = upstreamRateSourceToken(source)
+	require.EqualError(t, err, "credential_unavailable")
+	source.TokenPlaintext = "must-not-fallback-after-decryption-failure"
+	_, err = upstreamRateSourceToken(source)
+	require.EqualError(t, err, "credential_unavailable")
+	source.TokenCiphertext = "invalid-ciphertext"
+	_, err = upstreamRateSourceToken(source)
+	require.EqualError(t, err, "credential_unavailable")
+	_, err = upstreamRateSourceToken(upstreamRateSource{ID: "missing-token"})
 	require.EqualError(t, err, "credential_unavailable")
 }
 
@@ -240,6 +248,68 @@ func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {
 			common.SetDatabaseTypes(dialect.kind, previousLog)
 			t.Cleanup(func() { model.DB = previousDB; common.SetDatabaseTypes(previousMain, previousLog) })
 			require.NoError(t, db.AutoMigrate(&model.Option{}, &model.Channel{}))
+			t.Run("未配置环境密钥时可保存并在重启后读取令牌", func(t *testing.T) {
+				t.Setenv("CRYPTO_SECRET", "")
+				t.Setenv("SESSION_SECRET", "")
+				previousSecret := common.CryptoSecret
+				t.Cleanup(func() { common.CryptoSecret = previousSecret })
+				ctx := context.Background()
+				const token = "test-only-plaintext-token-0123456789"
+				input := UpstreamRateSourceInput{Name: "未加密来源", BaseURL: "https://rates.example.com", Token: token, Enabled: true, PollSeconds: 60, ScanMinutes: 30}
+				require.NoError(t, SaveUpstreamRateSource(ctx, input))
+				config, err := loadUpstreamRateConfig(ctx)
+				require.NoError(t, err)
+				require.Len(t, config.Sources, 1)
+				input.ID = config.Sources[0].ID
+				raw, err := model.ReadUpstreamRatesState(ctx, "config")
+				require.NoError(t, err)
+				assert.Contains(t, raw, token, "无环境密钥时明确使用明文存储")
+				common.CryptoSecret = "different-ephemeral-secret-after-restart"
+				config, err = loadUpstreamRateConfig(ctx)
+				require.NoError(t, err)
+				decoded, err := upstreamRateSourceToken(config.Sources[0])
+				require.NoError(t, err)
+				assert.Equal(t, token, decoded)
+				input.Token, input.Name = "", "仅修改名称"
+				require.NoError(t, SaveUpstreamRateSource(ctx, input))
+				view, err := GetUpstreamRateConfig(ctx)
+				require.NoError(t, err)
+				assert.False(t, view.EncryptionReady)
+				require.Len(t, view.Sources, 1)
+				assert.True(t, view.Sources[0].TokenConfigured)
+				encoded, err := common.Marshal(view)
+				require.NoError(t, err)
+				assert.NotContains(t, string(encoded), token, "配置读取不向浏览器返回令牌")
+				input.BaseURL = "https://different.example.com"
+				require.ErrorIs(t, SaveUpstreamRateSource(ctx, input), ErrUpstreamRateConfig)
+				input.BaseURL = "https://rates.example.com"
+				t.Setenv("CRYPTO_SECRET", "test-only-later-configured-secret")
+				common.CryptoSecret = "test-only-later-configured-secret"
+				config, err = loadUpstreamRateConfig(ctx)
+				require.NoError(t, err)
+				decoded, err = upstreamRateSourceToken(config.Sources[0])
+				require.NoError(t, err)
+				assert.Equal(t, token, decoded, "后续配置密钥不影响已保存的明文令牌")
+				input.Token = token
+				require.NoError(t, SaveUpstreamRateSource(ctx, input))
+				raw, err = model.ReadUpstreamRatesState(ctx, "config")
+				require.NoError(t, err)
+				assert.NotContains(t, raw, token, "重新输入令牌时切换为加密存储并清除明文")
+				config, err = loadUpstreamRateConfig(ctx)
+				require.NoError(t, err)
+				decoded, err = upstreamRateSourceToken(config.Sources[0])
+				require.NoError(t, err)
+				assert.Equal(t, token, decoded)
+				t.Setenv("CRYPTO_SECRET", "")
+				require.NoError(t, SaveUpstreamRateSource(ctx, input))
+				config, err = loadUpstreamRateConfig(ctx)
+				require.NoError(t, err)
+				assert.Empty(t, config.Sources[0].TokenCiphertext, "切回明文时清除旧密文")
+				decoded, err = upstreamRateSourceToken(config.Sources[0])
+				require.NoError(t, err)
+				assert.Equal(t, token, decoded)
+				require.NoError(t, DeleteUpstreamRateSource(ctx, input.ID))
+			})
 			t.Setenv("CRYPTO_SECRET", "test-only-upstream-credential-secret")
 			previousSecret := common.CryptoSecret
 			common.CryptoSecret = "test-only-upstream-credential-secret"
