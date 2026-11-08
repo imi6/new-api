@@ -52,15 +52,15 @@ function UpstreamRateKeyItem(props: {
     .format
   const item = props.item
   const historical = item.ratio !== undefined && item.status !== 'matched'
-  const approximate = item.match_method === 'masked' && item.ratio !== undefined
-  let statusKey =
+  const showStatus =
+    !item.enabled || item.status !== 'matched' || item.match_method !== 'masked'
+  const statusKey =
     upstreamRateStatusKeys[item.status] ?? 'Upstream data unavailable'
-  if (approximate && item.status === 'matched') statusKey = 'Approximate match'
   const errorKey = item.error
     ? (upstreamRateErrorKeys[item.error] ?? 'Upstream data unavailable')
     : undefined
   let variant: 'neutral' | 'success' | 'warning' =
-    item.status === 'matched' && !approximate ? 'success' : 'warning'
+    item.status === 'matched' ? 'success' : 'warning'
   if (!item.enabled) variant = 'neutral'
   return (
     <article
@@ -74,17 +74,11 @@ function UpstreamRateKeyItem(props: {
             : t('Upstream rates')}
         </span>
         <div className='flex flex-wrap items-center gap-2'>
-          <StatusBadge
-            copyable={false}
-            label={item.enabled ? t(statusKey) : t('Disabled')}
-            variant={variant}
-            type='text'
-          />
-          {approximate && (historical || !item.enabled) && (
+          {showStatus && (
             <StatusBadge
               copyable={false}
-              label={t('Approximate match')}
-              variant='warning'
+              label={item.enabled ? t(statusKey) : t('Disabled')}
+              variant={variant}
               type='text'
             />
           )}
