@@ -42,6 +42,7 @@ export type UpstreamRateKey = {
   index: number
   enabled: boolean
   status: string
+  match_method?: 'fingerprint' | 'masked'
   source_id?: string
   source_name?: string
   upstream_channel_id?: number
