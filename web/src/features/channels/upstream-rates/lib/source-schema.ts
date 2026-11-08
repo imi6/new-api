@@ -55,7 +55,6 @@ export const upstreamRateSourceSchema = z
       .int(error)
       .min(30, error)
       .max(3600, error),
-    scan_minutes: z.number({ error }).int(error).min(1, error).max(1440, error),
   })
   .refine((value) => value.id !== '' || value.token !== '', {
     path: ['token'],
