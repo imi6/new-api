@@ -70,6 +70,11 @@ function ChannelCardComponent({
   const statusCell = renderCell('status')
   const actionsCell = renderCell('actions')
   const priorityCell = renderCell('priority')
+  const upstreamRateCell = cells
+    .find((cell) => cell.column.id === 'upstream_rate')
+    ?.column.getIsVisible()
+    ? renderCell('upstream_rate')
+    : null
   const weightCell = renderCell('weight')
   const balanceCell = renderCell('balance')
   const responseCell = renderCell('response_time')
@@ -156,6 +161,12 @@ function ChannelCardComponent({
           </div>
         </StatusBadgeTypeContext.Provider>
 
+        {upstreamRateCell && (
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className={labelClass}>{t('Upstream rates')}</span>
+            {upstreamRateCell}
+          </div>
+        )}
         {/* Groups retain their compact, full-width footer. */}
         <div className='min-w-0'>
           {groups.length > 0 ? (

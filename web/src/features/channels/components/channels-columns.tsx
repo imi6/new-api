@@ -88,6 +88,7 @@ import {
 } from '../lib'
 import { parseUpstreamUpdateMeta } from '../lib/upstream-update-utils'
 import type { Channel } from '../types'
+import { UpstreamRateCell } from '../upstream-rates/rates-context'
 import { ChannelRowActionsLayoutContext } from './channel-row-actions-context'
 import { TaskPluginChannelBadge } from './channel-type-badge'
 import { useChannels } from './channels-provider'
@@ -1150,6 +1151,16 @@ export function useChannelsColumns(
           )
         },
         size: 120,
+        enableSorting: false,
+      },
+
+      {
+        id: 'upstream_rate',
+        header: t('Upstream rates'),
+        cell: ({ row }) => (
+          <UpstreamRateCell channel={row.original} visible={sensitiveVisible} />
+        ),
+        size: 170,
         enableSorting: false,
       },
 
