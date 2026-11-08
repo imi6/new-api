@@ -141,9 +141,13 @@ export function UpstreamRateSourceForm(props: {
           )}
         />
         <p className='text-muted-foreground text-xs'>
-          {t(
-            'Tokens are encrypted on the server. Leave blank to keep the saved token.'
-          )}
+          {props.encryptionReady
+            ? t(
+                'New tokens are encrypted on the server. Leave blank to keep the saved token.'
+              )
+            : t(
+                'New tokens are stored as plain text in the database. Leave blank to keep the saved token.'
+              )}
         </p>
         <div className='grid gap-4 sm:grid-cols-2'>
           <FormField
@@ -208,13 +212,6 @@ export function UpstreamRateSourceForm(props: {
             </div>
           )}
         />
-        {!props.encryptionReady && (
-          <p className='text-destructive text-sm'>
-            {t(
-              'Set CRYPTO_SECRET or SESSION_SECRET before saving upstream rate credentials'
-            )}
-          </p>
-        )}
         <div className='flex justify-end gap-2'>
           <Button
             type='button'
@@ -224,10 +221,7 @@ export function UpstreamRateSourceForm(props: {
           >
             {t('Cancel')}
           </Button>
-          <Button
-            type='submit'
-            disabled={save.isPending || !props.encryptionReady}
-          >
+          <Button type='submit' disabled={save.isPending}>
             {t('Save')}
           </Button>
         </div>
