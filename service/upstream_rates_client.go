@@ -24,6 +24,9 @@ import (
 type upstreamRateAPIKey struct {
 	ID          int    `json:"api_key_id"`
 	Fingerprint string `json:"fingerprint"`
+	MaskedKey   string `json:"masked_key,omitempty"`
+	KeyPrefix   string `json:"key_prefix,omitempty"`
+	KeySuffix   string `json:"key_suffix,omitempty"`
 }
 
 type upstreamRateGroup struct {
@@ -47,6 +50,9 @@ type upstreamRateRemoteChannel struct {
 	KeySyncAttemptedAt string              `json:"key_sync_attempted_at"`
 	Status             string              `json:"key_sync_status"`
 	UnavailableIDs     []int               `json:"unavailable_api_key_ids"`
+	HintNormalization  string              `json:"key_hint_normalization"`
+	HintsComplete      *bool               `json:"key_hints_complete"`
+	UnavailableHintIDs []int               `json:"unavailable_key_hint_ids"`
 	Groups             []upstreamRateGroup `json:"groups"`
 }
 
@@ -83,13 +89,15 @@ type upstreamRateRecord struct {
 }
 
 type upstreamRateSnapshot struct {
-	Revision      string                     `json:"revision"`
-	AttemptAt     int64                      `json:"attempt_at"`
-	ReadAt        int64                      `json:"read_at"`
-	Error         string                     `json:"error"`
-	Complete      bool                       `json:"complete"`
-	Channels      map[int]upstreamRateRecord `json:"channels"`
-	ForceAttempts map[int]int64              `json:"force_attempts"`
+	Revision  string `json:"revision"`
+	AttemptAt int64  `json:"attempt_at"`
+	ReadAt    int64  `json:"read_at"`
+	Error     string `json:"error"`
+	Complete  bool   `json:"complete"`
+	// nil 表示尚未确认批量候选范围；空切片表示批量响应确认没有授权渠道。
+	HintChannelIDs []int                      `json:"hint_channel_ids"`
+	Channels       map[int]upstreamRateRecord `json:"channels"`
+	ForceAttempts  map[int]int64              `json:"force_attempts"`
 }
 
 func loadUpstreamRateSnapshot(ctx context.Context, source upstreamRateSource) (upstreamRateSnapshot, error) {
@@ -235,6 +243,10 @@ func fetchUpstreamRateChannels(ctx context.Context, source upstreamRateSource, c
 	if err != nil || len(body) > maxResponse {
 		return nil, nil, false, errors.New("invalid_response")
 	}
+	return decodeUpstreamRateChannels(body, channelID)
+}
+
+func decodeUpstreamRateChannels(body []byte, channelID int) ([]upstreamRateRemoteChannel, map[int]string, bool, error) {
 	var envelope struct {
 		Success bool            `json:"success"`
 		Data    json.RawMessage `json:"data"`
@@ -266,6 +278,9 @@ func fetchUpstreamRateChannels(ctx context.Context, source upstreamRateSource, c
 		}
 		channels, complete = data.Channels, *data.Complete
 		for _, item := range data.Errors {
+			if item.ChannelID <= 0 {
+				return nil, nil, false, errors.New("invalid_response")
+			}
 			channelErrors[item.ChannelID] = "channel_unavailable"
 		}
 	}
@@ -283,6 +298,10 @@ func fetchUpstreamRateChannels(ctx context.Context, source upstreamRateSource, c
 			complete = false
 		}
 		if site, err := url.Parse(channel.SiteURL); err == nil {
+			// 展示地址仍清理敏感成分，但不能因此把不同租户误当成同一候选站点。
+			if site.User != nil || site.RawQuery != "" || site.Fragment != "" {
+				channel.HintsComplete = common.GetPointer(false)
+			}
 			site.User = nil
 			site.RawQuery = ""
 			site.Fragment = ""
