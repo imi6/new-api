@@ -41,12 +41,19 @@ interface UseBillingHistoryOptions {
   initialPage?: number
   /** Initial page size */
   initialPageSize?: number
-  /** Fetch only while the history dialog is open */
+  /** 仅在账单区域可见时加载 */
   enabled?: boolean
+  /** 充值完成后刷新账单及筛选缓存 */
+  refreshKey?: number
 }
 
 export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
-  const { initialPage = 1, initialPageSize = 10, enabled = true } = options
+  const {
+    initialPage = 1,
+    initialPageSize = 10,
+    enabled = true,
+    refreshKey,
+  } = options
   const isAdmin = useIsAdmin()
 
   const [records, setRecords] = useState<TopupRecord[]>([])
@@ -58,9 +65,10 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
   const [knownMethods, setKnownMethods] = useState<string[]>([])
   const debouncedKeyword = useDebounce(keyword)
   const requestIdRef = useRef(0)
-  const scannedRecordsRef = useRef<{ key: string; items: TopupRecord[] } | null>(
-    null
-  )
+  const scannedRecordsRef = useRef<{
+    key: string
+    items: TopupRecord[]
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [completing, setCompleting] = useState(false)
 
@@ -222,13 +230,22 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
     setPage(1)
   }, [])
 
+  const refresh = useCallback(() => {
+    scannedRecordsRef.current = null
+    return fetchBillingHistory()
+  }, [fetchBillingHistory])
+
+  useEffect(() => {
+    scannedRecordsRef.current = null
+  }, [refreshKey])
+
   // Fetch data after the search draft has settled.
   useEffect(() => {
     if (!enabled) return
     if (keyword !== debouncedKeyword) return
 
     fetchBillingHistory()
-  }, [debouncedKeyword, enabled, fetchBillingHistory, keyword])
+  }, [debouncedKeyword, enabled, fetchBillingHistory, keyword, refreshKey])
 
   return {
     records,
@@ -246,6 +263,6 @@ export function useBillingHistory(options: UseBillingHistoryOptions = {}) {
     handleSearch,
     handlePaymentMethodChange,
     handleCompleteOrder,
-    refresh: fetchBillingHistory,
+    refresh,
   }
 }
