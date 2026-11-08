@@ -201,7 +201,8 @@ test('本地读取失败后列表仅显示占位，历史倍率与错误保留�
   expect(
     within(dialog).getAllByText('Upstream snapshot read failed').length
   ).toBeGreaterThan(0)
-  expect(within(dialog).getByText('A · 0.0000000123456')).toBeVisible()
+  expect(within(dialog).getByText('A')).toBeVisible()
+  expect(within(dialog).getByText('0.0000000123456')).toBeVisible()
   client.clear()
 })
 
@@ -249,7 +250,10 @@ test('自动匹配详情显示上游归属且无需逐渠道配置', async () =>
   })
   const dialog = await screen.findByRole('dialog')
   expect(within(dialog).getByText(/倍率来源 \/ #4 上游账号/)).toBeVisible()
-  expect(within(dialog).getByText('Groups with keys only: Yes')).toBeVisible()
+  await user.click(within(dialog).getByRole('button', { name: 'Details' }))
+  expect(
+    within(dialog).getByText('Groups with keys only').parentElement
+  ).toHaveTextContent('Yes')
   expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
   expect(
     within(dialog).queryByRole('button', { name: 'Save upstream binding' })
@@ -294,15 +298,18 @@ test('旧接口返回部分同步且 Key 未命中时列表仅显示占位，详
     await vi.dynamicImportSettled()
   })
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getAllByText('Not yet synchronized')).toHaveLength(2)
+  expect(within(dialog).getAllByText('Not yet synchronized')).toHaveLength(1)
   expect(
     within(dialog).queryByText('Partial upstream synchronization')
   ).not.toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'Details' }))
   expect(within(dialog).getByText('Enabled key coverage: 0/1')).toBeVisible()
   expect(
-    within(dialog).getByText('Groups with keys only: Unknown')
-  ).toBeVisible()
-  expect(within(dialog).getByText('— · —')).toBeVisible()
+    within(dialog).getByText('Groups with keys only').parentElement
+  ).toHaveTextContent('Unknown')
+  expect(
+    within(dialog).getByRole('article', { name: 'Key #1' })
+  ).toHaveTextContent('—')
   client.clear()
 })
 
@@ -333,15 +340,78 @@ test('其他上游不完整但当前 Key 已命中时列表仅显示倍率，详
     await vi.dynamicImportSettled()
   })
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getAllByText('Matched')).toHaveLength(2)
-  expect(within(dialog).getByText('A · 1.9')).toBeVisible()
+  expect(within(dialog).getAllByText('Matched')).toHaveLength(1)
+  expect(within(dialog).getByText('A')).toBeVisible()
+  expect(within(dialog).getByText('1.9')).toBeVisible()
   expect(
     within(dialog).queryByText('Partial upstream synchronization')
   ).not.toBeInTheDocument()
   client.clear()
 })
 
-test('多个 Key 的倍率不同时列表仅显示当前倍率范围', async () => {
+test('单 Key 弹窗只显示一次归属与地址，辅助信息折叠且刷新位于底部', async () => {
+  const siteURL = 'https://upstream.example.com'
+  vi.mocked(api.get).mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        {
+          ...rate,
+          upstream_channel_name: '上游账号',
+          site_url: siteURL,
+          keys: [{ ...rate.keys[0], ratio: 1.9, site_url: siteURL }],
+        },
+      ],
+    },
+  } as Awaited<ReturnType<typeof api.get>>)
+  const user = userEvent.setup()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  await user.click(
+    await screen.findByRole('button', { name: /View upstream rates/ })
+  )
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(dialog).toHaveClass('sm:max-w-xl')
+  expect(within(dialog).getAllByText(/倍率来源 \/ #4 上游账号/)).toHaveLength(1)
+  expect(within(dialog).getAllByText(siteURL)).toHaveLength(1)
+  expect(within(dialog).getAllByText('Matched')).toHaveLength(1)
+  expect(within(dialog).queryByText('Key #1')).not.toBeInTheDocument()
+  expect(within(dialog).getByText('1.9')).toHaveClass(
+    'text-3xl',
+    'tabular-nums'
+  )
+  const times = within(dialog).getByText('Rate collection time').closest('dl')
+  expect(times).toHaveClass('grid-cols-1', 'sm:grid-cols-2')
+  expect(times).toContainElement(
+    within(dialog).getByText('Key synchronization time')
+  )
+  const footer = dialog.querySelector('[data-slot=dialog-footer]')
+  expect(footer).toContainElement(
+    within(dialog).getByRole('button', { name: 'Update display' })
+  )
+  expect(footer).toContainElement(
+    within(dialog).getByRole('button', { name: 'Force refresh upstream' })
+  )
+  expect(
+    within(dialog).queryByText('Local snapshot read')
+  ).not.toBeInTheDocument()
+  const details = within(dialog).getByRole('button', { name: 'Details' })
+  expect(details).toHaveAttribute('aria-expanded', 'false')
+  details.focus()
+  await user.keyboard('{Enter}')
+  expect(details).toHaveAttribute('aria-expanded', 'true')
+  expect(within(dialog).getByText('Local snapshot read')).toBeVisible()
+  expect(within(dialog).getByText('Enabled key coverage: 1/1')).toBeVisible()
+  client.clear()
+})
+
+test('多个 Key 分别显示倍率，长分组名换行且禁用 Key 收入详情', async () => {
+  const groupName = 'VeryLongUpstreamGroupNameWithoutSpaces'.repeat(5)
   vi.mocked(api.get).mockResolvedValue({
     data: {
       success: true,
@@ -358,12 +428,20 @@ test('多个 Key 的倍率不同时列表仅显示当前倍率范围', async () 
               moved_from: 'C',
               moved_at: 1,
             },
-            { ...rate.keys[0], index: 2, group_name: 'B', ratio: 0.2 },
+            { ...rate.keys[0], index: 2, group_name: groupName, ratio: 0.2 },
+            {
+              ...rate.keys[0],
+              index: 3,
+              enabled: false,
+              group_name: 'Disabled group',
+              ratio: 99,
+            },
           ],
         },
       ],
     },
   } as Awaited<ReturnType<typeof api.get>>)
+  const user = userEvent.setup()
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -372,6 +450,54 @@ test('多个 Key 的倍率不同时列表仅显示当前倍率范围', async () 
     name: /View upstream rates/,
   })
   expect(cell).toHaveTextContent(/^0\.1–0\.2$/)
+  await user.click(cell)
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  const firstKey = within(dialog).getByRole('article', { name: 'Key #1' })
+  const secondKey = within(dialog).getByRole('article', { name: 'Key #2' })
+  expect(within(firstKey).getByText('0.1')).toBeVisible()
+  expect(within(secondKey).getByText('0.2')).toBeVisible()
+  expect(within(secondKey).getByText(groupName)).toHaveClass('break-words')
+  expect(
+    within(dialog).queryByRole('article', { name: 'Key #3' })
+  ).not.toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'Details' }))
+  const disabledKey = within(dialog).getByRole('article', { name: 'Key #3' })
+  expect(within(disabledKey).getByText('Disabled')).toBeVisible()
+  expect(within(disabledKey).getByText('99')).toBeVisible()
+  expect(
+    within(dialog)
+      .getByRole('button', { name: 'Update display' })
+      .closest('[data-slot=dialog-footer]')
+  ).toHaveClass('flex-row', 'flex-wrap')
+  client.clear()
+})
+
+test('首次读取失败且没有快照时展示空状态，并在底部提供重试', async () => {
+  vi.mocked(api.get).mockRejectedValue(new Error('offline'))
+  const user = userEvent.setup()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  await user.click(
+    await screen.findByRole('button', { name: /View upstream rates/ })
+  )
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Upstream data unavailable')).toBeVisible()
+  expect(
+    within(dialog)
+      .getByRole('button', { name: 'Retry' })
+      .closest('[data-slot=dialog-footer]')
+  ).toBeInTheDocument()
+  expect(
+    within(dialog).queryByRole('button', { name: 'Details' })
+  ).not.toBeInTheDocument()
   client.clear()
 })
 
