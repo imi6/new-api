@@ -25,6 +25,12 @@ func TestChannelDefaultBaseURLsRequireReadPermission(t *testing.T) {
 }
 
 func TestChannelStatusRoutesUseExpectedPermissions(t *testing.T) {
+	assertChannelRoutePermission(t, http.MethodGet, "/upstream_rates/config", authz.ChannelRead, controller.GetUpstreamRateConfig)
+	assertChannelRoutePermission(t, http.MethodGet, "/upstream_rates", authz.ChannelRead, controller.GetUpstreamRates)
+	assertChannelRoutePermission(t, http.MethodPut, "/upstream_rates/sources", authz.ChannelSensitiveWrite, controller.SaveUpstreamRateSource)
+	assertChannelRoutePermission(t, http.MethodDelete, "/upstream_rates/sources/:source_id", authz.ChannelSensitiveWrite, controller.DeleteUpstreamRateSource)
+	assertChannelRoutePermission(t, http.MethodPost, "/upstream_rates/refresh", authz.ChannelOperate, controller.RefreshUpstreamRates)
+	assertChannelRoutePermission(t, http.MethodGet, "/upstream_rates/tasks/:task_id", authz.ChannelRead, controller.GetUpstreamRateTask)
 	assertChannelRoutePermission(t, http.MethodGet, "/priority/order", authz.ChannelRead, controller.GetChannelPriorityOrder)
 	assertChannelRoutePermission(t, http.MethodPost, "/priority/reorder", authz.ChannelWrite, controller.ReorderChannelPriority)
 	assertChannelRoutePermission(t, http.MethodGet, "/:id/vllm/status", authz.ChannelRead, controller.GetVLLMChannelStatus)
@@ -51,6 +57,9 @@ func TestChannelStatusRoutesRegisterWithoutConflict(t *testing.T) {
 	require.NotPanics(t, func() {
 		registerChannelRoutes(api)
 	})
+	recorder := httptest.NewRecorder()
+	engine.ServeHTTP(recorder, httptest.NewRequest(http.MethodPut, "/api/channel/1/upstream_rate_binding", nil))
+	assert.Equal(t, http.StatusNotFound, recorder.Code, "单渠道倍率绑定接口已移除")
 }
 
 func assertChannelRoutePermission(t *testing.T, method string, path string, permission authz.Permission, handler any) {

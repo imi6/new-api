@@ -25,4 +25,5 @@ export const SYSTEM_TASK_TYPE_LABEL: Record<string, string> = {
   midjourney_poll: 'Drawing task polling',
   async_task_poll: 'Async task polling',
   intelligence_check: 'Intelligence checks',
+  upstream_rates: 'Upstream rates',
 }
