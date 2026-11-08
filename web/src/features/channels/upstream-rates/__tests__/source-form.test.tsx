@@ -54,12 +54,30 @@ test('未配置环境密钥时仍可填写并保存来源令牌', async () => {
   )
   const token = 'test-only-external-token-0123456789'
   await user.type(screen.getByLabelText('External API token'), token)
+  expect(screen.getAllByRole('spinbutton')).toHaveLength(1)
+  expect(
+    screen.queryByLabelText('Upstream scan interval (minutes)')
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByText(
+      'Set the scan interval to match UpstreamOps. Expiry is twice this interval plus five minutes; this does not change its scan schedule.'
+    )
+  ).not.toBeInTheDocument()
+  const interval = screen.getByRole('spinbutton', {
+    name: 'Snapshot read interval (seconds)',
+  })
+  await user.clear(interval)
+  await user.type(interval, '300')
   await user.click(save)
   await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
-  expect(put).toHaveBeenCalledWith(
-    '/api/channel/upstream_rates/sources',
-    expect.objectContaining({ base_url: 'https://rates.example.com', token })
-  )
+  expect(put).toHaveBeenCalledWith('/api/channel/upstream_rates/sources', {
+    id: '',
+    name: '来源甲',
+    base_url: 'https://rates.example.com',
+    token,
+    enabled: true,
+    poll_seconds: 300,
+  })
   client.clear()
 })
 
@@ -71,7 +89,6 @@ test('修改来源地址而未输入新令牌时阻止保存，避免将原令�
     enabled: true,
     token_configured: true,
     poll_seconds: 60,
-    scan_minutes: 30,
     read_at: 0,
     error: '',
     complete: false,

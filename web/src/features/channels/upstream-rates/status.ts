@@ -28,7 +28,6 @@ export const upstreamRateStatusKeys: Record<string, string> = {
   disabled: 'Disabled',
   read_failed: 'Upstream snapshot read failed',
   failed: 'Upstream synchronization failed',
-  stale: 'Upstream snapshot expired',
   unsupported_protocol: 'Unsupported fingerprint protocol',
   unsupported_credential: 'Unsupported credential format',
   invalid_time: 'Invalid upstream timestamp',
