@@ -298,10 +298,7 @@ func decodeUpstreamRateChannels(body []byte, channelID int) ([]upstreamRateRemot
 			complete = false
 		}
 		if site, err := url.Parse(channel.SiteURL); err == nil {
-			// 展示地址仍清理敏感成分，但不能因此把不同租户误当成同一候选站点。
-			if site.User != nil || site.RawQuery != "" || site.Fragment != "" {
-				channel.HintsComplete = common.GetPointer(false)
-			}
+			// 地址只用于展示，清理敏感成分时不改变 Key 提示的完整性。
 			site.User = nil
 			site.RawQuery = ""
 			site.Fragment = ""

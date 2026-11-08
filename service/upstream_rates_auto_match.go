@@ -18,11 +18,11 @@ type upstreamRateKeyMatch struct {
 	Candidate upstreamRateCandidate
 }
 
-// 精确指纹按归一化规则分区；脱敏提示另按完整站点范围索引。
+// 精确指纹按归一化规则分区；脱敏提示跨来源按尾号索引，不以域名筛选。
 type upstreamRateMatchIndex struct {
 	Current         map[string]map[string][]upstreamRateKeyMatch
 	Known           map[string]map[string][]upstreamRateKeyMatch
-	Hints           map[string]*upstreamRateHintSite
+	Hints           map[string][]upstreamRateHintMatch
 	HintsIncomplete bool
 	Status          string
 	Enabled         bool
@@ -44,7 +44,7 @@ func upstreamRateRecordStatus(record upstreamRateRecord, now int64) string {
 
 func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[string]upstreamRateSnapshot, now int64) upstreamRateMatchIndex {
 	index := upstreamRateMatchIndex{Current: map[string]map[string][]upstreamRateKeyMatch{}, Known: map[string]map[string][]upstreamRateKeyMatch{}}
-	index.Hints = map[string]*upstreamRateHintSite{}
+	index.Hints = map[string][]upstreamRateHintMatch{}
 	for _, rule := range []string{"trim", "trim_strip_sk_prefix"} {
 		index.Current[rule] = map[string][]upstreamRateKeyMatch{}
 		index.Known[rule] = map[string][]upstreamRateKeyMatch{}
@@ -109,7 +109,7 @@ func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[str
 	return index
 }
 
-func (index upstreamRateMatchIndex) match(rawKey, siteURL string, localKeys []string, now int64) UpstreamRateKeyView {
+func (index upstreamRateMatchIndex) match(rawKey string, localKeys []string, now int64) UpstreamRateKeyView {
 	item := UpstreamRateKeyView{Status: index.Status}
 	if item.Status == "partial" {
 		item.Status = "not_synced"
@@ -136,7 +136,7 @@ func (index upstreamRateMatchIndex) match(rawKey, siteURL string, localKeys []st
 		return item
 	}
 	if len(current) == 0 {
-		hint, found := index.matchHint(rawKey, siteURL, localKeys, now)
+		hint, found := index.matchHint(rawKey, localKeys, now)
 		if found {
 			return hint
 		}
@@ -243,7 +243,7 @@ func GetUpstreamRates(ctx context.Context, ids []int) ([]UpstreamRateView, error
 		targets := map[string]UpstreamRateKeyView{}
 		conflict := false
 		for i, rawKey := range keys {
-			item := index.match(rawKey, channel.GetBaseURL(), keys, now)
+			item := index.match(rawKey, keys, now)
 			item.Index, item.Enabled = i+1, true
 			if channel.ChannelInfo.IsMultiKey {
 				if status, exists := channel.ChannelInfo.MultiKeyStatusList[i]; exists {
