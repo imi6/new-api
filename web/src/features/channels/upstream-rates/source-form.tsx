@@ -60,7 +60,6 @@ export function UpstreamRateSourceForm(props: {
       token: '',
       enabled: props.source?.enabled ?? true,
       poll_seconds: props.source?.poll_seconds ?? 60,
-      scan_minutes: props.source?.scan_minutes ?? 30,
     },
   })
   const save = useMutation({
@@ -149,55 +148,27 @@ export function UpstreamRateSourceForm(props: {
                 'New tokens are stored as plain text in the database. Leave blank to keep the saved token.'
               )}
         </p>
-        <div className='grid gap-4 sm:grid-cols-2'>
-          <FormField
-            control={form.control}
-            name='poll_seconds'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('Snapshot read interval (seconds)')}</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type='number'
-                    min={30}
-                    max={3600}
-                    onChange={(event) =>
-                      field.onChange(event.target.valueAsNumber)
-                    }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name='scan_minutes'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('Upstream scan interval (minutes)')}</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type='number'
-                    min={1}
-                    max={1440}
-                    onChange={(event) =>
-                      field.onChange(event.target.valueAsNumber)
-                    }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'Set the scan interval to match UpstreamOps. Expiry is twice this interval plus five minutes; this does not change its scan schedule.'
+        <FormField
+          control={form.control}
+          name='poll_seconds'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Snapshot read interval (seconds)')}</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type='number'
+                  min={30}
+                  max={3600}
+                  onChange={(event) =>
+                    field.onChange(event.target.valueAsNumber)
+                  }
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </p>
+        />
         <FormField
           control={form.control}
           name='enabled'
