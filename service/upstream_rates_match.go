@@ -10,6 +10,7 @@ type UpstreamRateKeyView struct {
 	Index               int                 `json:"index"`
 	Enabled             bool                `json:"enabled"`
 	Status              string              `json:"status"`
+	MatchMethod         string              `json:"match_method,omitempty"`
 	SourceID            string              `json:"source_id,omitempty"`
 	SourceName          string              `json:"source_name,omitempty"`
 	UpstreamChannelID   int                 `json:"upstream_channel_id,omitempty"`
@@ -51,15 +52,7 @@ type UpstreamRateView struct {
 func upstreamRateCandidateIndex(channel upstreamRateRemoteChannel) map[string][]upstreamRateCandidate {
 	index := map[string][]upstreamRateCandidate{}
 	unavailable := map[int]bool{}
-	invalidGroups := map[string]bool{}
-	groups := map[string]upstreamRateGroup{}
-	for _, group := range channel.Groups {
-		identity := upstreamRateGroupIdentity(group.ID, group.Name)
-		if prior, ok := groups[identity]; ok && (prior.Ratio == nil || group.Ratio == nil || *prior.Ratio != *group.Ratio || prior.UpdatedAt != group.UpdatedAt) {
-			invalidGroups[identity] = true
-		}
-		groups[identity] = group
-	}
+	invalidGroups := conflictingUpstreamRateGroups(channel)
 	for _, id := range channel.UnavailableIDs {
 		unavailable[id] = true
 	}
@@ -87,6 +80,19 @@ func upstreamRateCandidateIndex(channel upstreamRateRemoteChannel) map[string][]
 		}
 	}
 	return index
+}
+
+func conflictingUpstreamRateGroups(channel upstreamRateRemoteChannel) map[string]bool {
+	invalidGroups := map[string]bool{}
+	groups := map[string]upstreamRateGroup{}
+	for _, group := range channel.Groups {
+		identity := upstreamRateGroupIdentity(group.ID, group.Name)
+		if prior, ok := groups[identity]; ok && (prior.Name != group.Name || prior.Ratio == nil || group.Ratio == nil || *prior.Ratio != *group.Ratio || prior.UpdatedAt != group.UpdatedAt) {
+			invalidGroups[identity] = true
+		}
+		groups[identity] = group
+	}
+	return invalidGroups
 }
 
 func upstreamRateChannelQuality(channel upstreamRateRemoteChannel, now int64) string {
@@ -144,21 +150,31 @@ func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteC
 		identity := upstreamRateGroupIdentity(group.ID, group.Name)
 		key := channel.Normalization + ":" + fingerprint
 		currentKeys[key], currentGroups[identity] = true, true
-		history, exists := old.History[identity]
-		if exists && (at < history.CollectedAt || (at == history.CollectedAt && history.Ratio != *group.Ratio)) {
+		if !mergeUpstreamRateGroupHistory(&old, group, now) {
 			continue
 		}
-		if exists && history.Ratio != *group.Ratio {
-			history.Change = &UpstreamRateChange{From: history.Ratio, To: *group.Ratio, At: now}
-		}
-		history.Ratio, history.CollectedAt = *group.Ratio, at
-		old.History[identity] = history
+		history := old.History[identity]
 		prior := old.Known[key]
 		known := upstreamRateKnownMatch{GroupID: group.ID, GroupName: group.Name, Ratio: *group.Ratio, CollectedAt: at, KeySyncedAt: upstreamRateTimestamp(channel.KeySyncedAt), Normalization: channel.Normalization, Change: history.Change, MovedFrom: prior.MovedFrom, MovedAt: prior.MovedAt}
 		if prior.GroupName != "" && upstreamRateGroupIdentity(prior.GroupID, prior.GroupName) != identity {
 			known.MovedFrom, known.MovedAt = prior.GroupName, now
 		}
 		old.Known[key] = known
+	}
+	// 脱敏提示只维护分组倍率历史，绝不写入完整指纹归属或迁组记录。
+	if channel.HintNormalization == "trim_strip_sk_prefix" && channel.HintsComplete != nil && *channel.HintsComplete && len(channel.UnavailableHintIDs) == 0 {
+		candidates, complete := upstreamRateHintCandidateIndex(channel)
+		if complete {
+			for _, matches := range candidates {
+				for _, candidate := range matches {
+					if candidate.Conflict || !validUpstreamRateGroup(candidate.Group, now) || (candidate.Key.Fingerprint != "" && !validUpstreamRateFingerprint(candidate.Key.Fingerprint)) {
+						continue
+					}
+					currentGroups[upstreamRateGroupIdentity(candidate.Group.ID, candidate.Group.Name)] = true
+					mergeUpstreamRateGroupHistory(&old, candidate.Group, now)
+				}
+			}
+		}
 	}
 	// 当前仍返回的有效数据不按采集时间过期，仅清理已消失的历史项。
 	for key, known := range old.Known {
@@ -172,4 +188,19 @@ func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteC
 		}
 	}
 	return old
+}
+
+func mergeUpstreamRateGroupHistory(record *upstreamRateRecord, group upstreamRateGroup, now int64) bool {
+	identity := upstreamRateGroupIdentity(group.ID, group.Name)
+	at := upstreamRateTimestamp(group.UpdatedAt)
+	history, exists := record.History[identity]
+	if exists && (at < history.CollectedAt || (at == history.CollectedAt && history.Ratio != *group.Ratio)) {
+		return false
+	}
+	if exists && history.Ratio != *group.Ratio {
+		history.Change = &UpstreamRateChange{From: history.Ratio, To: *group.Ratio, At: now}
+	}
+	history.Ratio, history.CollectedAt = *group.Ratio, at
+	record.History[identity] = history
+	return true
 }
