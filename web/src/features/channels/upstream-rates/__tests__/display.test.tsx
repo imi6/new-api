@@ -352,7 +352,7 @@ test('其他上游不完整但当前 Key 已命中时列表仅显示倍率，详
   client.clear()
 })
 
-test('脱敏唯一命中时列表和详情均标记近似匹配，倍率不附加乘号', async () => {
+test('脱敏唯一命中时列表只显示倍率，详情保留分组且不显示匹配标签', async () => {
   vi.mocked(api.get).mockResolvedValue({
     data: {
       success: true,
@@ -372,20 +372,23 @@ test('脱敏唯一命中时列表和详情均标记近似匹配，倍率不附�
   const cell = await screen.findByRole('button', {
     name: /View upstream rates/,
   })
-  expect(within(cell).getByText('1.9')).toBeVisible()
-  expect(within(cell).getByText('Approximate match')).toBeVisible()
+  expect(cell).toHaveTextContent(/^1\.9$/)
+  expect(within(cell).queryByText('Approximate match')).not.toBeInTheDocument()
   await user.click(cell)
   await act(async () => {
     await vi.dynamicImportSettled()
   })
   const dialog = await screen.findByRole('dialog')
   expect(within(dialog).getByText('1.9')).toBeVisible()
-  expect(within(dialog).getByText('Approximate match')).toBeVisible()
+  expect(within(dialog).getByText('A')).toBeVisible()
+  expect(
+    within(dialog).queryByText('Approximate match')
+  ).not.toBeInTheDocument()
   expect(within(dialog).queryByText('Matched')).not.toBeInTheDocument()
   client.clear()
 })
 
-test('近似匹配读取失败时列表隐藏倍率，详情保留历史值和近似标记', async () => {
+test('脱敏命中后读取失败时列表隐藏倍率，详情保留历史值和错误且无匹配标签', async () => {
   vi.mocked(api.get).mockResolvedValue({
     data: {
       success: true,
@@ -416,8 +419,15 @@ test('近似匹配读取失败时列表隐藏倍率，详情保留历史值和�
   })
   const dialog = await screen.findByRole('dialog')
   expect(within(dialog).getByText('1.9')).toBeVisible()
+  expect(within(dialog).getByText('A')).toBeVisible()
   expect(within(dialog).getByText('Historical value')).toBeVisible()
-  expect(within(dialog).getByText('Approximate match')).toBeVisible()
+  expect(
+    within(dialog).getAllByText('Upstream snapshot read failed').length
+  ).toBeGreaterThan(0)
+  expect(
+    within(dialog).queryByText('Approximate match')
+  ).not.toBeInTheDocument()
+  expect(within(dialog).queryByText('Matched')).not.toBeInTheDocument()
   client.clear()
 })
 
@@ -500,13 +510,20 @@ test('多个 Key 分别显示倍率，长分组名换行且禁用 Key 收入详�
               moved_from: 'C',
               moved_at: 1,
             },
-            { ...rate.keys[0], index: 2, group_name: groupName, ratio: 0.2 },
+            {
+              ...rate.keys[0],
+              index: 2,
+              group_name: groupName,
+              ratio: 0.2,
+              match_method: 'masked',
+            },
             {
               ...rate.keys[0],
               index: 3,
               enabled: false,
               group_name: 'Disabled group',
               ratio: 99,
+              match_method: 'masked',
             },
           ],
         },
@@ -532,6 +549,7 @@ test('多个 Key 分别显示倍率，长分组名换行且禁用 Key 收入详�
   expect(within(firstKey).getByText('0.1')).toBeVisible()
   expect(within(secondKey).getByText('0.2')).toBeVisible()
   expect(within(secondKey).getByText(groupName)).toHaveClass('break-words')
+  expect(within(secondKey).queryByText('Matched')).not.toBeInTheDocument()
   expect(
     within(dialog).queryByRole('article', { name: 'Key #3' })
   ).not.toBeInTheDocument()
@@ -539,6 +557,9 @@ test('多个 Key 分别显示倍率，长分组名换行且禁用 Key 收入详�
   const disabledKey = within(dialog).getByRole('article', { name: 'Key #3' })
   expect(within(disabledKey).getByText('Disabled')).toBeVisible()
   expect(within(disabledKey).getByText('99')).toBeVisible()
+  expect(
+    within(dialog).queryByText('Approximate match')
+  ).not.toBeInTheDocument()
   expect(
     within(dialog)
       .getByRole('button', { name: 'Update display' })
