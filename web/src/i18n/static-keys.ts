@@ -28,7 +28,6 @@ export const STATIC_I18N_KEYS = [
   'Upstream data unavailable',
   'Upstream snapshot read failed',
   'Upstream synchronization failed',
-  'Upstream snapshot expired',
   'Unsupported fingerprint protocol',
   'Unsupported credential format',
   'Invalid upstream timestamp',
