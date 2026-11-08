@@ -152,6 +152,12 @@ func validUpstreamRateGroup(group upstreamRateGroup, now int64) bool {
 }
 
 func upstreamRateSourceToken(source upstreamRateSource) (string, error) {
+	if source.TokenCiphertext == "" {
+		if source.TokenPlaintext == "" {
+			return "", errors.New("credential_unavailable")
+		}
+		return source.TokenPlaintext, nil
+	}
 	aead, err := upstreamRateCipher()
 	if err != nil {
 		return "", err
