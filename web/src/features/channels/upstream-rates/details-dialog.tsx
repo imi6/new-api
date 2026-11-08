@@ -52,13 +52,15 @@ function UpstreamRateKeyItem(props: {
     .format
   const item = props.item
   const historical = item.ratio !== undefined && item.status !== 'matched'
-  const statusKey =
+  const approximate = item.match_method === 'masked' && item.ratio !== undefined
+  let statusKey =
     upstreamRateStatusKeys[item.status] ?? 'Upstream data unavailable'
+  if (approximate && item.status === 'matched') statusKey = 'Approximate match'
   const errorKey = item.error
     ? (upstreamRateErrorKeys[item.error] ?? 'Upstream data unavailable')
     : undefined
   let variant: 'neutral' | 'success' | 'warning' =
-    item.status === 'matched' ? 'success' : 'warning'
+    item.status === 'matched' && !approximate ? 'success' : 'warning'
   if (!item.enabled) variant = 'neutral'
   return (
     <article
@@ -78,6 +80,14 @@ function UpstreamRateKeyItem(props: {
             variant={variant}
             type='text'
           />
+          {approximate && (historical || !item.enabled) && (
+            <StatusBadge
+              copyable={false}
+              label={t('Approximate match')}
+              variant='warning'
+              type='text'
+            />
+          )}
           {historical && (
             <StatusBadge
               copyable={false}
