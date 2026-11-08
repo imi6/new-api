@@ -89,7 +89,7 @@ func upstreamRateCandidateIndex(channel upstreamRateRemoteChannel) map[string][]
 	return index
 }
 
-func upstreamRateChannelQuality(channel upstreamRateRemoteChannel, now, maxAge int64) string {
+func upstreamRateChannelQuality(channel upstreamRateRemoteChannel, now int64) string {
 	if channel.Status == "not_synced" || channel.Status == "failed" {
 		return channel.Status
 	}
@@ -109,16 +109,13 @@ func upstreamRateChannelQuality(channel upstreamRateRemoteChannel, now, maxAge i
 	if at <= 0 || at > now+60 {
 		return "invalid_time"
 	}
-	if now-at > maxAge {
-		return "stale"
-	}
 	if channel.Status == "partial" || !*channel.Complete || len(channel.UnavailableIDs) != 0 {
 		return "partial"
 	}
 	return "ready"
 }
 
-func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteChannel, now, maxAge int64) upstreamRateRecord {
+func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteChannel, now int64) upstreamRateRecord {
 	if old.History == nil {
 		old.History = map[string]upstreamRateHistory{}
 	}
@@ -130,20 +127,23 @@ func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteC
 		return old
 	}
 	old.Data, old.ReadAt, old.Error = channel, now, ""
-	quality := upstreamRateChannelQuality(channel, now, maxAge)
+	quality := upstreamRateChannelQuality(channel, now)
 	if quality != "ready" && quality != "partial" {
 		return old
 	}
+	currentKeys, currentGroups := map[string]bool{}, map[string]bool{}
 	for fingerprint, candidates := range upstreamRateCandidateIndex(channel) {
 		if len(candidates) != 1 || candidates[0].Unavailable || candidates[0].Conflict {
 			continue
 		}
 		group := candidates[0].Group
 		at := upstreamRateTimestamp(group.UpdatedAt)
-		if !validUpstreamRateGroup(group, now) || now-at > maxAge {
+		if !validUpstreamRateGroup(group, now) {
 			continue
 		}
 		identity := upstreamRateGroupIdentity(group.ID, group.Name)
+		key := channel.Normalization + ":" + fingerprint
+		currentKeys[key], currentGroups[identity] = true, true
 		history, exists := old.History[identity]
 		if exists && (at < history.CollectedAt || (at == history.CollectedAt && history.Ratio != *group.Ratio)) {
 			continue
@@ -153,7 +153,6 @@ func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteC
 		}
 		history.Ratio, history.CollectedAt = *group.Ratio, at
 		old.History[identity] = history
-		key := channel.Normalization + ":" + fingerprint
 		prior := old.Known[key]
 		known := upstreamRateKnownMatch{GroupID: group.ID, GroupName: group.Name, Ratio: *group.Ratio, CollectedAt: at, KeySyncedAt: upstreamRateTimestamp(channel.KeySyncedAt), Normalization: channel.Normalization, Change: history.Change, MovedFrom: prior.MovedFrom, MovedAt: prior.MovedAt}
 		if prior.GroupName != "" && upstreamRateGroupIdentity(prior.GroupID, prior.GroupName) != identity {
@@ -161,14 +160,14 @@ func mergeUpstreamRateRecord(old upstreamRateRecord, channel upstreamRateRemoteC
 		}
 		old.Known[key] = known
 	}
-	// 历史仅用于近期回退，限制已删除或轮换密钥造成的无界增长。
+	// 当前仍返回的有效数据不按采集时间过期，仅清理已消失的历史项。
 	for key, known := range old.Known {
-		if now-known.KeySyncedAt > 7*86400 {
+		if !currentKeys[key] && now-known.KeySyncedAt > 7*86400 {
 			delete(old.Known, key)
 		}
 	}
 	for key, history := range old.History {
-		if now-history.CollectedAt > 7*86400 {
+		if !currentGroups[key] && now-history.CollectedAt > 7*86400 {
 			delete(old.History, key)
 		}
 	}
