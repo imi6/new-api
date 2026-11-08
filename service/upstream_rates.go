@@ -34,7 +34,6 @@ type UpstreamRateSourceInput struct {
 	Token       string `json:"token"`
 	Enabled     bool   `json:"enabled"`
 	PollSeconds int    `json:"poll_seconds"`
-	ScanMinutes int    `json:"scan_minutes"`
 }
 
 type upstreamRateSource struct {
@@ -45,7 +44,6 @@ type upstreamRateSource struct {
 	TokenPlaintext  string `json:"token_plaintext,omitempty"`
 	Enabled         bool   `json:"enabled"`
 	PollSeconds     int    `json:"poll_seconds"`
-	ScanMinutes     int    `json:"scan_minutes"`
 	Revision        string `json:"revision"`
 }
 
@@ -60,7 +58,6 @@ type UpstreamRateSourceView struct {
 	Enabled         bool   `json:"enabled"`
 	TokenConfigured bool   `json:"token_configured"`
 	PollSeconds     int    `json:"poll_seconds"`
-	ScanMinutes     int    `json:"scan_minutes"`
 	ReadAt          int64  `json:"read_at"`
 	Error           string `json:"error"`
 	Complete        bool   `json:"complete"`
@@ -108,7 +105,7 @@ func GetUpstreamRateConfig(ctx context.Context) (*UpstreamRateConfigView, error)
 		if err != nil {
 			return nil, err
 		}
-		item := UpstreamRateSourceView{ID: source.ID, Name: source.Name, BaseURL: source.BaseURL, Enabled: source.Enabled, TokenConfigured: source.TokenCiphertext != "" || source.TokenPlaintext != "", PollSeconds: source.PollSeconds, ScanMinutes: source.ScanMinutes, ReadAt: snapshot.ReadAt, Error: snapshot.Error, Complete: snapshot.Complete}
+		item := UpstreamRateSourceView{ID: source.ID, Name: source.Name, BaseURL: source.BaseURL, Enabled: source.Enabled, TokenConfigured: source.TokenCiphertext != "" || source.TokenPlaintext != "", PollSeconds: source.PollSeconds, ReadAt: snapshot.ReadAt, Error: snapshot.Error, Complete: snapshot.Complete}
 		view.Sources = append(view.Sources, item)
 	}
 	return view, nil
@@ -121,7 +118,7 @@ func SaveUpstreamRateSource(ctx context.Context, input UpstreamRateSourceInput) 
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Port() != "" && u.Port() != "443") || len(input.Name) < 1 || utf8.RuneCountInString(input.Name) > 80 || len(input.BaseURL) > 1024 {
 		return ErrUpstreamRateConfig
 	}
-	if input.PollSeconds < 30 || input.PollSeconds > 3600 || input.ScanMinutes < 1 || input.ScanMinutes > 1440 {
+	if input.PollSeconds < 30 || input.PollSeconds > 3600 {
 		return ErrUpstreamRateConfig
 	}
 	if input.Token != "" {
@@ -193,7 +190,7 @@ func SaveUpstreamRateSource(ctx context.Context, input UpstreamRateSourceInput) 
 			source.Revision = revision
 		}
 		source.Name, source.BaseURL, source.Enabled = input.Name, input.BaseURL, input.Enabled
-		source.PollSeconds, source.ScanMinutes = input.PollSeconds, input.ScanMinutes
+		source.PollSeconds = input.PollSeconds
 		if index < 0 {
 			config.Sources = append(config.Sources, source)
 		} else {
