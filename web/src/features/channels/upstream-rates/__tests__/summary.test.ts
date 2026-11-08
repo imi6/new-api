@@ -125,4 +125,34 @@ describe('上游倍率范围', () => {
       )
     ).toMatchObject({ min: undefined, max: undefined })
   })
+
+  test('当前倍率含近似匹配时保留标记，禁用和历史项目不影响当前范围', () => {
+    const approximate: UpstreamRateKey = {
+      ...first,
+      index: 2,
+      match_method: 'masked',
+      ratio: 0.2,
+    }
+    expect(summarizeUpstreamRate(rate([first, approximate]))).toMatchObject({
+      min: 0.1,
+      max: 0.2,
+      approximate: true,
+    })
+    expect(
+      summarizeUpstreamRate(rate([first, { ...approximate, enabled: false }]))
+    ).toMatchObject({ min: 0.1, max: 0.1, approximate: false })
+    expect(
+      summarizeUpstreamRate(
+        rate([first, { ...approximate, status: 'read_failed' }])
+      )
+    ).toMatchObject({ min: 0.1, max: 0.1, approximate: false })
+  })
+
+  test('近似匹配回退历史值时同时保留历史和近似标记', () => {
+    expect(
+      summarizeUpstreamRate(
+        rate([{ ...first, status: 'read_failed', match_method: 'masked' }])
+      )
+    ).toMatchObject({ min: 0.1, historical: true, approximate: true })
+  })
 })
