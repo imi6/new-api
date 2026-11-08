@@ -26,7 +26,7 @@ import { getSelf } from '@/lib/api'
 
 import { AffiliateRebatePage } from './components/affiliate-rebate-page'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
-import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
+import { BillingHistoryCard } from './components/billing-history-card'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
@@ -76,12 +76,13 @@ export function Wallet(props: WalletProps) {
   const [paymentLoading, setPaymentLoading] = useState<string | null>(null)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
-  const [billingDialogOpen, setBillingDialogOpen] = useState(false)
+  const [billingRefreshKey, setBillingRefreshKey] = useState(0)
+  const billingHistoryRef = useRef<HTMLDivElement>(null)
+  const historyFocusedRef = useRef(false)
   const [redemptionCode, setRedemptionCode] = useState('')
   const [creemDialogOpen, setCreemDialogOpen] = useState(false)
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
-  const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
@@ -128,16 +129,31 @@ export function Wallet(props: WalletProps) {
     }
   }, [])
 
+  const refreshWallet = useCallback(async () => {
+    await fetchUser()
+    setBillingRefreshKey((current) => current + 1)
+  }, [fetchUser])
+
   useEffect(() => {
     fetchUser()
   }, [fetchUser])
 
   useEffect(() => {
-    if (props.initialShowHistory) {
-      setBillingDialogOpen(true)
+    if (
+      props.initialShowHistory &&
+      !topupLoading &&
+      !userLoading &&
+      !historyFocusedRef.current &&
+      billingHistoryRef.current
+    ) {
+      historyFocusedRef.current = true
+      billingHistoryRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
       window.history.replaceState({}, '', window.location.pathname)
     }
-  }, [props.initialShowHistory])
+  }, [props.initialShowHistory, topupLoading, userLoading])
 
   // Initialize topup amount when topup info is loaded
   const topupAmountInitializedRef = useRef(false)
@@ -148,7 +164,8 @@ export function Wallet(props: WalletProps) {
       setTopupAmount(minTopup)
 
       const method = topupInfo.pay_methods?.[0]
-      const defaultPaymentType = method?.type || getDefaultPaymentType(topupInfo)
+      const defaultPaymentType =
+        method?.type || getDefaultPaymentType(topupInfo)
       calculatePaymentAmount(
         minTopup,
         defaultPaymentType,
@@ -233,7 +250,7 @@ export function Wallet(props: WalletProps) {
 
     if (success) {
       setConfirmDialogOpen(false)
-      await fetchUser()
+      await refreshWallet()
     }
   }
 
@@ -244,7 +261,7 @@ export function Wallet(props: WalletProps) {
     const success = await redeemCode(redemptionCode)
     if (success) {
       setRedemptionCode('')
-      await fetchUser()
+      await refreshWallet()
     }
   }
 
@@ -252,7 +269,7 @@ export function Wallet(props: WalletProps) {
   const handleTransfer = async (amount: number) => {
     const success = await transferQuota(amount)
     if (success) {
-      await fetchUser()
+      await refreshWallet()
     }
     return success
   }
@@ -271,7 +288,7 @@ export function Wallet(props: WalletProps) {
     if (success) {
       setCreemDialogOpen(false)
       setSelectedCreemProduct(null)
-      await fetchUser()
+      await refreshWallet()
     }
   }
 
@@ -301,33 +318,21 @@ export function Wallet(props: WalletProps) {
     return topupInfo?.discount?.[topupAmount] || DEFAULT_DISCOUNT_RATE
   }, [topupInfo, topupAmount])
 
-  const handleSubscriptionAvailabilityChange = useCallback(
-    (available: boolean) => {
-      setShowSubscriptionPanel(available)
-    },
-    []
-  )
-
   return (
     <>
       <SectionPageLayout>
         <SectionPageLayout.Title>
-          {props.initialPanel === 'referral' ? t('Referral rebate') : t('Wallet')}
+          {props.initialPanel === 'referral'
+            ? t('Referral rebate')
+            : t('Wallet')}
         </SectionPageLayout.Title>
         <SectionPageLayout.Content>
           {props.initialPanel === 'referral' ? (
-            <AffiliateRebatePage onClaimed={fetchUser} />
+            <AffiliateRebatePage onClaimed={refreshWallet} />
           ) : (
-          <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
-            <WalletStatsCard user={user} loading={userLoading} />
+            <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
+              <WalletStatsCard user={user} loading={userLoading} />
 
-            <div
-              className={
-                showSubscriptionPanel
-                  ? 'grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] xl:items-start'
-                  : 'grid gap-4'
-              }
-            >
               <div id='wallet-add-funds' className='scroll-mt-4'>
                 <RechargeFormCard
                   topupInfo={topupInfo}
@@ -348,7 +353,6 @@ export function Wallet(props: WalletProps) {
                   loading={topupLoading}
                   priceRatio={(status?.price as number) || 1}
                   usdExchangeRate={effectiveUsdExchangeRate}
-                  onOpenBilling={() => setBillingDialogOpen(true)}
                   creemProducts={topupInfo?.creem_products}
                   enableCreemTopup={topupInfo?.enable_creem_topup}
                   onCreemProductSelect={handleCreemProductSelect}
@@ -362,24 +366,35 @@ export function Wallet(props: WalletProps) {
                 />
               </div>
 
+              <div
+                id='wallet-billing-history'
+                ref={billingHistoryRef}
+                className='min-w-0 scroll-mt-4'
+              >
+                <BillingHistoryCard
+                  refreshKey={billingRefreshKey}
+                  paymentMethods={topupInfo?.pay_methods
+                    ?.map((method) => method.type)
+                    .filter(Boolean)}
+                />
+              </div>
+
               <SubscriptionPlansCard
                 topupInfo={topupInfo}
-                onAvailabilityChange={handleSubscriptionAvailabilityChange}
                 userQuota={user?.quota}
-                onPurchaseSuccess={fetchUser}
+                onPurchaseSuccess={refreshWallet}
+              />
+
+              <AffiliateRewardsCard
+                user={user}
+                affiliateLink={affiliateLink}
+                onTransfer={() => setTransferDialogOpen(true)}
+                complianceConfirmed={
+                  topupInfo?.payment_compliance_confirmed !== false
+                }
+                loading={affiliateLoading}
               />
             </div>
-
-            <AffiliateRewardsCard
-              user={user}
-              affiliateLink={affiliateLink}
-              onTransfer={() => setTransferDialogOpen(true)}
-              complianceConfirmed={
-                topupInfo?.payment_compliance_confirmed !== false
-              }
-              loading={affiliateLoading}
-            />
-          </div>
           )}
         </SectionPageLayout.Content>
       </SectionPageLayout>
@@ -403,16 +418,6 @@ export function Wallet(props: WalletProps) {
         onConfirm={handleTransfer}
         availableQuota={user?.aff_quota ?? 0}
         transferring={transferring}
-      />
-
-      <BillingHistoryDialog
-        open={billingDialogOpen}
-        onOpenChange={setBillingDialogOpen}
-        paymentMethods={
-          topupInfo?.pay_methods
-            ?.map((method) => method.type)
-            .filter((type) => type.length > 0) ?? []
-        }
       />
 
       <CreemConfirmDialog
