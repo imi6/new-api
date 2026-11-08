@@ -34,4 +34,5 @@ export const SYSTEM_TASK_TYPE_LABEL: Record<string, string> = {
   sync_models: 'Model sync',
   sync_subscription_plans: 'Subscription plan sync',
   intelligence_check: 'Intelligence checks',
+  upstream_rates: 'Upstream rates',
 }
