@@ -144,7 +144,7 @@ func TestUpstreamRateOldSnapshotsRemainMatchedAndRecoverable(t *testing.T) {
 			require.Contains(t, record.Known, "trim:"+fingerprint)
 			require.Contains(t, record.History, upstreamRateGroupIdentity(1, "实际分组"))
 			snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: tc.readAt, Complete: true, Channels: map[int]upstreamRateRecord{4: record}}}
-			item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-abc", now)
+			item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-abc", "", nil, now)
 			assert.Equal(t, "matched", item.Status)
 			require.NotNil(t, item.Ratio)
 			assert.Equal(t, 1.9, *item.Ratio)
@@ -154,7 +154,7 @@ func TestUpstreamRateOldSnapshotsRemainMatchedAndRecoverable(t *testing.T) {
 
 			record.Error = "request_failed"
 			snapshots[source.ID].Channels[4] = record
-			item = buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-abc", now)
+			item = buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-abc", "", nil, now)
 			assert.Equal(t, "read_failed", item.Status, "实际请求失败仍应明确标记")
 			require.NotNil(t, item.Ratio)
 			assert.Equal(t, 1.9, *item.Ratio, "读取失败时保留最近一次可信倍率")
@@ -254,7 +254,7 @@ func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 			if tc.setup != nil {
 				sources = tc.setup(sources, snapshots)
 			}
-			item := buildUpstreamRateMatchIndex(sources, snapshots, now).match("  sk-abc\n", now)
+			item := buildUpstreamRateMatchIndex(sources, snapshots, now).match("  sk-abc\n", "", nil, now)
 			assert.Equal(t, tc.status, item.Status)
 			if tc.status == "conflict" {
 				assert.Nil(t, item.Ratio, "不能从冲突归属中任选一个倍率")
@@ -273,10 +273,460 @@ func TestUpstreamRateAutomaticMatchingAcrossChannelsAndSources(t *testing.T) {
 			ReadAt: now, Complete: false,
 			Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)},
 		}}
-		item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-missing", now)
+		item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match("sk-missing", "", nil, now)
 		assert.Equal(t, "not_synced", item.Status)
 		assert.Nil(t, item.Ratio)
 	})
+}
+
+func upstreamRateMaskedFixture(now int64) (upstreamRateSource, upstreamRateRemoteChannel) {
+	at := time.Unix(now, 0).UTC().Format(time.RFC3339)
+	return upstreamRateSource{ID: "source-a", Name: "来源甲", BaseURL: "https://collector.example", Enabled: true, PollSeconds: 300}, upstreamRateRemoteChannel{
+		ID: 4, Name: "上游账号", SiteURL: "https://provider.example", Algorithm: "sha256", Normalization: "trim", Status: "ready", Complete: common.GetPointer(true), KeySyncedAt: at,
+		HintNormalization: "trim_strip_sk_prefix", HintsComplete: common.GetPointer(true),
+		Groups: []upstreamRateGroup{{ID: 1, Name: "实际分组", Ratio: common.GetPointer(1.9), UpdatedAt: at, Keys: []upstreamRateAPIKey{{ID: 11, MaskedKey: "sk-e1a...cac1", KeyPrefix: "e1a", KeySuffix: "cac1"}}}},
+	}
+}
+
+func TestUpstreamRateMaskedKeyAndSiteMatching(t *testing.T) {
+	now := int64(1794096000)
+	const key, mask, site = "sk-e1a-test-only-secret-cac1", "sk-e1a...cac1", "https://provider.example"
+	for _, tc := range []struct {
+		name, prefix, suffix, maskedKey, localURL, remoteURL string
+		matched                                              bool
+	}{
+		{"指纹保留前缀时提示仍独立去掉通用前缀", "e1a", "cac1", mask, site, site, true},
+		{"纯四位尾号可以兜底", "", "cac1", "...cac1", site, site, true},
+		{"一位可见前缀可以兜底", "e", "cac1", mask, site, site, true},
+		{"展示字段格式不参与匹配", "e1a", "cac1", "不解析这个展示值", site, site, true},
+		{"未提供展示字段仍使用结构化提示", "e1a", "cac1", "", site, site, true},
+		{"只有展示值不能猜测结构化提示", "", "", mask, site, site, false},
+		{"尾号相同但前缀不同不能退回尾号匹配", "e1b", "cac1", mask, site, site, false},
+		{"提示保留大小写不能忽略大小写匹配", "E1a", "cac1", mask, site, site, false},
+		{"前缀相同但尾号不同不能命中", "e1a", "ffff", mask, site, site, false},
+		{"尾号不足四位不能命中", "e1a", "ac1", mask, site, site, false},
+		{"尾号超过四位不能命中", "e1a", "-cac1", mask, site, site, false},
+		{"可见前缀超过三位不能命中", "e1a-", "cac1", mask, site, site, false},
+		{"主机大小写默认端口和末尾版本路径兼容", "e1a", "cac1", mask, "https://PROVIDER.example:443/v1/", site + "/", true},
+		{"相同自定义路径兼容末尾版本路径", "e1a", "cac1", mask, site + "/proxy/v1/", site + "/proxy", true},
+		{"不同自定义路径不能仅靠域名命中", "e1a", "cac1", mask, site + "/proxy", site + "/other", false},
+		{"其他站点的同尾号不能命中", "e1a", "cac1", mask, "https://other.example", site, false},
+		{"不同协议不能命中", "e1a", "cac1", mask, "http://provider.example", site, false},
+		{"不同有效端口不能命中", "e1a", "cac1", mask, site + ":8443", site, false},
+		{"缺少本地站点不能兜底", "e1a", "cac1", mask, "", site, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, remote := upstreamRateMaskedFixture(now)
+			remote.SiteURL, remote.Groups[0].Keys[0].MaskedKey = tc.remoteURL, tc.maskedKey
+			remote.Groups[0].Keys[0].KeyPrefix, remote.Groups[0].Keys[0].KeySuffix = tc.prefix, tc.suffix
+			record := mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
+			snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: now, Complete: true, HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{4: record}}}
+			item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match(key, tc.localURL, []string{key}, now)
+			assert.Equal(t, tc.matched, item.Status == "matched")
+			if !tc.matched {
+				assert.Nil(t, item.Ratio)
+				return
+			}
+			require.NotNil(t, item.Ratio)
+			assert.Equal(t, 1.9, *item.Ratio)
+			assert.Equal(t, "masked", item.MatchMethod)
+			assert.Equal(t, "实际分组", item.GroupName)
+			assert.Equal(t, source.ID, item.SourceID)
+		})
+	}
+}
+
+func TestUpstreamRateMaskedCandidateSelection(t *testing.T) {
+	now := int64(1794096000)
+	const key = "sk-e1a-test-only-secret-cac1"
+	fingerprint, err := upstreamRateFingerprint(key, "trim")
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		name, status, method string
+		edit                 func(*upstreamRateRemoteChannel)
+		extra                string
+		localKeys            []string
+	}{
+		{name: "指纹不完整但当前脱敏条目可用时成功", status: "matched", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Status, remote.Complete = "partial", common.GetPointer(false)
+		}},
+		{name: "指纹不可用不否决完整的脱敏提示", status: "matched", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.UnavailableIDs = []int{11}
+		}},
+		{name: "不可用的旧指纹不作为提示不匹配的反证", status: "matched", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys[0].Fingerprint = strings.Repeat("a", 64)
+			remote.UnavailableIDs = []int{11}
+		}},
+		{name: "脱敏命中不能绕过非法倍率", status: "invalid_response", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Ratio = nil
+		}},
+		{name: "不同完整指纹不能通过尾号兜底", status: "unmatched", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys[0].Fingerprint = strings.Repeat("a", 64)
+		}},
+		{name: "损坏的非空指纹不能通过尾号兜底", status: "invalid_response", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys[0].Fingerprint = "invalid-fingerprint"
+		}},
+		{name: "完整指纹优先于其他分组的脱敏候选", status: "matched", method: "fingerprint", edit: func(remote *upstreamRateRemoteChannel) {
+			other := remote.Groups[0]
+			other.ID, other.Name, other.Ratio = 2, "其他分组", common.GetPointer(9.9)
+			other.Keys = append([]upstreamRateAPIKey{}, other.Keys...)
+			remote.Groups[0].Keys[0].Fingerprint = fingerprint
+			remote.Groups = append(remote.Groups, other)
+		}},
+		{name: "完整指纹不可用时不能绕过到另一个脱敏分组", status: "unavailable", edit: func(remote *upstreamRateRemoteChannel) {
+			other := remote.Groups[0]
+			other.ID, other.Name, other.Keys = 2, "其他分组", []upstreamRateAPIKey{{ID: 12, KeyPrefix: "e1a", KeySuffix: "cac1"}}
+			remote.Groups[0].Keys[0].Fingerprint = fingerprint
+			remote.UnavailableIDs = []int{11}
+			remote.Groups = append(remote.Groups, other)
+		}},
+		{name: "同一上游Key同组重复记录去重", status: "matched", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups = append(remote.Groups, remote.Groups[0])
+		}},
+		{name: "同组不同上游Key同片段不能任选一个", status: "conflict", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys = append(remote.Groups[0].Keys, upstreamRateAPIKey{ID: 12, KeyPrefix: "e1a", KeySuffix: "cac1"})
+		}},
+		{name: "不可用的同片段候选仍参与冲突判断", status: "conflict", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys = append(remote.Groups[0].Keys, upstreamRateAPIKey{ID: 12, KeyPrefix: "e1a", KeySuffix: "cac1"})
+			remote.UnavailableIDs = []int{12}
+		}},
+		{name: "完整指纹不同的同片段候选仍参与冲突判断", status: "conflict", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys = append(remote.Groups[0].Keys, upstreamRateAPIKey{ID: 12, Fingerprint: strings.Repeat("a", 64), KeyPrefix: "e1a", KeySuffix: "cac1"})
+		}},
+		{name: "首尾提示与仅尾号提示同时命中仍为冲突", status: "conflict", edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Groups[0].Keys = append(remote.Groups[0].Keys, upstreamRateAPIKey{ID: 12, KeySuffix: "cac1"})
+		}},
+		{name: "跨分组同片段不能任选一个", status: "conflict", edit: func(remote *upstreamRateRemoteChannel) {
+			other := remote.Groups[0]
+			other.ID, other.Name = 2, "其他分组"
+			remote.Groups = append(remote.Groups, other)
+		}},
+		{name: "同一个上游Key同组不同倍率不能任选一个", status: "conflict", edit: func(remote *upstreamRateRemoteChannel) {
+			other := remote.Groups[0]
+			other.Ratio = common.GetPointer(9.9)
+			remote.Groups = append(remote.Groups, other)
+		}},
+		{name: "同站点跨上游账号同片段返回冲突", status: "conflict", extra: "channel"},
+		{name: "同站点跨来源同片段返回冲突", status: "conflict", extra: "source"},
+		{name: "本地不同完整Key对应同一脱敏候选返回冲突", status: "conflict", localKeys: []string{key, "sk-e1a-other-test-secret-cac1"}},
+		{name: "本地相同完整Key重复不制造冲突", status: "matched", localKeys: []string{key, " " + key + "\n"}},
+		{name: "仅去除空白时带通用前缀和不带前缀是不同凭据", status: "conflict", localKeys: []string{key, strings.TrimPrefix(key, "sk-")}},
+		{name: "指纹规则去除通用前缀时等价凭据不制造冲突", status: "matched", localKeys: []string{key, strings.TrimPrefix(key, "sk-")}, edit: func(remote *upstreamRateRemoteChannel) {
+			remote.Normalization = "trim_strip_sk_prefix"
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, remote := upstreamRateMaskedFixture(now)
+			if tc.edit != nil {
+				tc.edit(&remote)
+			}
+			sources := []upstreamRateSource{source}
+			snapshot := upstreamRateSnapshot{ReadAt: now, Complete: true, HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)}}
+			snapshots := map[string]upstreamRateSnapshot{}
+			switch tc.extra {
+			case "channel":
+				remote.ID = 7
+				snapshot.Channels[7] = mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
+				snapshot.HintChannelIDs = append(snapshot.HintChannelIDs, 7)
+			case "source":
+				other := source
+				other.ID = "source-b"
+				sources = append(sources, other)
+				snapshots[other.ID] = snapshot
+			}
+			snapshots[source.ID] = snapshot
+			keys := tc.localKeys
+			if keys == nil {
+				keys = []string{key}
+			}
+			item := buildUpstreamRateMatchIndex(sources, snapshots, now).match(key, "https://provider.example/v1", keys, now)
+			assert.Equal(t, tc.status, item.Status)
+			if tc.status == "matched" {
+				require.NotNil(t, item.Ratio)
+				assert.Equal(t, 1.9, *item.Ratio)
+				assert.Equal(t, "实际分组", item.GroupName)
+				method := tc.method
+				if method == "" {
+					method = "masked"
+				}
+				assert.Equal(t, method, item.MatchMethod)
+			} else if tc.status == "conflict" || tc.status == "invalid_response" || tc.status == "unmatched" {
+				assert.Nil(t, item.Ratio)
+			}
+		})
+	}
+}
+
+func TestUpstreamRateMaskedMatchingRequiresCompleteCandidateScope(t *testing.T) {
+	now := int64(1794096000)
+	const key, site = "sk-e1a-test-only-secret-cac1", "https://provider.example"
+	for _, tc := range []struct {
+		name    string
+		matched bool
+		edit    func(*upstreamRateRemoteChannel, *upstreamRateSnapshot)
+	}{
+		{"批量和指纹不完整但提示完整仍可命中", true, func(remote *upstreamRateRemoteChannel, snapshot *upstreamRateSnapshot) {
+			remote.Status, remote.Complete = "partial", common.GetPointer(false)
+			snapshot.Complete = false
+		}},
+		{"旧协议缺少提示完整性不允许兜底", false, func(remote *upstreamRateRemoteChannel, _ *upstreamRateSnapshot) {
+			remote.HintsComplete = nil
+		}},
+		{"提示完整性为否不允许兜底", false, func(remote *upstreamRateRemoteChannel, _ *upstreamRateSnapshot) {
+			remote.HintsComplete = common.GetPointer(false)
+		}},
+		{"提示缺少归一化规则不允许猜测", false, func(remote *upstreamRateRemoteChannel, _ *upstreamRateSnapshot) {
+			remote.HintNormalization = ""
+		}},
+		{"不能将指纹归一化规则用于脱敏提示", false, func(remote *upstreamRateRemoteChannel, _ *upstreamRateSnapshot) {
+			remote.HintNormalization = "trim"
+		}},
+		{"提示不可用标记与完整性冲突时拒绝兜底", false, func(remote *upstreamRateRemoteChannel, _ *upstreamRateSnapshot) {
+			remote.UnavailableHintIDs = []int{11}
+		}},
+		{"没有确认批量候选范围时拒绝兜底", false, func(_ *upstreamRateRemoteChannel, snapshot *upstreamRateSnapshot) {
+			snapshot.HintChannelIDs = nil
+		}},
+		{"批量返回错误渠道但没有站点记录时拒绝兜底", false, func(_ *upstreamRateRemoteChannel, snapshot *upstreamRateSnapshot) {
+			snapshot.HintChannelIDs = []int{4, 7}
+		}},
+		{"批量请求失败时不推导新的近似匹配", false, func(_ *upstreamRateRemoteChannel, snapshot *upstreamRateSnapshot) {
+			snapshot.Error = "request_failed"
+		}},
+		{"没有成功读取过批量快照时拒绝兜底", false, func(_ *upstreamRateRemoteChannel, snapshot *upstreamRateSnapshot) {
+			snapshot.ReadAt = 0
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, remote := upstreamRateMaskedFixture(now)
+			snapshot := upstreamRateSnapshot{ReadAt: now, Complete: true, HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{}}
+			tc.edit(&remote, &snapshot)
+			snapshot.Channels[4] = mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
+			item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, map[string]upstreamRateSnapshot{source.ID: snapshot}, now).match(key, site, []string{key}, now)
+			assert.Equal(t, tc.matched, item.Status == "matched")
+			if tc.matched {
+				require.NotNil(t, item.Ratio)
+				assert.Equal(t, 1.9, *item.Ratio)
+				assert.Equal(t, "masked", item.MatchMethod)
+			} else {
+				assert.Nil(t, item.Ratio)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		name, otherSite, otherError     string
+		hintsComplete, inScope, matched bool
+	}{
+		{"同站点另一渠道提示不完整阻断匹配", site + "/v1/", "", false, true, false},
+		{"同站点另一渠道读取失败阻断匹配", site, "request_failed", true, true, false},
+		{"同站点另一渠道候选完整且无相同提示允许匹配", site, "", true, true, true},
+		{"其他站点提示不完整不影响当前站点", "https://other.example", "", false, true, true},
+		{"其他站点读取失败不影响当前站点", "https://other.example", "request_failed", true, true, true},
+		{"不知道失败渠道站点时不能确认候选范围", "", "request_failed", true, true, false},
+		{"已退出本次授权范围的历史失败渠道不阻断", site, "request_failed", false, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, remote := upstreamRateMaskedFixture(now)
+			_, other := upstreamRateMaskedFixture(now)
+			other.ID, other.SiteURL, other.Groups, other.HintsComplete = 7, tc.otherSite, nil, common.GetPointer(tc.hintsComplete)
+			otherRecord := mergeUpstreamRateRecord(upstreamRateRecord{}, other, now)
+			otherRecord.Error = tc.otherError
+			snapshot := upstreamRateSnapshot{ReadAt: now, Complete: tc.otherError == "", HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{
+				4: mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now), 7: otherRecord,
+			}}
+			if tc.inScope {
+				snapshot.HintChannelIDs = append(snapshot.HintChannelIDs, 7)
+			}
+			item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, map[string]upstreamRateSnapshot{source.ID: snapshot}, now).match(key, site, []string{key}, now)
+			assert.Equal(t, tc.matched, item.Status == "matched")
+			if tc.matched {
+				require.NotNil(t, item.Ratio)
+				assert.Equal(t, 1.9, *item.Ratio)
+			} else {
+				assert.Nil(t, item.Ratio)
+			}
+		})
+	}
+}
+
+func TestUpstreamRateMaskedHistoryPreservesChangesWithoutExactBinding(t *testing.T) {
+	now := int64(1794096000)
+	const key, site = "sk-e1a-test-only-secret-cac1", "https://provider.example"
+	source, remote := upstreamRateMaskedFixture(now)
+	record := mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
+	assert.Empty(t, record.Known, "弱匹配不能建立完整指纹绑定")
+	remote.KeySyncedAt = time.Unix(now+60, 0).UTC().Format(time.RFC3339)
+	remote.Groups[0].UpdatedAt, remote.Groups[0].Ratio = remote.KeySyncedAt, common.GetPointer(2.1)
+	record = mergeUpstreamRateRecord(record, remote, now+60)
+	snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: now + 60, Complete: true, HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{4: record}}}
+	item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now+60).match(key, site, []string{key}, now+60)
+	assert.Equal(t, "matched", item.Status)
+	require.NotNil(t, item.Change)
+	assert.Equal(t, UpstreamRateChange{From: 1.9, To: 2.1, At: now + 60}, *item.Change)
+	assert.Empty(t, record.Known)
+
+	record.Error = "request_failed"
+	snapshots[source.ID].Channels[4] = record
+	item = buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now+90).match(key, site, []string{key}, now+90)
+	assert.NotEqual(t, "matched", item.Status)
+	assert.Nil(t, item.Ratio, "读取失败时不依据旧提示推导新的近似归属")
+
+	earlier := remote
+	earlier.Groups = append([]upstreamRateGroup{}, remote.Groups...)
+	earlier.KeySyncedAt = time.Unix(now+120, 0).UTC().Format(time.RFC3339)
+	earlier.Groups[0].UpdatedAt = time.Unix(now+30, 0).UTC().Format(time.RFC3339)
+	earlier.Groups[0].Ratio = common.GetPointer(0.5)
+	record = mergeUpstreamRateRecord(record, earlier, now+120)
+	snapshots[source.ID].Channels[4] = record
+	item = buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now+120).match(key, site, []string{key}, now+120)
+	assert.Equal(t, "older_snapshot", item.Status)
+	require.NotNil(t, item.Ratio)
+	assert.Equal(t, 2.1, *item.Ratio, "较早采集结果不能覆盖已知倍率")
+	assert.Empty(t, record.Known)
+}
+
+func TestUpstreamRateExactHistorySurvivesIncompleteHints(t *testing.T) {
+	now := int64(1794096000)
+	const key = "sk-e1a-test-only-secret-cac1"
+	source, remote := upstreamRateMaskedFixture(now)
+	fingerprint, err := upstreamRateFingerprint(key, "trim")
+	require.NoError(t, err)
+	remote.Groups[0].Keys[0].Fingerprint = fingerprint
+	record := mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
+	require.Contains(t, record.Known, "trim:"+fingerprint)
+	remote.Groups[0].Keys[0].Fingerprint = ""
+	remote.Groups[0].Ratio = common.GetPointer(9.9)
+	remote.HintsComplete, remote.Complete, remote.Status = common.GetPointer(false), common.GetPointer(false), "partial"
+	remote.KeySyncedAt = time.Unix(now+60, 0).UTC().Format(time.RFC3339)
+	record = mergeUpstreamRateRecord(record, remote, now+60)
+	snapshot := upstreamRateSnapshot{ReadAt: now + 60, Complete: false, HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{4: record}}
+	item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, map[string]upstreamRateSnapshot{source.ID: snapshot}, now+60).match(key, remote.SiteURL, []string{key}, now+60)
+	require.NotNil(t, item.Ratio)
+	assert.Equal(t, 1.9, *item.Ratio, "提示范围不完整不能抹掉唯一可信的精确历史")
+	assert.Equal(t, "fingerprint", item.MatchMethod)
+	assert.Equal(t, "实际分组", item.GroupName)
+	assert.Equal(t, now, item.CollectedAt)
+}
+
+func TestUpstreamRateMaskedKeyJSONDoesNotExposeCredentialsInView(t *testing.T) {
+	now := int64(1794096000)
+	const key, mask = "sk-e1a-test-only-secret-cac1", "sk-e1a...cac1"
+	var apiKey upstreamRateAPIKey
+	require.NoError(t, common.UnmarshalJsonStr(`{"api_key_id":11,"masked_key":"sk-e1a...cac1","key_prefix":"e1a","key_suffix":"cac1"}`, &apiKey))
+	assert.Equal(t, mask, apiKey.MaskedKey)
+	assert.Equal(t, "e1a", apiKey.KeyPrefix)
+	assert.Equal(t, "cac1", apiKey.KeySuffix)
+	assert.Empty(t, apiKey.Fingerprint)
+	source, remote := upstreamRateMaskedFixture(now)
+	remote.HintNormalization, remote.HintsComplete, remote.UnavailableHintIDs = "", nil, []int{99}
+	require.NoError(t, common.UnmarshalJsonStr(`{"key_hint_normalization":"trim_strip_sk_prefix","key_hints_complete":true,"unavailable_key_hint_ids":[]}`, &remote))
+	require.NotNil(t, remote.HintsComplete)
+	assert.True(t, *remote.HintsComplete)
+	assert.Equal(t, "trim_strip_sk_prefix", remote.HintNormalization)
+	assert.Empty(t, remote.UnavailableHintIDs)
+	remote.Groups[0].Keys = []upstreamRateAPIKey{apiKey}
+	record := mergeUpstreamRateRecord(upstreamRateRecord{}, remote, now)
+	snapshots := map[string]upstreamRateSnapshot{source.ID: {ReadAt: now, Complete: true, HintChannelIDs: []int{4}, Channels: map[int]upstreamRateRecord{4: record}}}
+	item := buildUpstreamRateMatchIndex([]upstreamRateSource{source}, snapshots, now).match(key, remote.SiteURL, []string{key}, now)
+	require.Equal(t, "matched", item.Status)
+	encoded, err := common.Marshal(item)
+	require.NoError(t, err)
+	assert.NotContains(t, string(encoded), key)
+	assert.NotContains(t, string(encoded), mask)
+	assert.NotContains(t, string(encoded), "masked_key")
+	assert.NotContains(t, string(encoded), "key_prefix")
+	assert.NotContains(t, string(encoded), "key_suffix")
+	assert.NotContains(t, string(encoded), `"fingerprint":`)
+	assert.Contains(t, string(encoded), `"match_method":"masked"`)
+}
+
+func TestUpstreamRateDecodeDisablesHintsForAmbiguousSites(t *testing.T) {
+	for _, tc := range []struct {
+		name, site    string
+		hintsComplete bool
+	}{
+		{"普通站点保留完整提示", "https://provider.example/api", true},
+		{"查询参数不能被清洗后用于近似匹配", "https://provider.example/api?tenant=a", false},
+		{"用户信息不能被清洗后用于近似匹配", "https://test-user:test-only-password@provider.example/api", false},
+		{"片段不能被清洗后用于近似匹配", "https://provider.example/api#tenant-a", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body, err := common.Marshal(map[string]any{
+				"success": true,
+				"data": map[string]any{
+					"complete": false,
+					"channels": []any{map[string]any{
+						"channel_id": 4, "channel_name": "上游账号", "site_url": tc.site,
+						"key_fingerprint_algorithm": "sha256", "key_fingerprint_normalization": "trim", "key_fingerprints_complete": false,
+						"key_hint_normalization": "trim_strip_sk_prefix", "key_hints_complete": true, "unavailable_key_hint_ids": []int{},
+						"key_sync_status": "partial", "key_synced_at": "2026-11-08T00:00:00Z", "unavailable_api_key_ids": []int{11},
+						"groups": []any{map[string]any{
+							"group_id": 1, "group_name": "实际分组", "ratio": 1.9, "updated_at": "2026-11-08T00:00:00Z",
+							"api_keys": []any{map[string]any{"api_key_id": 11, "fingerprint": "", "masked_key": "sk-e1a...cac1", "key_prefix": "e1a", "key_suffix": "cac1"}},
+						}},
+					}},
+					"errors": []any{map[string]any{"channel_id": 7, "code": "channel_data_unavailable"}},
+				},
+			})
+			require.NoError(t, err)
+			channels, channelErrors, complete, err := decodeUpstreamRateChannels(body, 0)
+			require.NoError(t, err)
+			require.Len(t, channels, 1)
+			channel := channels[0]
+			assert.False(t, complete, "解析不能将原始指纹完整性改写成提示完整性")
+			assert.Equal(t, map[int]string{7: "channel_unavailable"}, channelErrors, "批量错误渠道必须保留到范围判断")
+			assert.Equal(t, "https://provider.example/api", channel.SiteURL)
+			require.NotNil(t, channel.HintsComplete)
+			assert.Equal(t, tc.hintsComplete, *channel.HintsComplete)
+			assert.Equal(t, "trim_strip_sk_prefix", channel.HintNormalization)
+			assert.Equal(t, []int{11}, channel.UnavailableIDs)
+			assert.Empty(t, channel.UnavailableHintIDs)
+			require.Len(t, channel.Groups, 1)
+			require.Len(t, channel.Groups[0].Keys, 1)
+			assert.Equal(t, upstreamRateAPIKey{ID: 11, MaskedKey: "sk-e1a...cac1", KeyPrefix: "e1a", KeySuffix: "cac1"}, channel.Groups[0].Keys[0])
+		})
+	}
+}
+
+func TestUpstreamRateRefreshAcceptsCompleteMaskedSnapshots(t *testing.T) {
+	now := int64(1794096000)
+	for _, tc := range []struct {
+		name                      string
+		complete, mixed, expected bool
+		errors                    map[int]string
+		edit                      func(*upstreamRateRemoteChannel)
+	}{
+		{name: "只有完整提示且批量指纹不完整仍刷新成功", expected: true},
+		{name: "混合完整指纹渠道和完整提示渠道刷新成功", mixed: true, expected: true},
+		{name: "批量存在真正读取失败时刷新失败", errors: map[int]string{7: "channel_unavailable"}},
+		{name: "缺少提示完整性时刷新失败", edit: func(channel *upstreamRateRemoteChannel) { channel.HintsComplete = nil }},
+		{name: "提示不完整时刷新失败", edit: func(channel *upstreamRateRemoteChannel) { channel.HintsComplete = common.GetPointer(false) }},
+		{name: "错误提示归一化规则不能视为完整刷新", edit: func(channel *upstreamRateRemoteChannel) { channel.HintNormalization = "trim" }},
+		{name: "坏提示不能视为完整刷新", edit: func(channel *upstreamRateRemoteChannel) { channel.Groups[0].Keys[0].KeySuffix = "ac1" }},
+		{name: "提示不可用标记不能视为完整刷新", edit: func(channel *upstreamRateRemoteChannel) { channel.UnavailableHintIDs = []int{11} }},
+		{name: "真实同步失败不能视为完整刷新", edit: func(channel *upstreamRateRemoteChannel) { channel.Status = "failed" }},
+		{name: "完整指纹的旧协议仍然刷新成功", complete: true, expected: true, edit: func(channel *upstreamRateRemoteChannel) {
+			channel.Status, channel.Complete, channel.UnavailableIDs = "ready", common.GetPointer(true), nil
+			channel.HintsComplete, channel.HintNormalization = nil, ""
+			channel.Groups[0].Keys[0].Fingerprint = strings.Repeat("a", 64)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, remote := upstreamRateMaskedFixture(now)
+			remote.Status, remote.Complete, remote.UnavailableIDs = "partial", common.GetPointer(false), []int{11}
+			if tc.edit != nil {
+				tc.edit(&remote)
+			}
+			channels := []upstreamRateRemoteChannel{remote}
+			if tc.mixed {
+				_, exact := upstreamRateMaskedFixture(now)
+				exact.ID, exact.SiteURL, exact.HintsComplete, exact.HintNormalization = 7, "https://exact.example", nil, ""
+				exact.Groups[0].Keys[0].Fingerprint = strings.Repeat("a", 64)
+				channels = append(channels, exact)
+			}
+			assert.Equal(t, tc.expected, upstreamRateRefreshComplete(channels, tc.errors, tc.complete, now))
+		})
+	}
 }
 
 func TestUpstreamRatePersistenceDatabaseMatrix(t *testing.T) {

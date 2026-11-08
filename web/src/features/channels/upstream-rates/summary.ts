@@ -43,6 +43,7 @@ export function summarizeUpstreamRate(rate: UpstreamRate) {
     max: ratios.length ? Math.max(...ratios) : undefined,
     groupCount: groups.size,
     historical: values.length > 0 && current.length === 0,
+    approximate: values.some((key) => key.match_method === 'masked'),
     changed: current.some((key) => key.change !== undefined),
     change: groups.size === 1 ? changes[0] : undefined,
     moved: current.some((key) => key.moved_from !== undefined),
