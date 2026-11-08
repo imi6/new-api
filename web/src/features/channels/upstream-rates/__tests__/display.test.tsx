@@ -112,7 +112,7 @@ test('隐藏敏感信息时不提供详情入口，显示后保留极小倍率�
   ).not.toBeInTheDocument()
   expect(screen.getByText('••••')).toBeVisible()
   view.rerender(<Harness client={client} />)
-  expect(await screen.findByText('0.0000000123456×')).toBeVisible()
+  expect(await screen.findByText('0.0000000123456')).toBeVisible()
   client.clear()
 })
 
@@ -173,23 +173,35 @@ test('语言切换后倍率保留有效位，七种界面语言及无效语言�
       await i18n.changeLanguage(language)
     })
     const cell = screen.getByRole('button', { name: /View upstream rates/ })
-    expect(cell).toHaveTextContent(/0[.,]0000000123456×/)
+    expect(cell).toHaveTextContent(/^0[.,]0000000123456$/)
   }
   client.clear()
 })
 
-test('本地读取失败后保留历史倍率，并明确标记读取失败', async () => {
+test('本地读取失败后列表仅显示占位，历史倍率与错误保留在详情', async () => {
+  const user = userEvent.setup()
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   render(<Harness client={client} />)
-  await screen.findByText('0.0000000123456×')
+  await screen.findByText('0.0000000123456')
   vi.mocked(api.get).mockRejectedValue(new Error('offline'))
   await act(async () => {
     await client.refetchQueries({ queryKey: upstreamRateQueryKey })
   })
-  expect(await screen.findByText('Historical value')).toBeVisible()
-  expect(screen.getByText('Upstream snapshot read failed')).toBeVisible()
+  const cell = screen.getByRole('button', { name: /View upstream rates/ })
+  expect(await within(cell).findByText('—')).toBeVisible()
+  expect(cell).toHaveTextContent(/^—$/)
+  await user.click(cell)
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Historical value')).toBeVisible()
+  expect(
+    within(dialog).getAllByText('Upstream snapshot read failed').length
+  ).toBeGreaterThan(0)
+  expect(within(dialog).getByText('A · 0.0000000123456')).toBeVisible()
   client.clear()
 })
 
@@ -237,10 +249,129 @@ test('自动匹配详情显示上游归属且无需逐渠道配置', async () =>
   })
   const dialog = await screen.findByRole('dialog')
   expect(within(dialog).getByText(/倍率来源 \/ #4 上游账号/)).toBeVisible()
+  expect(within(dialog).getByText('Groups with keys only: Yes')).toBeVisible()
   expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
   expect(
     within(dialog).queryByRole('button', { name: 'Save upstream binding' })
   ).not.toBeInTheDocument()
+  client.clear()
+})
+
+test('旧接口返回部分同步且 Key 未命中时列表仅显示占位，详情显示未同步', async () => {
+  const unmatched: UpstreamRate = {
+    channel_id: 1,
+    status: 'partial',
+    only_with_keys: true,
+    read_at: 0,
+    enabled_keys: 1,
+    matched_keys: 0,
+    refresh_available: true,
+    force_refresh_available: false,
+    keys: [
+      {
+        index: 1,
+        enabled: true,
+        status: 'partial',
+        collected_at: 0,
+        key_synced_at: 0,
+      },
+    ],
+  }
+  vi.mocked(api.get).mockResolvedValue({
+    data: { success: true, data: [unmatched] },
+  } as Awaited<ReturnType<typeof api.get>>)
+  const user = userEvent.setup()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  const cell = await screen.findByRole('button', {
+    name: /View upstream rates/,
+  })
+  expect(cell).toHaveTextContent(/^—$/)
+  await user.click(cell)
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getAllByText('Not yet synchronized')).toHaveLength(2)
+  expect(
+    within(dialog).queryByText('Partial upstream synchronization')
+  ).not.toBeInTheDocument()
+  expect(within(dialog).getByText('Enabled key coverage: 0/1')).toBeVisible()
+  expect(
+    within(dialog).getByText('Groups with keys only: Unknown')
+  ).toBeVisible()
+  expect(within(dialog).getByText('— · —')).toBeVisible()
+  client.clear()
+})
+
+test('其他上游不完整但当前 Key 已命中时列表仅显示倍率，详情显示已命中', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        {
+          ...rate,
+          status: 'partial',
+          keys: [{ ...rate.keys[0], ratio: 1.9 }],
+        },
+      ],
+    },
+  } as Awaited<ReturnType<typeof api.get>>)
+  const user = userEvent.setup()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  const cell = await screen.findByRole('button', {
+    name: /View upstream rates/,
+  })
+  expect(cell).toHaveTextContent(/^1\.9$/)
+  await user.click(cell)
+  await act(async () => {
+    await vi.dynamicImportSettled()
+  })
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getAllByText('Matched')).toHaveLength(2)
+  expect(within(dialog).getByText('A · 1.9')).toBeVisible()
+  expect(
+    within(dialog).queryByText('Partial upstream synchronization')
+  ).not.toBeInTheDocument()
+  client.clear()
+})
+
+test('多个 Key 的倍率不同时列表仅显示当前倍率范围', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        {
+          ...rate,
+          enabled_keys: 2,
+          matched_keys: 2,
+          keys: [
+            {
+              ...rate.keys[0],
+              ratio: 0.1,
+              change: { from: 0.08, to: 0.1, at: 1 },
+              moved_from: 'C',
+              moved_at: 1,
+            },
+            { ...rate.keys[0], index: 2, group_name: 'B', ratio: 0.2 },
+          ],
+        },
+      ],
+    },
+  } as Awaited<ReturnType<typeof api.get>>)
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(<Harness client={client} />)
+  const cell = await screen.findByRole('button', {
+    name: /View upstream rates/,
+  })
+  expect(cell).toHaveTextContent(/^0\.1–0\.2$/)
   client.clear()
 })
 
