@@ -26,7 +26,7 @@ type upstreamRateMatchIndex struct {
 	Enabled bool
 }
 
-func upstreamRateRecordStatus(source upstreamRateSource, record upstreamRateRecord, now int64) string {
+func upstreamRateRecordStatus(record upstreamRateRecord, now int64) string {
 	if record.Error != "" {
 		switch record.Error {
 		case "channel_unavailable":
@@ -37,11 +37,7 @@ func upstreamRateRecordStatus(source upstreamRateSource, record upstreamRateReco
 			return "read_failed"
 		}
 	}
-	status := upstreamRateChannelQuality(record.Data, now, int64((source.ScanMinutes*2+5)*60))
-	if (status == "ready" || status == "partial") && now-record.ReadAt > int64(source.PollSeconds*3) {
-		return "read_failed"
-	}
-	return status
+	return upstreamRateChannelQuality(record.Data, now)
 }
 
 func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[string]upstreamRateSnapshot, now int64) upstreamRateMatchIndex {
@@ -66,7 +62,7 @@ func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[str
 		}
 		recordStatus := ""
 		for _, record := range snapshot.Channels {
-			quality := upstreamRateRecordStatus(source, record, now)
+			quality := upstreamRateRecordStatus(record, now)
 			if quality == "ready" {
 				quality = "unmatched"
 			}
@@ -145,7 +141,7 @@ func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRate
 		match = historical[0]
 	}
 	source, record := match.Source, match.Record
-	quality := upstreamRateRecordStatus(source, record, now)
+	quality := upstreamRateRecordStatus(record, now)
 	item.SourceID, item.SourceName = source.ID, source.Name
 	item.UpstreamChannelID, item.UpstreamChannelName = record.Data.ID, record.Data.Name
 	item.SiteURL, item.ReadAt, item.Error = record.Data.SiteURL, record.ReadAt, record.Error
@@ -164,8 +160,6 @@ func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRate
 		case quality != "ready" && quality != "partial":
 		case !validUpstreamRateGroup(group, now):
 			item.Status = "invalid_response"
-		case now-upstreamRateTimestamp(group.UpdatedAt) > int64((source.ScanMinutes*2+5)*60):
-			item.Status = "stale"
 		default:
 			item.Status, item.GroupID, item.GroupName, item.Ratio = "matched", group.ID, group.Name, group.Ratio
 			item.CollectedAt, item.KeySyncedAt = upstreamRateTimestamp(group.UpdatedAt), upstreamRateTimestamp(record.Data.KeySyncedAt)
