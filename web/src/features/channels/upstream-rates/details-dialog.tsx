@@ -86,7 +86,7 @@ function UpstreamRateKeyItem(props: { item: UpstreamRateKey }) {
       )}
       <p className='text-sm break-all'>
         {item.group_name ?? '—'} ·{' '}
-        {item.ratio === undefined ? '—' : `${format(item.ratio)}×`}
+        {item.ratio === undefined ? '—' : format(item.ratio)}
       </p>
       {item.change && item.status === 'matched' && (
         <RatioChangeBadge
@@ -156,6 +156,22 @@ export function UpstreamRateDetailsDialog(props: {
   const rate = props.rate
   const enabled = rate?.keys.filter((item) => item.enabled) ?? []
   const disabled = rate?.keys.filter((item) => !item.enabled) ?? []
+  const status =
+    rate?.status === 'partial' &&
+    enabled.length > 0 &&
+    enabled.every((item) => item.status === 'matched')
+      ? 'matched'
+      : (rate?.status ?? 'unavailable')
+  let groupsWithKeysOnly = t('Unknown')
+  if (
+    rate &&
+    enabled.length > 0 &&
+    enabled.every(
+      (item) => Boolean(item.source_id) && (item.upstream_channel_id ?? 0) > 0
+    )
+  ) {
+    groupsWithKeysOnly = rate.only_with_keys ? t('Yes') : t('No')
+  }
 
   return (
     <Dialog
@@ -183,10 +199,9 @@ export function UpstreamRateDetailsDialog(props: {
             <StatusBadge
               copyable={false}
               label={t(
-                upstreamRateStatusKeys[rate.status] ??
-                  'Upstream data unavailable'
+                upstreamRateStatusKeys[status] ?? 'Upstream data unavailable'
               )}
-              variant={rate.status === 'matched' ? 'success' : 'warning'}
+              variant={status === 'matched' ? 'success' : 'warning'}
             />
             <p className='break-all'>
               {rate.source_name}{' '}
@@ -221,8 +236,7 @@ export function UpstreamRateDetailsDialog(props: {
               {rate.read_at ? formatTimestampToDate(rate.read_at) : '—'}
             </p>
             <p className='text-muted-foreground text-xs'>
-              {t('Groups with keys only')}:{' '}
-              {rate.only_with_keys ? t('Yes') : t('No')}
+              {t('Groups with keys only')}: {groupsWithKeysOnly}
             </p>
             {rate.refresh_available && (
               <div className='flex flex-wrap gap-2'>
