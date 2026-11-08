@@ -111,6 +111,9 @@ func buildUpstreamRateMatchIndex(sources []upstreamRateSource, snapshots map[str
 
 func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRateKeyView {
 	item := UpstreamRateKeyView{Status: index.Status}
+	if item.Status == "partial" {
+		item.Status = "not_synced"
+	}
 	value := strings.TrimSpace(rawKey)
 	if value == "" || strings.IndexFunc(value, unicode.IsSpace) >= 0 || strings.IndexFunc(value, unicode.IsControl) >= 0 || strings.HasPrefix(value, "{") || strings.HasPrefix(value, "[") || strings.HasPrefix(value, "\"") {
 		item.Status = "unsupported_credential"
@@ -194,6 +197,9 @@ func (index upstreamRateMatchIndex) match(rawKey string, now int64) UpstreamRate
 	if item.MovedAt > 0 && now-item.MovedAt > 86400 {
 		item.MovedFrom, item.MovedAt = "", 0
 	}
+	if item.Status == "partial" {
+		item.Status = "not_synced"
+	}
 	return item
 }
 
@@ -255,25 +261,19 @@ func GetUpstreamRates(ctx context.Context, ids []int) ([]UpstreamRateView, error
 				view.Error = item.Error
 			}
 			status := item.Status
-			if status == "matched" && item.SyncStatus == "partial" {
-				status = "partial"
-			}
 			if status == "conflict" {
 				conflict = true
 			}
 			if view.Status == "" {
 				view.Status = status
 			} else if view.Status != status {
-				view.Status = "partial"
+				view.Status = "not_synced"
 			}
 		}
 		if view.EnabledKeys == 0 {
 			view.Status = "disabled"
 		} else if conflict {
 			view.Status = "conflict"
-		} else if view.Status == "matched" && index.Status != "unmatched" {
-			// 全局搜索范围不完整时，已有命中仍可展示，但不能宣称整体匹配完整。
-			view.Status = "partial"
 		}
 		if len(targets) == 1 && !conflict {
 			for _, target := range targets {
