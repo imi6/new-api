@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -194,7 +195,7 @@ func (upstreamRateTaskHandler) Run(ctx context.Context, task *model.SystemTask, 
 		channels, channelErrors, complete, fetchErr := fetchUpstreamRateChannels(ctx, source, payload.ChannelID, payload.Force)
 		now = time.Now().Unix()
 		processed++
-		if fetchErr != nil || !complete {
+		if fetchErr != nil || !upstreamRateRefreshComplete(channels, channelErrors, complete, now) {
 			failed++
 		}
 		// 配置变化时丢弃在途结果；状态读取也会按 revision 隔离旧快照。
@@ -235,13 +236,20 @@ func (upstreamRateTaskHandler) Run(ctx context.Context, task *model.SystemTask, 
 			for _, channel := range channels {
 				seen[channel.ID] = true
 				snapshot.Channels[channel.ID] = mergeUpstreamRateRecord(snapshot.Channels[channel.ID], channel, now)
-				if code, exists := channelErrors[channel.ID]; exists {
-					record := snapshot.Channels[channel.ID]
-					record.Error = code
-					snapshot.Channels[channel.ID] = record
-				}
+			}
+			// 错误渠道也属于候选范围，不能因响应中缺少其详情而漏掉歧义。
+			for id, code := range channelErrors {
+				seen[id] = true
+				record := snapshot.Channels[id]
+				record.Data.ID, record.Error = id, code
+				snapshot.Channels[id] = record
 			}
 			if payload.ChannelID == 0 {
+				snapshot.HintChannelIDs = make([]int, 0, len(seen))
+				for id := range seen {
+					snapshot.HintChannelIDs = append(snapshot.HintChannelIDs, id)
+				}
+				slices.Sort(snapshot.HintChannelIDs)
 				for id, record := range snapshot.Channels {
 					if seen[id] {
 						continue
@@ -272,4 +280,35 @@ func GetUpstreamRateTask(taskID string) (*model.SystemTaskResponse, error) {
 	}
 	response := task.ToResponse()
 	return &response, nil
+}
+
+// 指纹缺失不等于读取失败；新版完整提示也可完成一次有效快照读取。
+func upstreamRateRefreshComplete(channels []upstreamRateRemoteChannel, channelErrors map[int]string, complete bool, now int64) bool {
+	if len(channelErrors) > 0 {
+		return false
+	}
+	if complete {
+		return true
+	}
+	if len(channels) == 0 {
+		return false
+	}
+	for _, channel := range channels {
+		quality := upstreamRateChannelQuality(channel, now)
+		if quality == "ready" {
+			continue
+		}
+		if quality != "partial" || channel.HintNormalization != "trim_strip_sk_prefix" || channel.HintsComplete == nil || !*channel.HintsComplete || len(channel.UnavailableHintIDs) > 0 {
+			return false
+		}
+		if _, hintsComplete := upstreamRateHintCandidateIndex(channel); !hintsComplete {
+			return false
+		}
+		for _, group := range channel.Groups {
+			if !validUpstreamRateGroup(group, now) {
+				return false
+			}
+		}
+	}
+	return true
 }
