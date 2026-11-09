@@ -79,7 +79,6 @@ export const affiliateCashSettingsSchema = z
               error: () =>
                 i18next.t('Network names cannot exceed 80 characters'),
             }),
-          address_kind: z.enum(['evm', 'tron']),
           enabled: z.boolean(),
         })
       )
