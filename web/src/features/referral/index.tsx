@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { Gift, RefreshCw, User, Clock, Wallet } from 'lucide-react'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -18,27 +20,32 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Gift, RefreshCw, User, Clock, ChevronRight } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
 
-import { SectionPageLayout } from '@/components/layout'
 import { CopyButton } from '@/components/copy-button'
+import { ErrorState } from '@/components/error-state'
+import { SectionPageLayout } from '@/components/layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatQuota, quotaUnitsToDollars } from '@/lib/format'
-import { getSelf } from '@/lib/api'
-import { getServerMessage } from '@/lib/server-error-message'
+import { AFFILIATE_CASH_QUERY_KEY } from '@/features/affiliate-cash/api'
+import { formatUAmount } from '@/features/affiliate-cash/lib/amount'
+import { useAffiliateCash } from '@/features/affiliate-cash/lib/use-affiliate-cash'
 import {
   getAffiliateCode,
   getAffiliateRebate,
-  claimAffiliateRebate,
   type AffiliateRebateSummary,
 } from '@/features/wallet/api'
 import { generateAffiliateLink } from '@/features/wallet/lib'
 import type { UserWalletData } from '@/features/wallet/types'
+import { getSelf } from '@/lib/api'
+import { formatQuota } from '@/lib/format'
+import { getServerErrorMessage } from '@/lib/server-error-message'
+
+import { AffiliateCashHistory } from './components/affiliate-cash-history'
+import { AffiliateClaimCard } from './components/affiliate-claim-card'
+import { AffiliateWithdrawalCard } from './components/affiliate-withdrawal-card'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stat card
@@ -89,8 +96,8 @@ export function ReferralPage() {
   const [affiliateCode, setAffiliateCode] = useState('')
   const [affiliateLink, setAffiliateLink] = useState('')
   const [refreshing, setRefreshing] = useState(false)
-  const [claiming, setClaiming] = useState(false)
-  const [claimError, setClaimError] = useState('')
+  const cash = useAffiliateCash()
+  const queryClient = useQueryClient()
 
   const fetchAll = useCallback(async () => {
     await Promise.all([
@@ -120,329 +127,268 @@ export function ReferralPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchAll().catch(() => undefined)
+    await Promise.all([fetchAll(), cash.refetch()]).catch(() => undefined)
     setRefreshing(false)
   }
 
-  const handleClaim = async () => {
-    const claimable = summary?.claimable ?? 0
-    if (!summary?.can_claim || claimable <= 0) return
-    setClaiming(true)
-    setClaimError('')
-    try {
-      const res = await claimAffiliateRebate(claimable)
-      if (!res.success) {
-        setClaimError(getServerMessage(res) || t('Failed to claim referral rebate'))
-        return
-      }
-      await fetchAll()
-    } catch {
-      setClaimError(t('Failed to claim referral rebate'))
-    } finally {
-      setClaiming(false)
-    }
+  const handleCashChanged = async () => {
+    // 资金操作已经成功，后续视图刷新失败不能被当作扣款失败重试。
+    await Promise.allSettled([
+      queryClient.invalidateQueries({ queryKey: AFFILIATE_CASH_QUERY_KEY }),
+      fetchAll(),
+    ])
   }
 
   const claimable = summary?.claimable ?? 0
   const accrued = summary?.accrued ?? 0
-  const affQuota = user?.aff_quota ?? 0
-  const affHistoryQuota = user?.aff_history_quota ?? 0
+
   const affCount = user?.aff_count ?? 0
 
   return (
-    <>
-      <SectionPageLayout>
-        <SectionPageLayout.Title>{t('Referral rebate')}</SectionPageLayout.Title>
-        <SectionPageLayout.Actions>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={handleRefresh}
-            disabled={refreshing}
-            aria-label={t('Refresh')}
-          >
-            <RefreshCw
-              className={`mr-1.5 size-3.5 ${refreshing ? 'animate-spin' : ''}`}
-              aria-hidden='true'
-            />
-            {t('Refresh')}
-          </Button>
-        </SectionPageLayout.Actions>
-        <SectionPageLayout.Content>
-          <div className='mx-auto flex w-full max-w-5xl flex-col gap-4'>
-            <p className='text-muted-foreground text-sm'>
-              {t('Share invite code, rebate amount can be transferred to account balance.')}
-            </p>
+    <SectionPageLayout>
+      <SectionPageLayout.Title>{t('Referral rebate')}</SectionPageLayout.Title>
+      <SectionPageLayout.Actions>
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={handleRefresh}
+          disabled={refreshing}
+          aria-label={t('Refresh')}
+        >
+          <RefreshCw
+            className={`mr-1.5 size-3.5 ${refreshing ? 'animate-spin' : ''}`}
+            aria-hidden='true'
+          />
+          {t('Refresh')}
+        </Button>
+      </SectionPageLayout.Actions>
+      <SectionPageLayout.Content>
+        <div className='mx-auto flex w-full max-w-5xl flex-col gap-4'>
+          <p className='text-muted-foreground text-sm'>
+            {t(
+              'Share your invitation and choose how to claim your consumption rebate.'
+            )}
+          </p>
 
-            {/* Stat cards */}
-            <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-              {userLoading || summaryLoading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className='h-24 rounded-xl' />
-                ))
-              ) : (
-                <>
-                  <StatCard
-                    tone='orange'
-                    icon={<Gift className='size-4' />}
-                    label={t('Rebate rate')}
-                    value={`${summary?.percent ?? 0}%`}
-                    sub={t('Current account effective rate')}
-                  />
-                  <StatCard
-                    tone='default'
-                    icon={<User className='size-4' />}
-                    label={t('Invited users')}
-                    value={String(summary?.invitees?.length ?? affCount)}
-                    sub={t('Completed binding users')}
-                  />
-                  <StatCard
-                    tone='teal'
-                    icon={<Clock className='size-4' />}
-                    label={t('Claimable rebate')}
-                    value={formatQuota(claimable)}
-                    sub={t('Transferable to balance')}
-                  />
-                  <StatCard
-                    tone='yellow'
-                    icon={<Gift className='size-4' />}
-                    label={t('Accrued rebate')}
-                    value={formatQuota(accrued)}
-                    sub={`${t('Locked')} ${formatQuota(affHistoryQuota - affQuota - (summary?.claimed ?? 0))}`}
-                  />
-                </>
-              )}
-            </div>
+          {/* Stat cards */}
+          <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
+            {userLoading || summaryLoading ? (
+              ['rate', 'invitees', 'unclaimed', 'accrued', 'u'].map((name) => (
+                <Skeleton key={name} className='h-24 rounded-xl' />
+              ))
+            ) : (
+              <>
+                <StatCard
+                  tone='orange'
+                  icon={<Gift className='size-4' />}
+                  label={t('Rebate rate')}
+                  value={`${summary?.percent ?? 0}%`}
+                  sub={t('Current account effective rate')}
+                />
+                <StatCard
+                  tone='default'
+                  icon={<User className='size-4' />}
+                  label={t('Invited users')}
+                  value={String(summary?.invitees?.length ?? affCount)}
+                  sub={t('Completed binding users')}
+                />
+                <StatCard
+                  tone='teal'
+                  icon={<Clock className='size-4' />}
+                  label={t('Unclaimed rebate')}
+                  value={formatQuota(claimable)}
+                  sub={t('Subject to current claim limits')}
+                />
+                <StatCard
+                  tone='yellow'
+                  icon={<Gift className='size-4' />}
+                  label={t('Accrued rebate')}
+                  value={formatQuota(accrued)}
+                />
+                <StatCard
+                  tone='teal'
+                  icon={<Wallet className='size-4' />}
+                  label={t('Available U')}
+                  value={cash.data ? formatUAmount(cash.data.u_available) : '—'}
+                  sub={t('Separate from platform balance')}
+                />
+              </>
+            )}
+          </div>
 
-            <div className='grid gap-4 lg:grid-cols-[1fr_280px]'>
-              {/* Left: invite code + invitees */}
-              <div className='flex flex-col gap-4'>
-                <Card>
-                  <CardContent className='flex flex-col gap-4 p-4'>
-                    <div className='flex items-center gap-3'>
-                      <div className='bg-orange-100 dark:bg-orange-900/30 flex size-9 shrink-0 items-center justify-center rounded-lg'>
-                        <Gift
-                          className='size-5 text-orange-500 dark:text-orange-400'
-                          aria-hidden='true'
-                        />
-                      </div>
-                      <div>
-                        <h3 className='text-sm font-semibold'>{t('Exclusive invite')}</h3>
-                        <p className='text-muted-foreground text-xs'>
-                          {t('Copy invite code or register link for new users.')}
-                        </p>
-                      </div>
+          <div className='grid gap-4 lg:grid-cols-[1fr_320px]'>
+            {/* Left: invite code + invitees */}
+            <div className='flex flex-col gap-4'>
+              <Card>
+                <CardContent className='flex flex-col gap-4 p-4'>
+                  <div className='flex items-center gap-3'>
+                    <div className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30'>
+                      <Gift
+                        className='size-5 text-orange-500 dark:text-orange-400'
+                        aria-hidden='true'
+                      />
                     </div>
-
-                    <div className='flex flex-col gap-2'>
-                      <label className='text-xs font-medium'>{t('Invite code')}</label>
-                      <div className='flex items-center gap-2'>
-                        <Input
-                          value={affiliateCode}
-                          readOnly
-                          className='font-mono text-sm'
-                          aria-label={t('Invite code')}
-                        />
-                        <CopyButton
-                          value={affiliateCode}
-                          variant='outline'
-                          className='size-9 shrink-0'
-                          iconClassName='size-4'
-                          tooltip={t('Copy invite code')}
-                          aria-label={t('Copy invite code')}
-                        />
-                      </div>
+                    <div>
+                      <h3 className='text-sm font-semibold'>
+                        {t('Exclusive invite')}
+                      </h3>
+                      <p className='text-muted-foreground text-xs'>
+                        {t('Copy invite code or register link for new users.')}
+                      </p>
                     </div>
+                  </div>
 
-                    <div className='flex flex-col gap-2'>
-                      <label className='text-xs font-medium'>{t('Invite link')}</label>
-                      <div className='flex items-center gap-2'>
-                        <Input
-                          value={affiliateLink}
-                          readOnly
-                          className='font-mono text-xs'
-                          aria-label={t('Invite link')}
-                        />
-                        <CopyButton
-                          value={affiliateLink}
-                          variant='outline'
-                          className='size-9 shrink-0'
-                          iconClassName='size-4'
-                          tooltip={t('Copy referral link')}
-                          aria-label={t('Copy referral link')}
-                        />
-                      </div>
+                  <div className='flex flex-col gap-2'>
+                    <label className='text-xs font-medium'>
+                      {t('Invite code')}
+                    </label>
+                    <div className='flex items-center gap-2'>
+                      <Input
+                        value={affiliateCode}
+                        readOnly
+                        className='font-mono text-sm'
+                        aria-label={t('Invite code')}
+                      />
+                      <CopyButton
+                        value={affiliateCode}
+                        variant='outline'
+                        className='size-9 shrink-0'
+                        iconClassName='size-4'
+                        tooltip={t('Copy invite code')}
+                        aria-label={t('Copy invite code')}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
 
-                {/* Rebate groups card */}
-                {!summaryLoading && summary != null && (
-                  <Card>
-                    <CardContent className='flex flex-col gap-3 p-4'>
-                      <h3 className='text-sm font-semibold'>{t('Groups that earn rebate')}</h3>
-                      {(summary.rebate_groups ?? []).length === 0 ? (
-                        <p className='text-muted-foreground text-sm'>{t('All groups earn rebate')}</p>
-                      ) : (
-                        <div className='flex flex-wrap gap-1.5'>
-                          {summary.rebate_groups.map((group) => (
-                            <Badge key={group} variant='secondary' className='text-xs'>
-                              {group}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                  <div className='flex flex-col gap-2'>
+                    <label className='text-xs font-medium'>
+                      {t('Invite link')}
+                    </label>
+                    <div className='flex items-center gap-2'>
+                      <Input
+                        value={affiliateLink}
+                        readOnly
+                        className='font-mono text-xs'
+                        aria-label={t('Invite link')}
+                      />
+                      <CopyButton
+                        value={affiliateLink}
+                        variant='outline'
+                        className='size-9 shrink-0'
+                        iconClassName='size-4'
+                        tooltip={t('Copy referral link')}
+                        aria-label={t('Copy referral link')}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* Invitee list */}
+              {/* Rebate groups card */}
+              {!summaryLoading && summary != null && (
                 <Card>
                   <CardContent className='flex flex-col gap-3 p-4'>
                     <h3 className='text-sm font-semibold'>
-                      {t('Invitees')}
-                      <span className='text-muted-foreground ml-1.5 text-xs font-normal'>
-                        {t('{{count}} records', {
-                          count: summary?.invitees?.length ?? 0,
-                        })}
-                      </span>
+                      {t('Groups that earn rebate')}
                     </h3>
-                    {summaryLoading ? (
-                      <Skeleton className='h-20 rounded-lg' />
-                    ) : (summary?.invitees ?? []).length === 0 ? (
+                    {(summary.rebate_groups ?? []).length === 0 ? (
+                      <p className='text-muted-foreground text-sm'>
+                        {t('All groups earn rebate')}
+                      </p>
+                    ) : (
+                      <div className='flex flex-wrap gap-1.5'>
+                        {summary.rebate_groups.map((group) => (
+                          <Badge
+                            key={group}
+                            variant='secondary'
+                            className='text-xs'
+                          >
+                            {group}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Invitee list */}
+              <Card>
+                <CardContent className='flex flex-col gap-3 p-4'>
+                  <h3 className='text-sm font-semibold'>
+                    {t('Invitees')}
+                    <span className='text-muted-foreground ml-1.5 text-xs font-normal'>
+                      {t('{{count}} records', {
+                        count: summary?.invitees?.length ?? 0,
+                      })}
+                    </span>
+                  </h3>
+                  {summaryLoading && <Skeleton className='h-20 rounded-lg' />}
+                  {!summaryLoading &&
+                    (summary?.invitees ?? []).length === 0 && (
                       <div className='flex flex-col items-center gap-2 py-8'>
                         <div className='bg-muted flex size-12 items-center justify-center rounded-full'>
-                          <User className='text-muted-foreground size-6' aria-hidden='true' />
+                          <User
+                            className='text-muted-foreground size-6'
+                            aria-hidden='true'
+                          />
                         </div>
                         <p className='text-muted-foreground text-sm'>
                           {t('No invitees yet')}
                         </p>
                       </div>
-                    ) : (
-                      summary?.invitees.map((invitee) => (
-                        <div
-                          key={invitee.user_id}
-                          className='flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm'
-                        >
-                          <span className='truncate'>{invitee.username}</span>
-                          <span className='text-muted-foreground shrink-0'>
-                            {t('Paid consumption')} {formatQuota(invitee.paid_consumed)}
-                          </span>
-                          <span className='shrink-0 font-semibold tabular-nums'>
-                            {formatQuota(invitee.rebate)}
-                          </span>
-                        </div>
-                      ))
                     )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right: transfer sidebar */}
-              <div className='flex flex-col gap-4'>
-                <Card>
-                  <CardContent className='flex flex-col gap-4 p-4'>
-                    <div className='flex items-center gap-2 text-sm font-medium'>
-                      <Gift className='size-4' aria-hidden='true' />
-                      {t('Transfer to balance')}
-                    </div>
-
-                    <div>
-                      <div className='text-muted-foreground text-xs'>{t('Claimable rebate')}</div>
-                      <div className='mt-1 text-2xl font-bold tabular-nums text-orange-500 dark:text-orange-400'>
-                        {formatQuota(claimable)}
-                      </div>
-                    </div>
-
-                    <div className='flex flex-col gap-1.5 text-xs'>
-                      <div className='flex justify-between'>
-                        <span className='text-muted-foreground'>{t('Locked')}</span>
-                        <span className='tabular-nums'>
-                          {formatQuota(affHistoryQuota - affQuota - (summary?.claimed ?? 0))}
+                  {!summaryLoading &&
+                    summary?.invitees.map((invitee) => (
+                      <div
+                        key={invitee.user_id}
+                        className='flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm'
+                      >
+                        <span className='truncate'>{invitee.username}</span>
+                        <span className='text-muted-foreground shrink-0'>
+                          {t('Paid consumption')}{' '}
+                          {formatQuota(invitee.paid_consumed)}
+                        </span>
+                        <span className='shrink-0 font-semibold tabular-nums'>
+                          {formatQuota(invitee.rebate)}
                         </span>
                       </div>
-                      <div className='flex justify-between'>
-                        <span className='text-muted-foreground'>{t('Accrued rebate')}</span>
-                        <span className='tabular-nums'>{formatQuota(accrued)}</span>
-                      </div>
-                      <div className='flex justify-between'>
-                        <span className='text-muted-foreground'>{t('Invited users')}</span>
-                        <span className='tabular-nums'>{affCount} {t('person', { count: affCount })}</span>
-                      </div>
-                    </div>
+                    ))}
+                </CardContent>
+              </Card>
+            </div>
 
-                    {/* Rebate rules and weekly stats */}
-                    {!summaryLoading && summary != null && (
-                      <div className='border-t pt-3 flex flex-col gap-1.5 text-xs'>
-                        <p className='text-muted-foreground'>
-                          {t(
-                            'Rebate is {{percent}}% of paid consumption after an invitee spends {{downstream}}. You can claim it after your own paid consumption reaches {{upstream}}.',
-                            {
-                              percent: summary.percent,
-                              downstream: formatQuota(summary.downstream_threshold),
-                              upstream: formatQuota(summary.upstream_minimum),
-                            }
-                          )}
-                        </p>
-                        <div className='flex justify-between'>
-                          <span className='text-muted-foreground'>{t('Your paid consumption')}</span>
-                          <span className='tabular-nums'>{formatQuota(summary.paid_consumed)}</span>
-                        </div>
-                        <div className='flex justify-between'>
-                          <span className='text-muted-foreground'>{t('Your last 7 days paid consumption')}</span>
-                          <span className='tabular-nums'>{formatQuota(summary.week_paid_consumed)}</span>
-                        </div>
-                        <div className='flex justify-between'>
-                          <span className='text-muted-foreground'>{t('Claimed in the last 7 days')}</span>
-                          <span className='tabular-nums'>{formatQuota(summary.week_claimed)}</span>
-                        </div>
-                        <p className='text-muted-foreground'>
-                          {t(
-                            'Claims in the last 7 days are added together. To claim {{amount}} now, your paid consumption in the last 7 days must be at least {{required}}.',
-                            {
-                              amount: formatQuota(claimable),
-                              required: formatQuota(
-                                summary.percent > 0 && claimable > 0
-                                  ? Math.ceil(((summary.week_claimed + claimable) * 100) / summary.percent)
-                                  : 0
-                              ),
-                            }
-                          )}
-                        </p>
-                      </div>
-                    )}
-
-                    {claimError && (
-                      <p className='text-destructive text-xs'>{claimError}</p>
-                    )}
-
-                    <Button
-                      className='w-full bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700'
-                      onClick={handleClaim}
-                      disabled={
-                        !summary?.can_claim || claimable <= 0 || claiming
-                      }
-                    >
-                      <Gift className='mr-1.5 size-4' aria-hidden='true' />
-                      {t('Claim rebate to balance')}
-                    </Button>
-
-                    <Button
-                      variant='link'
-                      size='sm'
-                      className='h-auto px-0 text-xs'
-                      render={<Link to='/wallet' />}
-                    >
-                      {t('View recharge history')}
-                      <ChevronRight className='ml-0.5 size-3' aria-hidden='true' />
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* 返利领取与 U 提现使用同一个后端账户快照。 */}
+            <div className='flex flex-col gap-4'>
+              {cash.isError && (
+                <ErrorState
+                  className='min-h-32'
+                  description={getServerErrorMessage(cash.error)}
+                  onRetry={() => {
+                    void cash.refetch()
+                  }}
+                />
+              )}
+              {!cash.isError && !cash.data && (
+                <Skeleton className='h-80 rounded-xl' />
+              )}
+              {!cash.isError && cash.data && (
+                <>
+                  <AffiliateClaimCard
+                    summary={cash.data}
+                    onChanged={handleCashChanged}
+                  />
+                  <AffiliateWithdrawalCard
+                    summary={cash.data}
+                    onChanged={handleCashChanged}
+                  />
+                </>
+              )}
             </div>
           </div>
-        </SectionPageLayout.Content>
-      </SectionPageLayout>
-    </>
+          <AffiliateCashHistory />
+        </div>
+      </SectionPageLayout.Content>
+    </SectionPageLayout>
   )
 }
