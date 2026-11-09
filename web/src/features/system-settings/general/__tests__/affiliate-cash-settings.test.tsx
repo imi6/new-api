@@ -23,10 +23,12 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import i18next from 'i18next'
 import { afterEach, expect, test, vi } from 'vitest'
 
 import type { AffiliateCashConfig } from '@/features/affiliate-cash/types'
+import zhLocale from '@/i18n/locales/zh.json'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -50,14 +52,17 @@ const config: AffiliateCashConfig = {
   version: 'v1',
 }
 
-afterEach(() => useAuthStore.getState().auth.setUser(null))
+afterEach(async () => {
+  useAuthStore.getState().auth.setUser(null)
+  await i18next.changeLanguage('en')
+})
 
-async function renderSettings(role: number) {
+async function renderSettings(role: number, initial = config) {
   useAuthStore
     .getState()
     .auth.setUser({ id: 1, username: 'administrator', role })
   vi.spyOn(api, 'get').mockResolvedValue({
-    data: { success: true, data: config },
+    data: { success: true, data: initial },
   })
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -129,6 +134,87 @@ test('disabling the final payout network can be saved without changing the featu
   expect(result.success).toBe(true)
 })
 
+test('network configuration accepts custom networks and strips the legacy address format', () => {
+  expect(
+    affiliateCashSettingsSchema.parse({
+      ...config,
+      networks: [{ id: 'custom', name: 'Custom network', enabled: true }],
+    }).networks
+  ).toEqual([{ id: 'custom', name: 'Custom network', enabled: true }])
+  expect(affiliateCashSettingsSchema.parse(config).networks).toEqual([
+    { id: 'tron', name: 'TRON', enabled: true },
+  ])
+})
+
+test('selected fee policies show their localized labels before opening the menus and after changing language', async () => {
+  await renderSettings(100, {
+    ...config,
+    fee_mode: 'percent',
+    minimum_basis: 'net',
+  })
+  const fee = screen.getByRole('combobox', { name: 'Withdrawal fee mode' })
+  const minimum = screen.getByRole('combobox', {
+    name: 'Minimum withdrawal basis',
+  })
+  const cancellation = screen.getByRole('combobox', {
+    name: 'Fee policy for user cancellation',
+  })
+  const failure = screen.getByRole('combobox', {
+    name: 'Fee policy after confirmed payment failure',
+  })
+  expect(fee).toHaveTextContent('Percentage fee')
+  expect(minimum).toHaveTextContent('Net payout amount')
+  expect(cancellation).toHaveTextContent('Refund the full reserved amount')
+  expect(failure).toHaveTextContent('Refund the full reserved amount')
+  i18next.addResourceBundle('zh', 'translation', zhLocale.translation)
+  await act(async () => {
+    await i18next.changeLanguage('zh')
+  })
+  expect(fee).toHaveTextContent('比例手续费')
+  expect(minimum).toHaveTextContent('实际到账金额')
+  expect(cancellation).toHaveTextContent('退回全部冻结金额')
+  expect(failure).toHaveTextContent('退回全部冻结金额')
+})
+
+test('network rows have no address-format selector and only new rows can be removed', async () => {
+  const put = vi.spyOn(api, 'put').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        ...config,
+        networks: [{ ...config.networks[0], enabled: false }],
+        version: 'v2',
+      },
+    },
+  })
+  await renderSettings(100)
+  expect(screen.queryByText('Address format')).not.toBeInTheDocument()
+  expect(
+    screen.getByRole('textbox', { name: 'Network identifier' })
+  ).toBeDisabled()
+  expect(
+    screen.queryByRole('button', { name: 'Remove' })
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Add payout network' }))
+  expect(screen.getAllByRole('textbox', { name: 'Network name' })).toHaveLength(
+    2
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+  expect(screen.getAllByRole('textbox', { name: 'Network name' })).toHaveLength(
+    1
+  )
+  fireEvent.click(screen.getByRole('switch', { name: 'Enabled' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Save U settings' }))
+  await waitFor(() =>
+    expect(put).toHaveBeenCalledWith(
+      '/api/user/affiliate/cash/settings',
+      expect.objectContaining({
+        networks: [{ id: 'tron', name: 'TRON', enabled: false }],
+      })
+    )
+  )
+})
+
 test('withdrawals can stay enabled without a conversion rate when conversion is disabled', () => {
   expect(
     affiliateCashSettingsSchema.safeParse({
@@ -184,7 +270,11 @@ test('saving preserves the config version and decimal string amounts', async () 
   await waitFor(() =>
     expect(put).toHaveBeenCalledWith(
       '/api/user/affiliate/cash/settings',
-      expect.objectContaining({ version: 'v1', fee_fixed: '0.123456' })
+      expect.objectContaining({
+        version: 'v1',
+        fee_fixed: '0.123456',
+        networks: [{ id: 'tron', name: 'TRON', enabled: true }],
+      })
     )
   )
   await waitFor(() =>
