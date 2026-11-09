@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Coins, Gift, HandCoins, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { TitledCard } from '@/components/ui/titled-card'
 import { StatCard } from '@/features/dashboard/components/ui/stat-card'
 import { formatQuota } from '@/lib/format'
 
@@ -76,7 +77,7 @@ export function AffiliateSummaryCards(props: AffiliateSummaryCardsProps) {
 
   // Two a row on phones, so the table below keeps room to scroll.
   return (
-    <div className='shrink-0 space-y-2'>
+    <div className='flex shrink-0 flex-col gap-3'>
       <div className='grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4'>
         {cards.map((item) => (
           <div
@@ -97,39 +98,54 @@ export function AffiliateSummaryCards(props: AffiliateSummaryCardsProps) {
         ))}
       </div>
       {summary && (
-        <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-xs xl:grid-cols-4'>
-          {[
-            {
-              label: t('User transfers to platform'),
-              amount: summary.user_platform_quota,
-            },
-            {
-              label: t('Admin transfers to platform'),
-              amount: summary.admin_platform_quota,
-            },
-            {
-              label: t('Original rebate exchanged for U'),
-              amount: summary.u_exchange_quota,
-            },
-            {
-              label: t('Administrative rebate deductions'),
-              amount: summary.admin_revoked_quota,
-            },
-          ].map((item) => (
-            <div key={item.label}>
-              <dt className='text-muted-foreground'>{item.label}</dt>
-              <dd className='font-medium tabular-nums'>
-                {formatQuota(item.amount ?? 0)}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <TitledCard
+          title={t('Rebate deduction breakdown')}
+          disableHoverEffect
+          headerClassName='border-b-0 px-3 pt-3 !pb-0 sm:px-4 sm:pt-3 sm:!pb-0'
+          titleClassName='text-sm sm:text-sm'
+          contentClassName='flex flex-col gap-2 px-3 pt-2 pb-3 sm:px-4 sm:pt-2 sm:pb-3'
+        >
+          <dl className='grid grid-cols-2 gap-2 xl:grid-cols-4'>
+            {[
+              {
+                label: t('User transfers to platform'),
+                amount: summary.user_platform_quota,
+              },
+              {
+                label: t('Admin transfers to platform'),
+                amount: summary.admin_platform_quota,
+              },
+              {
+                label: t('Original rebate exchanged for U'),
+                amount: summary.u_exchange_quota,
+              },
+              {
+                label: t('Administrative rebate deductions'),
+                amount: summary.admin_revoked_quota,
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className='bg-muted/40 flex min-w-0 flex-col justify-between gap-1 rounded-lg px-3 py-2'
+              >
+                <dt className='text-muted-foreground text-xs leading-relaxed break-words'>
+                  {item.label}
+                </dt>
+                <dd className='font-mono text-base font-semibold break-all tabular-nums sm:text-lg'>
+                  {props.loading || props.error
+                    ? '—'
+                    : formatQuota(item.amount ?? 0)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className='text-muted-foreground text-xs leading-relaxed'>
+            {t(
+              'Rebate units and U are accounted separately. Historical opening adjustments are included in cumulative deductions, not actual payouts.'
+            )}
+          </p>
+        </TitledCard>
       )}
-      <p className='text-muted-foreground text-xs'>
-        {t(
-          'Rebate units and U are accounted separately. Historical opening adjustments are included in cumulative deductions, not actual payouts.'
-        )}
-      </p>
     </div>
   )
 }
