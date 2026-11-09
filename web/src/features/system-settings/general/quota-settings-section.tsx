@@ -59,6 +59,7 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
+import { AffiliateCashSettings } from './affiliate-cash-settings'
 
 const quotaSchema = z.object({
   QuotaForNewUser: z.coerce.number().min(0),
@@ -535,6 +536,7 @@ export function QuotaSettingsSection({
           </SettingsFormGrid>
         </SettingsForm>
       </Form>
+      <AffiliateCashSettings />
     </SettingsSection>
   )
 }

@@ -85,7 +85,7 @@ func createRootAccountIfNeed() error {
 			AccessToken: nil,
 			Quota:       100000000,
 		}
-		DB.Create(&rootUser)
+		return rootUser.CreateWithReservedID(DB)
 	}
 	return nil
 }
@@ -343,6 +343,7 @@ func migrateDB() error {
 		&Channel{},
 		&Token{},
 		&User{},
+		&UserIDReservation{},
 		&UserSession{},
 		&AuthFlow{},
 		&ExternalIdentityClaim{},
@@ -378,6 +379,15 @@ func migrateDB() error {
 		&UserAccessToken{},
 		&UserPaidConsumptionDay{},
 		&AffiliateRebateClaim{},
+		&AffiliateAccount{},
+		&AffiliateLedgerEntry{},
+		&AffiliateSettlementSource{},
+		&AffiliateCashWallet{},
+		&AffiliateCashEntry{},
+		&AffiliateCashExchange{},
+		&AffiliateWithdrawal{},
+		&AffiliateWithdrawalEvent{},
+		&AffiliateWithdrawalProof{},
 		&Invoice{},
 		&InvoiceItem{},
 		&InvoiceOrderLock{},
@@ -397,6 +407,9 @@ func migrateDB() error {
 	if err := InitializeUserAuthVersions(); err != nil {
 		return err
 	}
+	if err := InitializeUserIDReservations(DB); err != nil {
+		return fmt.Errorf("initialize permanent user identities: %w", err)
+	}
 	if err := EnsureLegacyAccessTokenRetireAt(common.GetTimestamp()); err != nil {
 		return fmt.Errorf("initialize legacy access token deadline: %w", err)
 	}
@@ -407,6 +420,9 @@ func migrateDB() error {
 		return err
 	}
 	if err := backfillAffiliateRebateLedger(); err != nil {
+		return err
+	}
+	if err := backfillAffiliateAccounts(); err != nil {
 		return err
 	}
 	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
