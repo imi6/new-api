@@ -260,6 +260,7 @@ function AffiliateCashSettingsForm(props: {
                     <FormItem>
                       <FormLabel>{item.label}</FormLabel>
                       <Select
+                        items={item.options}
                         value={field.value || null}
                         onValueChange={field.onChange}
                         disabled={disabled}
@@ -303,13 +304,13 @@ function AffiliateCashSettingsForm(props: {
               {networks.fields.map((network, index) => (
                 <div
                   key={network.formId}
-                  className='grid gap-3 rounded-lg border p-3 sm:grid-cols-2'
+                  className='grid grid-cols-2 items-start gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto_auto]'
                 >
                   <FormField
                     control={form.control}
                     name={`networks.${index}.id`}
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className='col-span-2 min-w-0 sm:col-span-1'>
                         <FormLabel>{t('Network identifier')}</FormLabel>
                         <FormControl>
                           <Input
@@ -330,7 +331,7 @@ function AffiliateCashSettingsForm(props: {
                     control={form.control}
                     name={`networks.${index}.name`}
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className='col-span-2 min-w-0 sm:col-span-1'>
                         <FormLabel>{t('Network name')}</FormLabel>
                         <FormControl>
                           <Input {...field} />
@@ -341,34 +342,9 @@ function AffiliateCashSettingsForm(props: {
                   />
                   <FormField
                     control={form.control}
-                    name={`networks.${index}.address_kind`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('Address format')}</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={disabled}
-                        >
-                          <FormControl>
-                            <SelectTrigger className='w-full'>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value='evm'>EVM</SelectItem>
-                            <SelectItem value='tron'>TRON</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
                     name={`networks.${index}.enabled`}
                     render={({ field }) => (
-                      <FormItem className='flex items-center justify-between'>
+                      <FormItem className='flex h-9 items-center gap-3 sm:mt-6'>
                         <FormLabel>{t('Enabled')}</FormLabel>
                         <FormControl>
                           <Switch
@@ -387,6 +363,7 @@ function AffiliateCashSettingsForm(props: {
                       type='button'
                       variant='ghost'
                       size='sm'
+                      className='justify-self-end sm:mt-6'
                       disabled={disabled}
                       onClick={() => networks.remove(index)}
                     >
@@ -409,7 +386,6 @@ function AffiliateCashSettingsForm(props: {
                   networks.append({
                     id: '',
                     name: '',
-                    address_kind: 'evm',
                     enabled: false,
                   })
                 }

@@ -29,7 +29,7 @@ export type AffiliateWithdrawalStatus =
 export interface AffiliateCashNetwork {
   id: string
   name: string
-  address_kind: 'evm' | 'tron'
+  address_kind?: string
   enabled: boolean
 }
 

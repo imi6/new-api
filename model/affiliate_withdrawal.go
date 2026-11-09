@@ -1,21 +1,19 @@
 package model
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"math/big"
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
-var affiliateEVMAddressPattern = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
 var affiliateTransactionPattern = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{64}$`)
 
 type AffiliateWithdrawal struct {
@@ -135,32 +133,6 @@ func affiliateCashRequestHash(value any) (string, error) {
 	return hex.EncodeToString(digest[:]), nil
 }
 
-func validAffiliateCashAddress(kind, address string) bool {
-	if kind == "evm" {
-		return affiliateEVMAddressPattern.MatchString(address)
-	}
-	if kind != "tron" || len(address) != 34 || !strings.HasPrefix(address, "T") {
-		return false
-	}
-	const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-	number := new(big.Int)
-	for _, digit := range address {
-		index := strings.IndexRune(alphabet, digit)
-		if index < 0 {
-			return false
-		}
-		number.Mul(number, big.NewInt(58))
-		number.Add(number, big.NewInt(int64(index)))
-	}
-	decoded := number.Bytes()
-	if len(decoded) != 25 || decoded[0] != 0x41 {
-		return false
-	}
-	first := sha256.Sum256(decoded[:21])
-	second := sha256.Sum256(first[:])
-	return bytes.Equal(decoded[21:], second[:4])
-}
-
 func calculateAffiliateWithdrawal(settings AffiliateCashSettings, req AffiliateWithdrawalRequest) (int64, int64, error) {
 	if !settings.WithdrawalEnabled || !affiliateCashNetworkAvailable(settings) {
 		return 0, 0, common.NewMessage("U withdrawals are currently unavailable")
@@ -168,9 +140,12 @@ func calculateAffiliateWithdrawal(settings AffiliateCashSettings, req AffiliateW
 	if err := validateAffiliateCashSettings(settings); err != nil {
 		return 0, 0, err
 	}
-	index := slices.IndexFunc(settings.Networks, func(n AffiliateCashNetwork) bool { return n.ID == req.Network && n.Enabled })
-	if index < 0 || !validAffiliateCashAddress(settings.Networks[index].AddressKind, req.Address) {
-		return 0, 0, common.NewMessage("Select an available network and enter a valid address for that network")
+	if !slices.ContainsFunc(settings.Networks, func(n AffiliateCashNetwork) bool { return n.ID == req.Network && n.Enabled }) {
+		return 0, 0, common.NewMessage("Select an available withdrawal network")
+	}
+	address := strings.TrimSpace(req.Address)
+	if address == "" || utf8.RuneCountInString(address) > 128 {
+		return 0, 0, common.NewMessage("Enter a withdrawal address with at most 128 characters")
 	}
 	amount, err := parseAffiliateCashAmount(req.Amount)
 	if err != nil || amount <= 0 {
@@ -195,6 +170,7 @@ func calculateAffiliateWithdrawal(settings AffiliateCashSettings, req AffiliateW
 }
 
 func PreviewAffiliateWithdrawal(userID int, req AffiliateWithdrawalRequest) (*AffiliateWithdrawalPreview, error) {
+	req.Address = strings.TrimSpace(req.Address)
 	settings, err := GetAffiliateCashSettings()
 	if err != nil {
 		return nil, err
@@ -219,6 +195,8 @@ func CreateAffiliateWithdrawal(userID int, req AffiliateWithdrawalRequest) (*Aff
 	if !affiliateCashIdentifierPattern.MatchString(req.RequestID) {
 		return nil, common.NewMessage("Provide a valid request ID")
 	}
+	// 预览、订单快照和幂等摘要统一使用去掉首尾空格后的地址。
+	req.Address = strings.TrimSpace(req.Address)
 	hash, err := affiliateCashRequestHash(req)
 	if err != nil {
 		return nil, err
