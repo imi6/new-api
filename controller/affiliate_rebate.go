@@ -20,7 +20,9 @@ func GetAffiliateRebate(c *gin.Context) {
 }
 
 type claimAffiliateRebateRequest struct {
-	Quota int `json:"quota"`
+	Quota       int    `json:"quota"`
+	Destination string `json:"destination"`
+	RequestID   string `json:"request_id"`
 }
 
 // AdminGetAffiliateSummary serves the referral totals of the whole site.
@@ -85,7 +87,11 @@ func ClaimAffiliateRebate(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
-	if err := model.ClaimAffiliateRebate(c.GetInt("id"), req.Quota); err != nil {
+	if req.Destination != "" && req.Destination != "platform" {
+		common.ApiErrorT(c, "Invalid referral claim destination")
+		return
+	}
+	if err := model.ClaimAffiliateRebateWithRequest(c.GetInt("id"), req.Quota, req.RequestID); err != nil {
 		common.ApiError(c, err)
 		return
 	}

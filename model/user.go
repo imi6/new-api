@@ -762,7 +762,7 @@ func (user *User) Insert(inviterId int) error {
 				user.SetSetting(defaultSetting)
 			}
 
-			return tx.Create(user).Error
+			return user.CreateWithReservedID(tx)
 		})
 	}); err != nil {
 		return err
@@ -827,7 +827,7 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 			user.SetSetting(defaultSetting)
 		}
 
-		return tx.Create(user).Error
+		return user.CreateWithReservedID(tx)
 	})
 }
 
@@ -917,6 +917,11 @@ func (user *User) UpdateWithTx(tx *gorm.DB, updatePassword bool) error {
 		"aff_count",
 		"aff_quota",
 		"aff_history",
+		"unpaid_quota_balance",
+		"paid_quota_consumed",
+		"affiliate_rebate_claimed",
+		"affiliate_rebate_covered",
+		"affiliate_rebate_earned",
 		"auth_version",
 	).Updates(newUser).Error; err != nil {
 		return err
@@ -1036,6 +1041,10 @@ func (user *User) delete(identity *AuthSessionIdentity) (int64, error) {
 	var nextAuthVersion int64
 	var revokedAccessTokens int64
 	if err := DB.Transaction(func(tx *gorm.DB) error {
+		var lockedUser User
+		if err := lockForUpdate(tx).First(&lockedUser, user.Id).Error; err != nil {
+			return err
+		}
 		if identity != nil {
 			if err := ValidateAuthSessionWithTx(tx, *identity); err != nil {
 				return err
@@ -1047,6 +1056,9 @@ func (user *User) delete(identity *AuthSessionIdentity) (int64, error) {
 			if role == common.RoleRootUser {
 				return ErrCannotDeleteRootUser
 			}
+		}
+		if err := ensureAffiliateCashDeletionAllowed(tx, &lockedUser); err != nil {
+			return err
 		}
 		var err error
 		nextAuthVersion, err = IncrementUserAuthVersionWithTx(tx, user.Id)
@@ -1078,6 +1090,16 @@ func (user *User) HardDelete() (int64, error) {
 	var deletedAuthVersion int64
 	var revokedAccessTokens int64
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		var lockedUser User
+		if err := lockForUpdate(tx.Unscoped()).First(&lockedUser, user.Id).Error; err != nil {
+			return err
+		}
+		if err := ensureAffiliateCashDeletionAllowed(tx, &lockedUser); err != nil {
+			return err
+		}
+		if err := preserveAffiliateSettlementSource(tx, &lockedUser); err != nil {
+			return err
+		}
 		var err error
 		deletedAuthVersion, err = IncrementUserAuthVersionWithTx(tx, user.Id)
 		if err != nil {
@@ -1544,13 +1566,13 @@ func recordUserUsedQuota(id int, quota int, requestDelta int, walletFunded bool,
 		rebateDelta = walletDelta
 	}
 	if common.BatchUpdateEnabled {
+		batchUpdateSnapshotLock.RLock()
+		defer batchUpdateSnapshotLock.RUnlock()
 		if quota != 0 {
 			addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
 		}
 		if walletDelta != 0 {
-			// The rebate store must be written in the same call as the wallet
-			// store: batchUpdate pairs them per user, so splitting them across
-			// intervals would apportion a grant against the wrong total.
+			// 快照锁保证全部关联字段写完后，刷新任务才能整体取走它们。
 			addNewRecord(BatchUpdateTypeWalletUsedQuota, id, walletDelta)
 			if rebateDelta != 0 {
 				addNewRecord(BatchUpdateTypeRebateQuota, id, rebateDelta)
