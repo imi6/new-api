@@ -29,25 +29,33 @@ import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
 import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_authenticated/system-settings/route'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
+import { Route as HealthIndexRouteImport } from './routes/health/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
+import { Route as PartnerIndexRouteImport } from './routes/partner/index'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
-import { Route as HealthIndexRouteImport } from './routes/health/index'
-import { Route as PartnerIndexRouteImport } from './routes/partner/index'
 import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
+import { Route as AuthenticatedAffiliateRewardsIndexRouteImport } from './routes/_authenticated/affiliate-rewards/index'
+import { Route as AuthenticatedAnnouncementManagementIndexRouteImport } from './routes/_authenticated/announcement-management/index'
+import { Route as AuthenticatedChannelStatusIndexRouteImport } from './routes/_authenticated/channel-status/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedChatChatIdRouteImport } from './routes/_authenticated/chat/$chatId'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardSectionRouteImport } from './routes/_authenticated/dashboard/$section'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedInvoiceManagementIndexRouteImport } from './routes/_authenticated/invoice-management/index'
+import { Route as AuthenticatedInvoiceIndexRouteImport } from './routes/_authenticated/invoice/index'
 import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authenticated/keys/index'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
+import { Route as AuthenticatedPartnerApplyIndexRouteImport } from './routes/_authenticated/partner-apply/index'
+import { Route as AuthenticatedPartnerOffersIndexRouteImport } from './routes/_authenticated/partner-offers/index'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedRequestProcessingIndexRouteImport } from './routes/_authenticated/request-processing/index'
+import { Route as AuthenticatedReferralIndexRouteImport } from './routes/_authenticated/referral/index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
 import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
@@ -58,13 +66,6 @@ import { Route as AuthenticatedUsageLogsSectionRouteImport } from './routes/_aut
 import { Route as AuthenticatedUsageLogsAuditRouteImport } from './routes/_authenticated/usage-logs/audit'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenticated/wallet/index'
-import { Route as AuthenticatedInvoiceIndexRouteImport } from './routes/_authenticated/invoice/index'
-import { Route as AuthenticatedChannelStatusIndexRouteImport } from './routes/_authenticated/channel-status/index'
-import { Route as AuthenticatedInvoiceManagementIndexRouteImport } from './routes/_authenticated/invoice-management/index'
-import { Route as AuthenticatedAffiliateRewardsIndexRouteImport } from './routes/_authenticated/affiliate-rewards/index'
-import { Route as AuthenticatedPartnerApplyIndexRouteImport } from './routes/_authenticated/partner-apply/index'
-import { Route as AuthenticatedPartnerOffersIndexRouteImport } from './routes/_authenticated/partner-offers/index'
-import { Route as AuthenticatedAnnouncementManagementIndexRouteImport } from './routes/_authenticated/announcement-management/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -183,9 +184,19 @@ const AboutIndexRoute = AboutIndexRouteImport.update({
   path: '/about/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HealthIndexRoute = HealthIndexRouteImport.update({
+  id: '/health/',
+  path: '/health/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthProviderRoute = OauthProviderRouteImport.update({
   id: '/oauth/$provider',
   path: '/oauth/$provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartnerIndexRoute = PartnerIndexRouteImport.update({
+  id: '/partner/',
+  path: '/partner/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingIndexRoute = PricingIndexRouteImport.update({
@@ -198,16 +209,6 @@ const RankingsIndexRoute = RankingsIndexRouteImport.update({
   path: '/rankings/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HealthIndexRoute = HealthIndexRouteImport.update({
-  id: '/health/',
-  path: '/health/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PartnerIndexRoute = PartnerIndexRouteImport.update({
-  id: '/partner/',
-  path: '/partner/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SetupIndexRoute = SetupIndexRouteImport.update({
   id: '/setup/',
   path: '/setup/',
@@ -218,6 +219,24 @@ const authUserResetRoute = authUserResetRouteImport.update({
   path: '/user/reset',
   getParentRoute: () => authRouteRoute,
 } as any)
+const AuthenticatedAffiliateRewardsIndexRoute =
+  AuthenticatedAffiliateRewardsIndexRouteImport.update({
+    id: '/affiliate-rewards/',
+    path: '/affiliate-rewards/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAnnouncementManagementIndexRoute =
+  AuthenticatedAnnouncementManagementIndexRouteImport.update({
+    id: '/announcement-management/',
+    path: '/announcement-management/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChannelStatusIndexRoute =
+  AuthenticatedChannelStatusIndexRouteImport.update({
+    id: '/channel-status/',
+    path: '/channel-status/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChannelsIndexRoute =
   AuthenticatedChannelsIndexRouteImport.update({
     id: '/channels/',
@@ -247,6 +266,18 @@ const AuthenticatedErrorsErrorRoute =
     path: '/errors/$error',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedInvoiceManagementIndexRoute =
+  AuthenticatedInvoiceManagementIndexRouteImport.update({
+    id: '/invoice-management/',
+    path: '/invoice-management/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInvoiceIndexRoute =
+  AuthenticatedInvoiceIndexRouteImport.update({
+    id: '/invoice/',
+    path: '/invoice/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedKeysIndexRoute = AuthenticatedKeysIndexRouteImport.update({
   id: '/keys/',
   path: '/keys/',
@@ -262,6 +293,18 @@ const AuthenticatedModelsSectionRoute =
   AuthenticatedModelsSectionRouteImport.update({
     id: '/models/$section',
     path: '/models/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPartnerApplyIndexRoute =
+  AuthenticatedPartnerApplyIndexRouteImport.update({
+    id: '/partner-apply/',
+    path: '/partner-apply/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPartnerOffersIndexRoute =
+  AuthenticatedPartnerOffersIndexRouteImport.update({
+    id: '/partner-offers/',
+    path: '/partner-offers/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedPlaygroundIndexRoute =
@@ -286,6 +329,12 @@ const AuthenticatedRequestProcessingIndexRoute =
   AuthenticatedRequestProcessingIndexRouteImport.update({
     id: '/request-processing/',
     path: '/request-processing/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReferralIndexRoute =
+  AuthenticatedReferralIndexRouteImport.update({
+    id: '/referral/',
+    path: '/referral/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSecurityIndexRoute =
@@ -345,48 +394,6 @@ const AuthenticatedWalletIndexRoute =
   AuthenticatedWalletIndexRouteImport.update({
     id: '/wallet/',
     path: '/wallet/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInvoiceIndexRoute =
-  AuthenticatedInvoiceIndexRouteImport.update({
-    id: '/invoice/',
-    path: '/invoice/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedChannelStatusIndexRoute =
-  AuthenticatedChannelStatusIndexRouteImport.update({
-    id: '/channel-status/',
-    path: '/channel-status/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInvoiceManagementIndexRoute =
-  AuthenticatedInvoiceManagementIndexRouteImport.update({
-    id: '/invoice-management/',
-    path: '/invoice-management/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAffiliateRewardsIndexRoute =
-  AuthenticatedAffiliateRewardsIndexRouteImport.update({
-    id: '/affiliate-rewards/',
-    path: '/affiliate-rewards/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedPartnerApplyIndexRoute =
-  AuthenticatedPartnerApplyIndexRouteImport.update({
-    id: '/partner-apply/',
-    path: '/partner-apply/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedPartnerOffersIndexRoute =
-  AuthenticatedPartnerOffersIndexRouteImport.update({
-    id: '/partner-offers/',
-    path: '/partner-offers/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAnnouncementManagementIndexRoute =
-  AuthenticatedAnnouncementManagementIndexRouteImport.update({
-    id: '/announcement-management/',
-    path: '/announcement-management/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
@@ -517,10 +524,10 @@ export interface FileRoutesByFullPath {
   '/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
-  '/pricing/': typeof PricingIndexRoute
-  '/rankings/': typeof RankingsIndexRoute
   '/health/': typeof HealthIndexRoute
   '/partner/': typeof PartnerIndexRoute
+  '/pricing/': typeof PricingIndexRoute
+  '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -529,14 +536,22 @@ export interface FileRoutesByFullPath {
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
+  '/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
+  '/announcement-management/': typeof AuthenticatedAnnouncementManagementIndexRoute
+  '/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
+  '/invoice/': typeof AuthenticatedInvoiceIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
+  '/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
+  '/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/request-processing/': typeof AuthenticatedRequestProcessingIndexRoute
+  '/referral/': typeof AuthenticatedReferralIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/system-info/': typeof AuthenticatedSystemInfoIndexRoute
@@ -545,13 +560,6 @@ export interface FileRoutesByFullPath {
   '/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/wallet/': typeof AuthenticatedWalletIndexRoute
-  '/invoice/': typeof AuthenticatedInvoiceIndexRoute
-  '/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
-  '/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
-  '/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
-  '/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
-  '/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
-  '/announcement-management/': typeof AuthenticatedAnnouncementManagementIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -590,10 +598,10 @@ export interface FileRoutesByTo {
   '/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
-  '/pricing': typeof PricingIndexRoute
-  '/rankings': typeof RankingsIndexRoute
   '/health': typeof HealthIndexRoute
   '/partner': typeof PartnerIndexRoute
+  '/pricing': typeof PricingIndexRoute
+  '/rankings': typeof RankingsIndexRoute
   '/setup': typeof SetupIndexRoute
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -602,14 +610,22 @@ export interface FileRoutesByTo {
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
+  '/affiliate-rewards': typeof AuthenticatedAffiliateRewardsIndexRoute
+  '/announcement-management': typeof AuthenticatedAnnouncementManagementIndexRoute
+  '/channel-status': typeof AuthenticatedChannelStatusIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
+  '/invoice-management': typeof AuthenticatedInvoiceManagementIndexRoute
+  '/invoice': typeof AuthenticatedInvoiceIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
+  '/partner-apply': typeof AuthenticatedPartnerApplyIndexRoute
+  '/partner-offers': typeof AuthenticatedPartnerOffersIndexRoute
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/request-processing': typeof AuthenticatedRequestProcessingIndexRoute
+  '/referral': typeof AuthenticatedReferralIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
   '/system-info': typeof AuthenticatedSystemInfoIndexRoute
@@ -618,13 +634,6 @@ export interface FileRoutesByTo {
   '/usage-logs': typeof AuthenticatedUsageLogsIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/wallet': typeof AuthenticatedWalletIndexRoute
-  '/invoice': typeof AuthenticatedInvoiceIndexRoute
-  '/channel-status': typeof AuthenticatedChannelStatusIndexRoute
-  '/invoice-management': typeof AuthenticatedInvoiceManagementIndexRoute
-  '/affiliate-rewards': typeof AuthenticatedAffiliateRewardsIndexRoute
-  '/partner-apply': typeof AuthenticatedPartnerApplyIndexRoute
-  '/partner-offers': typeof AuthenticatedPartnerOffersIndexRoute
-  '/announcement-management': typeof AuthenticatedAnnouncementManagementIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -667,10 +676,10 @@ export interface FileRoutesById {
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
-  '/pricing/': typeof PricingIndexRoute
-  '/rankings/': typeof RankingsIndexRoute
   '/health/': typeof HealthIndexRoute
   '/partner/': typeof PartnerIndexRoute
+  '/pricing/': typeof PricingIndexRoute
+  '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
   '/_authenticated/chat/$chatId': typeof AuthenticatedChatChatIdRoute
@@ -679,14 +688,22 @@ export interface FileRoutesById {
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
+  '/_authenticated/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
+  '/_authenticated/announcement-management/': typeof AuthenticatedAnnouncementManagementIndexRoute
+  '/_authenticated/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/_authenticated/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
+  '/_authenticated/invoice/': typeof AuthenticatedInvoiceIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
+  '/_authenticated/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
+  '/_authenticated/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/request-processing/': typeof AuthenticatedRequestProcessingIndexRoute
+  '/_authenticated/referral/': typeof AuthenticatedReferralIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/_authenticated/system-info/': typeof AuthenticatedSystemInfoIndexRoute
@@ -695,13 +712,6 @@ export interface FileRoutesById {
   '/_authenticated/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/wallet/': typeof AuthenticatedWalletIndexRoute
-  '/_authenticated/invoice/': typeof AuthenticatedInvoiceIndexRoute
-  '/_authenticated/channel-status/': typeof AuthenticatedChannelStatusIndexRoute
-  '/_authenticated/invoice-management/': typeof AuthenticatedInvoiceManagementIndexRoute
-  '/_authenticated/affiliate-rewards/': typeof AuthenticatedAffiliateRewardsIndexRoute
-  '/_authenticated/partner-apply/': typeof AuthenticatedPartnerApplyIndexRoute
-  '/_authenticated/partner-offers/': typeof AuthenticatedPartnerOffersIndexRoute
-  '/_authenticated/announcement-management/': typeof AuthenticatedAnnouncementManagementIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
@@ -743,10 +753,10 @@ export interface FileRouteTypes {
     | '/chat2link'
     | '/oauth/$provider'
     | '/about/'
-    | '/pricing/'
-    | '/rankings/'
     | '/health/'
     | '/partner/'
+    | '/pricing/'
+    | '/rankings/'
     | '/setup/'
     | '/user/reset'
     | '/chat/$chatId'
@@ -755,14 +765,22 @@ export interface FileRouteTypes {
     | '/models/$section'
     | '/usage-logs/$section'
     | '/usage-logs/audit'
+    | '/affiliate-rewards/'
+    | '/announcement-management/'
+    | '/channel-status/'
     | '/channels/'
     | '/dashboard/'
+    | '/invoice-management/'
+    | '/invoice/'
     | '/keys/'
     | '/models/'
+    | '/partner-apply/'
+    | '/partner-offers/'
     | '/playground/'
     | '/profile/'
     | '/redemption-codes/'
     | '/request-processing/'
+    | '/referral/'
     | '/security/'
     | '/subscriptions/'
     | '/system-info/'
@@ -771,13 +789,6 @@ export interface FileRouteTypes {
     | '/usage-logs/'
     | '/users/'
     | '/wallet/'
-    | '/invoice/'
-    | '/channel-status/'
-    | '/invoice-management/'
-    | '/affiliate-rewards/'
-    | '/partner-apply/'
-    | '/partner-offers/'
-    | '/announcement-management/'
     | '/pricing/$modelId/'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -816,10 +827,10 @@ export interface FileRouteTypes {
     | '/chat2link'
     | '/oauth/$provider'
     | '/about'
-    | '/pricing'
-    | '/rankings'
     | '/health'
     | '/partner'
+    | '/pricing'
+    | '/rankings'
     | '/setup'
     | '/user/reset'
     | '/chat/$chatId'
@@ -828,14 +839,22 @@ export interface FileRouteTypes {
     | '/models/$section'
     | '/usage-logs/$section'
     | '/usage-logs/audit'
+    | '/affiliate-rewards'
+    | '/announcement-management'
+    | '/channel-status'
     | '/channels'
     | '/dashboard'
+    | '/invoice-management'
+    | '/invoice'
     | '/keys'
     | '/models'
+    | '/partner-apply'
+    | '/partner-offers'
     | '/playground'
     | '/profile'
     | '/redemption-codes'
     | '/request-processing'
+    | '/referral'
     | '/security'
     | '/subscriptions'
     | '/system-info'
@@ -844,13 +863,6 @@ export interface FileRouteTypes {
     | '/usage-logs'
     | '/users'
     | '/wallet'
-    | '/invoice'
-    | '/channel-status'
-    | '/invoice-management'
-    | '/affiliate-rewards'
-    | '/partner-apply'
-    | '/partner-offers'
-    | '/announcement-management'
     | '/pricing/$modelId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
@@ -892,10 +904,10 @@ export interface FileRouteTypes {
     | '/_authenticated/chat2link'
     | '/oauth/$provider'
     | '/about/'
-    | '/pricing/'
-    | '/rankings/'
     | '/health/'
     | '/partner/'
+    | '/pricing/'
+    | '/rankings/'
     | '/setup/'
     | '/(auth)/user/reset'
     | '/_authenticated/chat/$chatId'
@@ -904,14 +916,22 @@ export interface FileRouteTypes {
     | '/_authenticated/models/$section'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/usage-logs/audit'
+    | '/_authenticated/affiliate-rewards/'
+    | '/_authenticated/announcement-management/'
+    | '/_authenticated/channel-status/'
     | '/_authenticated/channels/'
     | '/_authenticated/dashboard/'
+    | '/_authenticated/invoice-management/'
+    | '/_authenticated/invoice/'
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
+    | '/_authenticated/partner-apply/'
+    | '/_authenticated/partner-offers/'
     | '/_authenticated/playground/'
     | '/_authenticated/profile/'
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/request-processing/'
+    | '/_authenticated/referral/'
     | '/_authenticated/security/'
     | '/_authenticated/subscriptions/'
     | '/_authenticated/system-info/'
@@ -920,13 +940,6 @@ export interface FileRouteTypes {
     | '/_authenticated/usage-logs/'
     | '/_authenticated/users/'
     | '/_authenticated/wallet/'
-    | '/_authenticated/invoice/'
-    | '/_authenticated/channel-status/'
-    | '/_authenticated/invoice-management/'
-    | '/_authenticated/affiliate-rewards/'
-    | '/_authenticated/partner-apply/'
-    | '/_authenticated/partner-offers/'
-    | '/_authenticated/announcement-management/'
     | '/pricing/$modelId/'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
@@ -960,10 +973,10 @@ export interface RootRouteChildren {
   errors503Route: typeof errors503Route
   OauthProviderRoute: typeof OauthProviderRoute
   AboutIndexRoute: typeof AboutIndexRoute
-  PricingIndexRoute: typeof PricingIndexRoute
-  RankingsIndexRoute: typeof RankingsIndexRoute
   HealthIndexRoute: typeof HealthIndexRoute
   PartnerIndexRoute: typeof PartnerIndexRoute
+  PricingIndexRoute: typeof PricingIndexRoute
+  RankingsIndexRoute: typeof RankingsIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
   PricingModelIdIndexRoute: typeof PricingModelIdIndexRoute
 }
@@ -1110,11 +1123,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/health/': {
+      id: '/health/'
+      path: '/health'
+      fullPath: '/health/'
+      preLoaderRoute: typeof HealthIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/$provider': {
       id: '/oauth/$provider'
       path: '/oauth/$provider'
       fullPath: '/oauth/$provider'
       preLoaderRoute: typeof OauthProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/partner/': {
+      id: '/partner/'
+      path: '/partner'
+      fullPath: '/partner/'
+      preLoaderRoute: typeof PartnerIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing/': {
@@ -1131,20 +1158,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RankingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/health/': {
-      id: '/health/'
-      path: '/health'
-      fullPath: '/health/'
-      preLoaderRoute: typeof HealthIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/partner/': {
-      id: '/partner/'
-      path: '/partner'
-      fullPath: '/partner/'
-      preLoaderRoute: typeof PartnerIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/setup/': {
       id: '/setup/'
       path: '/setup'
@@ -1158,6 +1171,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/user/reset'
       preLoaderRoute: typeof authUserResetRouteImport
       parentRoute: typeof authRouteRoute
+    }
+    '/_authenticated/affiliate-rewards/': {
+      id: '/_authenticated/affiliate-rewards/'
+      path: '/affiliate-rewards'
+      fullPath: '/affiliate-rewards/'
+      preLoaderRoute: typeof AuthenticatedAffiliateRewardsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/announcement-management/': {
+      id: '/_authenticated/announcement-management/'
+      path: '/announcement-management'
+      fullPath: '/announcement-management/'
+      preLoaderRoute: typeof AuthenticatedAnnouncementManagementIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/channel-status/': {
+      id: '/_authenticated/channel-status/'
+      path: '/channel-status'
+      fullPath: '/channel-status/'
+      preLoaderRoute: typeof AuthenticatedChannelStatusIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/channels/': {
       id: '/_authenticated/channels/'
@@ -1194,6 +1228,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/invoice-management/': {
+      id: '/_authenticated/invoice-management/'
+      path: '/invoice-management'
+      fullPath: '/invoice-management/'
+      preLoaderRoute: typeof AuthenticatedInvoiceManagementIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoice/': {
+      id: '/_authenticated/invoice/'
+      path: '/invoice'
+      fullPath: '/invoice/'
+      preLoaderRoute: typeof AuthenticatedInvoiceIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/keys/': {
       id: '/_authenticated/keys/'
       path: '/keys'
@@ -1213,6 +1261,20 @@ declare module '@tanstack/react-router' {
       path: '/models/$section'
       fullPath: '/models/$section'
       preLoaderRoute: typeof AuthenticatedModelsSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/partner-apply/': {
+      id: '/_authenticated/partner-apply/'
+      path: '/partner-apply'
+      fullPath: '/partner-apply/'
+      preLoaderRoute: typeof AuthenticatedPartnerApplyIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/partner-offers/': {
+      id: '/_authenticated/partner-offers/'
+      path: '/partner-offers'
+      fullPath: '/partner-offers/'
+      preLoaderRoute: typeof AuthenticatedPartnerOffersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/playground/': {
@@ -1241,6 +1303,13 @@ declare module '@tanstack/react-router' {
       path: '/request-processing'
       fullPath: '/request-processing/'
       preLoaderRoute: typeof AuthenticatedRequestProcessingIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/referral/': {
+      id: '/_authenticated/referral/'
+      path: '/referral'
+      fullPath: '/referral/'
+      preLoaderRoute: typeof AuthenticatedReferralIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/security/': {
@@ -1311,55 +1380,6 @@ declare module '@tanstack/react-router' {
       path: '/wallet'
       fullPath: '/wallet/'
       preLoaderRoute: typeof AuthenticatedWalletIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/invoice/': {
-      id: '/_authenticated/invoice/'
-      path: '/invoice'
-      fullPath: '/invoice/'
-      preLoaderRoute: typeof AuthenticatedInvoiceIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/channel-status/': {
-      id: '/_authenticated/channel-status/'
-      path: '/channel-status'
-      fullPath: '/channel-status/'
-      preLoaderRoute: typeof AuthenticatedChannelStatusIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/invoice-management/': {
-      id: '/_authenticated/invoice-management/'
-      path: '/invoice-management'
-      fullPath: '/invoice-management/'
-      preLoaderRoute: typeof AuthenticatedInvoiceManagementIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/affiliate-rewards/': {
-      id: '/_authenticated/affiliate-rewards/'
-      path: '/affiliate-rewards'
-      fullPath: '/affiliate-rewards/'
-      preLoaderRoute: typeof AuthenticatedAffiliateRewardsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/partner-apply/': {
-      id: '/_authenticated/partner-apply/'
-      path: '/partner-apply'
-      fullPath: '/partner-apply/'
-      preLoaderRoute: typeof AuthenticatedPartnerApplyIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/partner-offers/': {
-      id: '/_authenticated/partner-offers/'
-      path: '/partner-offers'
-      fullPath: '/partner-offers/'
-      preLoaderRoute: typeof AuthenticatedPartnerOffersIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/announcement-management/': {
-      id: '/_authenticated/announcement-management/'
-      path: '/announcement-management'
-      fullPath: '/announcement-management/'
-      preLoaderRoute: typeof AuthenticatedAnnouncementManagementIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/pricing/$modelId/': {
@@ -1589,14 +1609,22 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedUsageLogsAuditRoute: typeof AuthenticatedUsageLogsAuditRoute
+  AuthenticatedAffiliateRewardsIndexRoute: typeof AuthenticatedAffiliateRewardsIndexRoute
+  AuthenticatedAnnouncementManagementIndexRoute: typeof AuthenticatedAnnouncementManagementIndexRoute
+  AuthenticatedChannelStatusIndexRoute: typeof AuthenticatedChannelStatusIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
+  AuthenticatedInvoiceManagementIndexRoute: typeof AuthenticatedInvoiceManagementIndexRoute
+  AuthenticatedInvoiceIndexRoute: typeof AuthenticatedInvoiceIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
+  AuthenticatedPartnerApplyIndexRoute: typeof AuthenticatedPartnerApplyIndexRoute
+  AuthenticatedPartnerOffersIndexRoute: typeof AuthenticatedPartnerOffersIndexRoute
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedRequestProcessingIndexRoute: typeof AuthenticatedRequestProcessingIndexRoute
+  AuthenticatedReferralIndexRoute: typeof AuthenticatedReferralIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
   AuthenticatedSystemInfoIndexRoute: typeof AuthenticatedSystemInfoIndexRoute
@@ -1605,13 +1633,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWalletIndexRoute: typeof AuthenticatedWalletIndexRoute
   AuthenticatedOauthPluginKeyCallbackRoute: typeof AuthenticatedOauthPluginKeyCallbackRoute
-  AuthenticatedInvoiceIndexRoute: typeof AuthenticatedInvoiceIndexRoute
-  AuthenticatedChannelStatusIndexRoute: typeof AuthenticatedChannelStatusIndexRoute
-  AuthenticatedInvoiceManagementIndexRoute: typeof AuthenticatedInvoiceManagementIndexRoute
-  AuthenticatedAffiliateRewardsIndexRoute: typeof AuthenticatedAffiliateRewardsIndexRoute
-  AuthenticatedPartnerApplyIndexRoute: typeof AuthenticatedPartnerApplyIndexRoute
-  AuthenticatedPartnerOffersIndexRoute: typeof AuthenticatedPartnerOffersIndexRoute
-  AuthenticatedAnnouncementManagementIndexRoute: typeof AuthenticatedAnnouncementManagementIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1624,16 +1645,27 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedUsageLogsAuditRoute: AuthenticatedUsageLogsAuditRoute,
+  AuthenticatedAffiliateRewardsIndexRoute:
+    AuthenticatedAffiliateRewardsIndexRoute,
+  AuthenticatedAnnouncementManagementIndexRoute:
+    AuthenticatedAnnouncementManagementIndexRoute,
+  AuthenticatedChannelStatusIndexRoute: AuthenticatedChannelStatusIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  AuthenticatedInvoiceManagementIndexRoute:
+    AuthenticatedInvoiceManagementIndexRoute,
+  AuthenticatedInvoiceIndexRoute: AuthenticatedInvoiceIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
+  AuthenticatedPartnerApplyIndexRoute: AuthenticatedPartnerApplyIndexRoute,
+  AuthenticatedPartnerOffersIndexRoute: AuthenticatedPartnerOffersIndexRoute,
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
   AuthenticatedRequestProcessingIndexRoute:
     AuthenticatedRequestProcessingIndexRoute,
+  AuthenticatedReferralIndexRoute: AuthenticatedReferralIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
   AuthenticatedSubscriptionsIndexRoute: AuthenticatedSubscriptionsIndexRoute,
   AuthenticatedSystemInfoIndexRoute: AuthenticatedSystemInfoIndexRoute,
@@ -1643,13 +1675,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedWalletIndexRoute: AuthenticatedWalletIndexRoute,
   AuthenticatedOauthPluginKeyCallbackRoute:
     AuthenticatedOauthPluginKeyCallbackRoute,
-  AuthenticatedInvoiceIndexRoute: AuthenticatedInvoiceIndexRoute,
-  AuthenticatedChannelStatusIndexRoute: AuthenticatedChannelStatusIndexRoute,
-  AuthenticatedInvoiceManagementIndexRoute: AuthenticatedInvoiceManagementIndexRoute,
-  AuthenticatedAffiliateRewardsIndexRoute: AuthenticatedAffiliateRewardsIndexRoute,
-  AuthenticatedPartnerApplyIndexRoute: AuthenticatedPartnerApplyIndexRoute,
-  AuthenticatedPartnerOffersIndexRoute: AuthenticatedPartnerOffersIndexRoute,
-  AuthenticatedAnnouncementManagementIndexRoute: AuthenticatedAnnouncementManagementIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -1668,10 +1693,10 @@ const rootRouteChildren: RootRouteChildren = {
   errors503Route: errors503Route,
   OauthProviderRoute: OauthProviderRoute,
   AboutIndexRoute: AboutIndexRoute,
-  PricingIndexRoute: PricingIndexRoute,
-  RankingsIndexRoute: RankingsIndexRoute,
   HealthIndexRoute: HealthIndexRoute,
   PartnerIndexRoute: PartnerIndexRoute,
+  PricingIndexRoute: PricingIndexRoute,
+  RankingsIndexRoute: RankingsIndexRoute,
   SetupIndexRoute: SetupIndexRoute,
   PricingModelIdIndexRoute: PricingModelIdIndexRoute,
 }
