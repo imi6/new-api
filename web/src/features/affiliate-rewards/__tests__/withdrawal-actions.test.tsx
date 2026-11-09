@@ -317,6 +317,8 @@ test('withdrawal totals preserve U precision and refresh with the order list', a
     await screen.findByText('9007199254740991.123456 U')
   ).toBeInTheDocument()
   expect(screen.getByText('0.000001 U')).toBeInTheDocument()
+  const status = screen.getByRole('combobox', { name: 'Withdrawal status' })
+  expect(status).toHaveTextContent('All statuses')
   await userEvent.click(screen.getByRole('button', { name: 'Refresh' }))
   await waitFor(() =>
     expect(
@@ -326,4 +328,14 @@ test('withdrawal totals preserve U precision and refresh with the order list', a
   expect(
     get.mock.calls.filter(([url]) => url.endsWith('/withdrawals'))
   ).toHaveLength(2)
+  await userEvent.click(status)
+  await userEvent.click(
+    await screen.findByRole('option', { name: 'Awaiting payment' })
+  )
+  expect(status).toHaveTextContent('Awaiting payment')
+  await waitFor(() =>
+    expect(get).toHaveBeenCalledWith('/api/user/affiliate/cash/withdrawals', {
+      params: { p: 1, page_size: 20, status: 'approved' },
+    })
+  )
 })
