@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -339,6 +340,12 @@ func InitResources() error {
 	err = model.InitLogDB()
 	if err != nil {
 		return err
+	}
+	// 日志库就绪后补齐独立日志中的历史身份编号，再开放用户创建入口。
+	if common.IsMasterNode {
+		if err = model.InitializeUserIDReservations(model.DB, model.LOG_DB); err != nil {
+			return fmt.Errorf("initialize permanent user identities from logs: %w", err)
+		}
 	}
 
 	// Initialize Redis
