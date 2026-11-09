@@ -59,9 +59,7 @@ const summary: AffiliateCashSummary = {
     version: 'v1',
     currency: 'USDT',
     precision: 6,
-    networks: [
-      { id: 'tron', name: 'TRON', address_kind: 'tron', enabled: true },
-    ],
+    networks: [{ id: 'tron', name: 'TRON', enabled: true }],
   },
 }
 let client: QueryClient
@@ -235,9 +233,10 @@ it('previews the freeze, fee, net payment and address before creating a withdraw
   await user.type(screen.getByLabelText('Withdrawal amount (U)'), '10')
   await user.click(screen.getByRole('combobox'))
   await user.click(await screen.findByRole('option', { name: 'TRON' }))
+  expect(screen.getByRole('combobox')).toHaveTextContent('TRON')
   await user.type(
     screen.getByLabelText('Receiving address'),
-    'TReceivingAddress'
+    '  TReceivingAddress  '
   )
   await user.click(screen.getByRole('button', { name: 'Review withdrawal' }))
   const dialog = await screen.findByRole('alertdialog')
@@ -354,6 +353,37 @@ it('preserves six decimal U input and rejects an oversized receiving address', (
       amount: '1',
       network: 'tron',
       address: 'T'.repeat(129),
+    }).success
+  ).toBe(false)
+  expect(
+    affiliateWithdrawalSchema.parse({
+      amount: '1',
+      network: 'custom',
+      address: '  custom:recipient  ',
+    }).address
+  ).toBe('custom:recipient')
+  expect(
+    affiliateWithdrawalSchema.safeParse({
+      amount: '1',
+      network: 'custom',
+      address: '   ',
+    }).success
+  ).toBe(false)
+})
+
+it('counts receiving-address Unicode characters consistently with the server', () => {
+  expect(
+    affiliateWithdrawalSchema.safeParse({
+      amount: '1',
+      network: 'custom',
+      address: '🪙'.repeat(128),
+    }).success
+  ).toBe(true)
+  expect(
+    affiliateWithdrawalSchema.safeParse({
+      amount: '1',
+      network: 'custom',
+      address: '🪙'.repeat(129),
     }).success
   ).toBe(false)
 })
