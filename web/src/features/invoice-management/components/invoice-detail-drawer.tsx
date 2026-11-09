@@ -66,6 +66,7 @@ interface InvoiceDetailDrawerProps {
   invoiceId: number | null
   onOpenChange: (open: boolean) => void
   onChanged: () => void
+  onDelete: (invoice: Invoice) => void
 }
 
 interface DetailRow {
@@ -361,6 +362,15 @@ export function InvoiceDetailDrawer(props: InvoiceDetailDrawerProps) {
             <SheetClose render={<Button variant='outline' />}>
               {t('Close')}
             </SheetClose>
+            {invoice?.status === 'issued' && (
+              <Button
+                variant='destructive'
+                disabled={busy}
+                onClick={() => props.onDelete(invoice)}
+              >
+                {t('Delete')}
+              </Button>
+            )}
             {reviewing && (
               <>
                 <Button
