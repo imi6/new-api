@@ -257,10 +257,16 @@ func TestAffiliateWithdrawalNetworkChangesPreserveExistingOrders(t *testing.T) {
 	fundAffiliateCashTest(t, user, settings)
 	order, err := CreateAffiliateWithdrawal(user.Id, AffiliateWithdrawalRequest{Amount: "10", Network: "ethereum", Address: "0x1111111111111111111111111111111111111111", RequestID: "network-order", ConfigVersion: settings.Version})
 	require.NoError(t, err)
-	settings.Networks[0].AddressKind = "tron"
+	settings.Networks[0].Name = "Another network"
 	_, err = SaveAffiliateCashSettings(settings)
 	assert.Error(t, err)
-	settings.Networks[0].AddressKind, settings.Networks[0].Enabled = "evm", false
+	settings.Networks[0].Name, settings.Networks[0].AddressKind = "Ethereum", ""
+	settings, err = SaveAffiliateCashSettings(settings)
+	require.NoError(t, err)
+	var snapshot AffiliateCashSettings
+	require.NoError(t, common.UnmarshalJsonStr(order.ConfigSnapshot, &snapshot))
+	assert.Equal(t, "evm", snapshot.Networks[0].AddressKind)
+	settings.Networks[0].Enabled = false
 	settings.WithdrawalEnabled = false
 	_, err = SaveAffiliateCashSettings(settings)
 	require.NoError(t, err)
@@ -269,6 +275,77 @@ func TestAffiliateWithdrawalNetworkChangesPreserveExistingOrders(t *testing.T) {
 	var wallet AffiliateCashWallet
 	require.NoError(t, DB.First(&wallet, user.Id).Error)
 	assert.Equal(t, int64(10000000), wallet.Available)
+	assert.Zero(t, wallet.Frozen)
+}
+
+func TestAffiliateWithdrawalCustomAddressNormalizationAndPaymentEvidence(t *testing.T) {
+	user, settings := setupAffiliateCashTest(t)
+	// 旧配置中的未知地址类型仅作为兼容字段保留，不阻止读取或再次保存。
+	settings.Networks[0].AddressKind = "legacy_custom"
+	legacyJSON, err := common.Marshal(settings)
+	require.NoError(t, err)
+	require.NoError(t, DB.Model(&Option{}).Where(&Option{Key: affiliateCashSettingKey}).Update("value", string(legacyJSON)).Error)
+	settings, err = GetAffiliateCashSettings()
+	require.NoError(t, err)
+	assert.Equal(t, "legacy_custom", settings.Networks[0].AddressKind)
+	settings, err = SaveAffiliateCashSettings(settings)
+	require.NoError(t, err)
+	assert.Equal(t, "legacy_custom", settings.Networks[0].AddressKind)
+	settings.Networks = []AffiliateCashNetwork{{ID: "custom-network", Name: "自定义提现网络", Enabled: true}}
+	settings, err = SaveAffiliateCashSettings(settings)
+	require.NoError(t, err)
+	fundAffiliateCashTest(t, user, settings)
+	for index, address := range []string{"", " \t\r\n ", strings.Repeat("a", 129), strings.Repeat("地", 129), strings.Repeat("𠮷", 129)} {
+		req := AffiliateWithdrawalRequest{Amount: "10", Network: "custom-network", Address: address, RequestID: fmt.Sprintf("invalid-address-%d", index), ConfigVersion: settings.Version}
+		_, err = PreviewAffiliateWithdrawal(user.Id, req)
+		require.Error(t, err)
+		_, err = CreateAffiliateWithdrawal(user.Id, req)
+		require.Error(t, err)
+	}
+	req := AffiliateWithdrawalRequest{Amount: "10", Network: "custom-network", Address: " \tcustom:收款账户#123\r\n", RequestID: "custom-address", ConfigVersion: settings.Version}
+	preview, err := PreviewAffiliateWithdrawal(user.Id, req)
+	require.NoError(t, err)
+	assert.True(t, preview.CanSubmit)
+	assert.Equal(t, "custom:收款账户#123", preview.Address)
+	order, err := CreateAffiliateWithdrawal(user.Id, req)
+	require.NoError(t, err)
+	assert.Equal(t, preview.Address, order.Address)
+	assert.Equal(t, req.Network, order.Network)
+	var snapshot AffiliateCashSettings
+	require.NoError(t, common.UnmarshalJsonStr(order.ConfigSnapshot, &snapshot))
+	require.Len(t, snapshot.Networks, 1)
+	assert.Equal(t, "custom-network", snapshot.Networks[0].ID)
+	assert.Empty(t, snapshot.Networks[0].AddressKind)
+	// 地址首尾空格不改变业务请求，修改真正的收款地址必须拒绝复用请求号。
+	req.Address = preview.Address
+	replayed, err := CreateAffiliateWithdrawal(user.Id, req)
+	require.NoError(t, err)
+	assert.Equal(t, order.ID, replayed.ID)
+	req.Address = "custom:另一个收款账户"
+	_, err = CreateAffiliateWithdrawal(user.Id, req)
+	require.Error(t, err)
+	for _, action := range []string{"approve", "start"} {
+		order, err = ActOnAffiliateWithdrawal(order.ID, 42, true, AffiliateWithdrawalAction{Action: action, RequestID: action, ExpectedVersion: order.Version})
+		require.NoError(t, err)
+	}
+	complete := AffiliateWithdrawalAction{Action: "complete", RequestID: "custom-complete", ExpectedVersion: order.Version, TransactionID: strings.Repeat("e", 64), ActualAmount: "9", Network: order.Network, Address: order.Address}
+	for _, mismatched := range []AffiliateWithdrawalAction{
+		{Action: "complete", RequestID: "wrong-network", ExpectedVersion: order.Version, TransactionID: complete.TransactionID, ActualAmount: complete.ActualAmount, Network: "another-network", Address: order.Address},
+		{Action: "complete", RequestID: "wrong-address", ExpectedVersion: order.Version, TransactionID: complete.TransactionID, ActualAmount: complete.ActualAmount, Network: order.Network, Address: "another-address"},
+		{Action: "complete", RequestID: "wrong-amount", ExpectedVersion: order.Version, TransactionID: complete.TransactionID, ActualAmount: "10", Network: order.Network, Address: order.Address},
+		{Action: "complete", RequestID: "wrong-proof", ExpectedVersion: order.Version, TransactionID: "not-a-transaction-hash", ActualAmount: complete.ActualAmount, Network: order.Network, Address: order.Address},
+	} {
+		_, err = ActOnAffiliateWithdrawal(order.ID, 42, true, mismatched)
+		require.Error(t, err)
+	}
+	order, err = ActOnAffiliateWithdrawal(order.ID, 42, true, complete)
+	require.NoError(t, err)
+	assert.Equal(t, "completed", order.Status)
+	assert.Equal(t, "9", order.ActualAmount)
+	assert.Equal(t, "custom:收款账户#123", order.Address)
+	var wallet AffiliateCashWallet
+	require.NoError(t, DB.First(&wallet, user.Id).Error)
+	assert.Zero(t, wallet.Available)
 	assert.Zero(t, wallet.Frozen)
 }
 
@@ -458,7 +535,13 @@ func TestAffiliateWithdrawalFeeRulesAndAddressValidation(t *testing.T) {
 		{"fee consumes all", "1", "0x1111111111111111111111111111111111111111", "requested", 0, true},
 		{"negative", "-1", "0x1111111111111111111111111111111111111111", "requested", 0, true},
 		{"too precise", "3.0000001", "0x1111111111111111111111111111111111111111", "requested", 0, true},
-		{"wrong network format", "10", "bad-address", "requested", 0, true},
+		{"custom address with legacy format", "10", "custom-address", "requested", 1000000, false},
+		{"maximum address length", "10", strings.Repeat("a", 128), "requested", 1000000, false},
+		{"maximum unicode address length", "10", strings.Repeat("地", 128), "requested", 1000000, false},
+		{"maximum non-BMP address length", "10", strings.Repeat("𠮷", 128), "requested", 1000000, false},
+		{"empty address", "10", "", "requested", 0, true},
+		{"blank address", "10", " \t\r\n ", "requested", 0, true},
+		{"address is too long", "10", strings.Repeat("a", 129), "requested", 0, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			settings.MinimumBasis = test.basis
@@ -471,8 +554,6 @@ func TestAffiliateWithdrawalFeeRulesAndAddressValidation(t *testing.T) {
 			}
 		})
 	}
-	assert.True(t, validAffiliateCashAddress("tron", "TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7"))
-	assert.False(t, validAffiliateCashAddress("tron", "TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU8"))
 }
 
 func TestAffiliateWithdrawalConcurrentApplicationsCannotOverdraw(t *testing.T) {
