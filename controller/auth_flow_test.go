@@ -939,6 +939,8 @@ func TestOAuthLoginLegacyGitHubBindingRequiresAccountEvidence(t *testing.T) {
 			if test.existingDeleted {
 				require.NoError(t, model.DB.Delete(existing).Error)
 			}
+			require.NoError(t, model.DB.AutoMigrate(&model.UserIDReservation{}))
+			require.NoError(t, model.InitializeUserIDReservations(model.DB))
 			provider := &legacyGitHubOAuthProvider{providerUserID: "900001", legacyID: test.legacyID, verifiedEmails: test.verifiedEmails, verifiedEmailsErr: test.verifiedEmailsErr}
 			response := legacyGitHubOAuthLogin(t, provider)
 			var result struct {
@@ -1125,7 +1127,7 @@ func TestOAuthBindIgnoresLegacyGitHubUsernames(t *testing.T) {
 }
 
 func TestOAuthRegistrationPersistsInviter(t *testing.T) {
-	db, dialect := openTaskDialectDatabase(t, &model.User{}, &model.Log{})
+	db, dialect := openTaskDialectDatabase(t, &model.User{}, &model.UserIDReservation{}, &model.Log{})
 	oldDB, oldLogDB := model.DB, model.LOG_DB
 	oldMain, oldLog := common.MainDatabaseType(), common.LogDatabaseType()
 	oldRedis, oldRegister := common.RedisEnabled, common.RegisterEnabled
@@ -1142,6 +1144,7 @@ func TestOAuthRegistrationPersistsInviter(t *testing.T) {
 	})
 	inviter := model.User{Username: "inviter", AffCode: "valid-aff", Status: common.UserStatusEnabled}
 	require.NoError(t, db.Create(&inviter).Error)
+	require.NoError(t, model.InitializeUserIDReservations(db))
 	for _, tc := range []struct {
 		name, code string
 		want       int

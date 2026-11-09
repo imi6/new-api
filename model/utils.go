@@ -29,6 +29,10 @@ const (
 var batchUpdateStores []map[int]int
 var batchUpdateLocks []sync.Mutex
 
+// 同一笔消费的用量、钱包归属、返利归属与请求数必须整体进入同一批次。
+// 先持有此锁，再访问各类型锁；数据库写入不持有此锁。
+var batchUpdateSnapshotLock sync.RWMutex
+
 func init() {
 	for range BatchUpdateTypeCount {
 		batchUpdateStores = append(batchUpdateStores, make(map[int]int))
@@ -67,6 +71,7 @@ func addNewRecord(type_ int, id int, value int) {
 }
 
 func batchUpdate() {
+	batchUpdateSnapshotLock.Lock()
 	// check if there's any data to update
 	hasData := false
 	for i := range BatchUpdateTypeCount {
@@ -80,6 +85,7 @@ func batchUpdate() {
 	}
 
 	if !hasData {
+		batchUpdateSnapshotLock.Unlock()
 		return
 	}
 
@@ -91,6 +97,7 @@ func batchUpdate() {
 		batchUpdateStores[i] = make(map[int]int)
 		batchUpdateLocks[i].Unlock()
 	}
+	batchUpdateSnapshotLock.Unlock()
 
 	for i, store := range stores {
 		if i == BatchUpdateTypeUserQuota || i == BatchUpdateTypeUsedQuota || i == BatchUpdateTypeWalletUsedQuota || i == BatchUpdateTypeRebateQuota || i == BatchUpdateTypeRequestCount {

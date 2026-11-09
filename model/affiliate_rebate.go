@@ -1,13 +1,13 @@
 package model
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/shopspring/decimal"
@@ -36,10 +36,11 @@ func (UserPaidConsumptionDay) TableName() string {
 // AffiliateRebateClaim records each claim so claims inside the same 7-day
 // window share one consumption requirement.
 type AffiliateRebateClaim struct {
-	ID        int   `gorm:"primaryKey"`
-	UserID    int   `gorm:"not null;index:idx_affiliate_rebate_claim_user_time,priority:1"`
-	Quota     int   `gorm:"not null"`
-	CreatedAt int64 `gorm:"not null;autoCreateTime:false;index:idx_affiliate_rebate_claim_user_time,priority:2"`
+	ID          int    `gorm:"primaryKey"`
+	UserID      int    `gorm:"not null;index:idx_affiliate_rebate_claim_user_time,priority:1"`
+	Quota       int    `gorm:"not null"`
+	Destination string `json:"destination" gorm:"size:16;not null;default:platform"`
+	CreatedAt   int64  `gorm:"not null;autoCreateTime:false;index:idx_affiliate_rebate_claim_user_time,priority:2"`
 }
 
 // legacyUserPaidConsumptionLog is the per-request table written by the first
@@ -289,14 +290,43 @@ func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, r
 	paidDelta := 0
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var user User
-		if err := lockForUpdate(tx).
+		var archived AffiliateSettlementSource
+		// 已受理消费可能在注销后才完成；软删继续使用原行，硬删使用同事务保存的来源存根。
+		err := lockForUpdate(tx.Unscoped()).
 			Select("id", "inviter_id", "unpaid_quota_balance", "paid_quota_consumed", "affiliate_rebate_covered", "affiliate_rebate_earned").
-			First(&user, id).Error; err != nil {
+			First(&user, id).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if err = lockForUpdate(tx).First(&archived, "user_id = ?", id).Error; err != nil {
+				return err
+			}
+			user = User{Id: archived.UserID, InviterId: archived.InviterID,
+				UnpaidQuotaBalance: archived.UnpaidQuotaBalance, PaidQuotaConsumed: archived.PaidQuotaConsumed,
+				AffiliateRebateCovered: archived.AffiliateRebateCovered, AffiliateRebateEarned: archived.AffiliateRebateEarned}
+		} else if err != nil {
 			return err
 		}
+		if archived.UserID != 0 && (walletDelta < -common.MaxWalletQuota || walletDelta > common.MaxWalletQuota) {
+			return ErrWalletQuotaLimitExceeded
+		}
 		paidDelta = paidConsumptionDelta(user.UnpaidQuotaBalance, user.PaidQuotaConsumed, walletDelta)
-		if err := applyUserQuotaUsage(tx, id, usedDelta, walletDelta, quotaDelta, requestDelta); err != nil {
-			return err
+		if archived.UserID == 0 {
+			if err := applyUserQuotaUsage(tx, id, usedDelta, walletDelta, quotaDelta, requestDelta); err != nil {
+				return err
+			}
+		} else {
+			// 保留与原路径相同的赠送额度优先消费及退款归属，只更新账务存根。
+			unpaidDelta := paidDelta - walletDelta
+			if paidDelta > common.MaxWalletQuota-user.PaidQuotaConsumed || paidDelta < -user.PaidQuotaConsumed ||
+				unpaidDelta > common.MaxWalletQuota-user.UnpaidQuotaBalance || unpaidDelta < -user.UnpaidQuotaBalance {
+				return ErrWalletQuotaLimitExceeded
+			}
+			if err := tx.Model(&archived).Updates(map[string]any{
+				"paid_quota_consumed":  user.PaidQuotaConsumed + paidDelta,
+				"unpaid_quota_balance": user.UnpaidQuotaBalance + unpaidDelta,
+				"updated_at":           common.GetTimestamp(),
+			}).Error; err != nil {
+				return err
+			}
 		}
 		if paidDelta == 0 || user.InviterId <= 0 {
 			return nil
@@ -316,6 +346,15 @@ func applyAttributedUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, r
 		)
 		if covered == user.AffiliateRebateCovered && earned == user.AffiliateRebateEarned {
 			return nil
+		}
+		if err := recordAffiliateAccrualTx(tx, user.InviterId, user.Id, earned-user.AffiliateRebateEarned); err != nil {
+			return err
+		}
+		if archived.UserID != 0 {
+			return tx.Model(&archived).Updates(map[string]any{
+				"affiliate_rebate_covered": covered,
+				"affiliate_rebate_earned":  earned,
+			}).Error
 		}
 		return tx.Exec(
 			"UPDATE users SET affiliate_rebate_covered = affiliate_rebate_covered + ?, affiliate_rebate_earned = affiliate_rebate_earned + ? WHERE id = ?",
@@ -487,16 +526,18 @@ type AffiliateInviteeRebate struct {
 }
 
 type AffiliateRebateSummary struct {
-	Percent             float64 `json:"percent"`
-	DownstreamThreshold int     `json:"downstream_threshold"`
-	UpstreamMinimum     int     `json:"upstream_minimum"`
-	PaidConsumed        int     `json:"paid_consumed"`
-	WeekPaidConsumed    int     `json:"week_paid_consumed"`
-	WeekClaimed         int     `json:"week_claimed"`
-	CanClaim            bool    `json:"can_claim"`
-	Accrued             int     `json:"accrued"`
-	Claimed             int     `json:"claimed"`
-	Claimable           int     `json:"claimable"`
+	Percent                float64 `json:"percent"`
+	DownstreamThreshold    int     `json:"downstream_threshold"`
+	UpstreamMinimum        int     `json:"upstream_minimum"`
+	PaidConsumed           int     `json:"paid_consumed"`
+	WeekPaidConsumed       int     `json:"week_paid_consumed"`
+	WeekClaimed            int     `json:"week_claimed"`
+	CanClaim               bool    `json:"can_claim"`
+	Accrued                int     `json:"accrued"`
+	Claimed                int     `json:"claimed"`
+	Claimable              int     `json:"claimable"`
+	MaxClaimQuota          int     `json:"max_claim_quota"`
+	ClaimUnavailableReason string  `json:"claim_unavailable_reason"`
 	// RebateGroups lists the groups that earn rebate. Empty means every group
 	// earns it, which the frontend states instead of listing names.
 	RebateGroups []string                 `json:"rebate_groups"`
@@ -516,12 +557,12 @@ func maskAffiliateUsername(name string) string {
 }
 
 func accruedAffiliateRebate(db *gorm.DB, inviterID int) (int, error) {
-	var total int64
-	err := db.Model(&User{}).
-		Where("inviter_id = ?", inviterID).
-		Select("COALESCE(SUM(affiliate_rebate_earned), 0)").
-		Scan(&total).Error
-	return int(total), err
+	var account AffiliateAccount
+	err := db.Where("user_id = ?", inviterID).First(&account).Error
+	if err == gorm.ErrRecordNotFound {
+		return 0, nil
+	}
+	return account.Accrued, err
 }
 
 func AttachAffiliateRebateTotals(users []*User) error {
@@ -534,29 +575,21 @@ func AttachAffiliateRebateTotals(users []*User) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	type inviterTotal struct {
-		InviterId int
-		Total     int64
-	}
-	var totals []inviterTotal
-	if err := DB.Model(&User{}).
-		Select("inviter_id, COALESCE(SUM(affiliate_rebate_earned), 0) AS total").
-		Where("inviter_id IN ?", ids).
-		Group("inviter_id").
-		Scan(&totals).Error; err != nil {
+	var accounts []AffiliateAccount
+	if err := DB.Where("user_id IN ?", ids).Find(&accounts).Error; err != nil {
 		return err
 	}
-	accrued := make(map[int]int, len(totals))
-	for _, total := range totals {
-		accrued[total.InviterId] = int(total.Total)
+	byUser := make(map[int]AffiliateAccount, len(accounts))
+	for _, account := range accounts {
+		byUser[account.UserID] = account
 	}
 	for _, user := range users {
 		if user == nil {
 			continue
 		}
-		total := accrued[user.Id]
-		user.AffiliateRebateTotal = total
-		user.AffiliateRebateUnused = max(total-user.AffiliateRebateClaimed, 0)
+		account := byUser[user.Id]
+		user.AffiliateRebateTotal = account.Accrued
+		user.AffiliateRebateUnused = max(account.Accrued-account.Claimed, 0)
 	}
 	return nil
 }
@@ -579,6 +612,10 @@ func GetAffiliateRebateSummary(userID int) (*AffiliateRebateSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	var account AffiliateAccount
+	if err := DB.Where("user_id = ?", userID).Find(&account).Error; err != nil {
+		return nil, err
+	}
 	summary := &AffiliateRebateSummary{
 		Percent:             common.AffiliateRebatePercent,
 		DownstreamThreshold: common.AffiliateRebateDownstreamQuota,
@@ -587,12 +624,12 @@ func GetAffiliateRebateSummary(userID int) (*AffiliateRebateSummary, error) {
 		WeekPaidConsumed:    ownWeek,
 		WeekClaimed:         weekClaimed,
 		CanClaim:            common.AffiliateRebatePercent > 0 && user.PaidQuotaConsumed >= common.AffiliateRebateUpstreamQuota,
-		Claimed:             user.AffiliateRebateClaimed,
+		Accrued:             account.Accrued,
+		Claimed:             account.Claimed,
 		RebateGroups:        rebateEligibleGroups(),
 		Invitees:            make([]AffiliateInviteeRebate, 0, len(invitees)),
 	}
 	for _, invitee := range invitees {
-		summary.Accrued += invitee.AffiliateRebateEarned
 		summary.Invitees = append(summary.Invitees, AffiliateInviteeRebate{
 			UserID:       invitee.Id,
 			Username:     maskAffiliateUsername(invitee.Username),
@@ -602,66 +639,30 @@ func GetAffiliateRebateSummary(userID int) (*AffiliateRebateSummary, error) {
 		})
 	}
 	summary.Claimable = max(summary.Accrued-summary.Claimed, 0)
+	summary.MaxClaimQuota, summary.ClaimUnavailableReason = affiliateClaimLimit(summary.Accrued, summary.Claimed, ownWeek, weekClaimed, user.PaidQuotaConsumed)
+	summary.CanClaim = summary.MaxClaimQuota > 0
 	return summary, nil
 }
 
 func ClaimAffiliateRebate(userID int, quota int) error {
-	if quota <= 0 {
-		return common.NewMessage("The rebate amount exceeds the claimable balance")
-	}
-	if float64(quota) < common.QuotaPerUnit {
-		return common.NewMessage("Minimum transfer quota is {{min}}!", map[string]any{"min": logger.FormatQuota(common.QuotaFromFloat(common.QuotaPerUnit))})
-	}
-	if common.AffiliateRebatePercent <= 0 {
-		return common.NewMessage("Referral rebate is disabled")
-	}
+	return ClaimAffiliateRebateWithRequest(userID, quota, "")
+}
 
+// ClaimAffiliateRebateWithRequest 保留旧平台余额去向，重放成功请求不重复更新缓存。
+func ClaimAffiliateRebateWithRequest(userID int, quota int, requestID string) error {
+	replayed := false
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		var user User
 		if err := lockForUpdate(tx).First(&user, userID).Error; err != nil {
 			return err
 		}
-		if user.PaidQuotaConsumed < common.AffiliateRebateUpstreamQuota {
-			return common.NewMessage("Your paid consumption is below the minimum required to claim referral rebate")
-		}
-		weekClaimed, err := recentClaimedRebate(tx, userID)
-		if err != nil {
-			return err
-		}
-		required, err := rebateClaimConsumptionRequired(weekClaimed + quota)
-		if err != nil {
-			return err
-		}
-		ownWeek, err := recentPaidConsumption(tx, userID)
-		if err != nil {
-			return err
-		}
-		if ownWeek < required {
-			return common.NewMessage("To claim {{amount}}, your paid consumption in the last 7 days must be at least {{required}}.", map[string]any{
-				"amount":   logger.FormatQuota(quota),
-				"required": logger.FormatQuota(required),
-			})
-		}
-		accrued, err := accruedAffiliateRebate(tx, userID)
-		if err != nil {
-			return err
-		}
-		if quota > max(accrued-user.AffiliateRebateClaimed, 0) {
-			return common.NewMessage("The rebate amount exceeds the claimable balance")
-		}
-		result := tx.Model(&User{}).Where("id = ? AND quota <= ?", userID, common.MaxWalletQuota-quota).Updates(map[string]any{
-			"quota":                    gorm.Expr("quota + ?", quota),
-			"unpaid_quota_balance":     gorm.Expr("unpaid_quota_balance + ?", quota),
-			"affiliate_rebate_claimed": gorm.Expr("affiliate_rebate_claimed + ?", quota),
-		})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected != 1 {
-			return ErrWalletQuotaLimitExceeded
-		}
-		return tx.Create(&AffiliateRebateClaim{UserID: userID, Quota: quota, CreatedAt: common.GetTimestamp()}).Error
+		var err error
+		replayed, err = claimAffiliateRebateTx(tx, &user, quota, "platform", requestID)
+		return err
 	})
+	if replayed {
+		return err
+	}
 	return syncAffiliateClaimQuota(userID, quota, err)
 }
 
