@@ -35,10 +35,10 @@ type AffiliateInviterRow struct {
 // affiliateInviterSorts maps a sort key to its column expression; only these
 // reach the query.
 var affiliateInviterSorts = map[string]string{
-	"accrued":   "COALESCE(inv.accrued, 0)",
+	"accrued":   "COALESCE(a.accrued, 0)",
 	"invitees":  "COALESCE(inv.invitee_count, 0)",
-	"claimed":   "u.affiliate_rebate_claimed",
-	"unclaimed": "COALESCE(inv.accrued, 0) - u.affiliate_rebate_claimed",
+	"claimed":   "COALESCE(a.claimed, 0)",
+	"unclaimed": "COALESCE(a.accrued, 0) - COALESCE(a.claimed, 0)",
 	"paid":      "COALESCE(inv.invitee_paid, 0)",
 	"signup":    "u.aff_history",
 }
@@ -61,17 +61,18 @@ func affiliateKeywordFilter(query *gorm.DB, alias string, keyword string) *gorm.
 // signup reward, or claimed rebate, joined with their invitees' totals.
 func affiliateInviterQuery(keyword string) *gorm.DB {
 	invitees := DB.Model(&User{}).
-		Select("inviter_id, COUNT(*) AS invitee_count, COALESCE(SUM(affiliate_rebate_earned), 0) AS accrued, COALESCE(SUM(paid_quota_consumed), 0) AS invitee_paid").
+		Select("inviter_id, COUNT(*) AS invitee_count, COALESCE(SUM(paid_quota_consumed), 0) AS invitee_paid").
 		Where("inviter_id > 0").
 		Group("inviter_id")
 	claims := DB.Model(&AffiliateRebateClaim{}).
 		Select("user_id, MAX(created_at) AS last_claim_at").
 		Group("user_id")
 	query := DB.Table("users AS u").
+		Joins("LEFT JOIN affiliate_accounts AS a ON a.user_id = u.id").
 		Joins("LEFT JOIN (?) AS inv ON inv.inviter_id = u.id", invitees).
 		Joins("LEFT JOIN (?) AS cl ON cl.user_id = u.id", claims).
 		Where("u.deleted_at IS NULL").
-		Where("(COALESCE(inv.invitee_count, 0) > 0 OR u.affiliate_rebate_claimed > 0 OR u.aff_history > 0)")
+		Where("(COALESCE(inv.invitee_count, 0) > 0 OR COALESCE(a.accrued, 0) > 0 OR COALESCE(a.claimed, 0) > 0 OR u.aff_history > 0)")
 	return affiliateKeywordFilter(query, "u", keyword)
 }
 
@@ -91,8 +92,8 @@ func GetAffiliateInviters(keyword string, sortBy string, sortOrder string, pageI
 	}
 	rows := make([]AffiliateInviterRow, 0, pageInfo.GetPageSize())
 	err := affiliateInviterQuery(keyword).
-		Select("u.id AS user_id, u.username, u.display_name, u.aff_history AS signup_reward, u.affiliate_rebate_claimed AS claimed, u." + commonGroupCol + " AS group_name, " +
-			"COALESCE(inv.invitee_count, 0) AS invitee_count, COALESCE(inv.accrued, 0) AS accrued, COALESCE(inv.invitee_paid, 0) AS invitee_paid, COALESCE(cl.last_claim_at, 0) AS last_claim_at").
+		Select("u.id AS user_id, u.username, u.display_name, u.aff_history AS signup_reward, COALESCE(a.claimed, 0) AS claimed, u." + commonGroupCol + " AS group_name, " +
+			"COALESCE(inv.invitee_count, 0) AS invitee_count, COALESCE(a.accrued, 0) AS accrued, COALESCE(inv.invitee_paid, 0) AS invitee_paid, COALESCE(cl.last_claim_at, 0) AS last_claim_at").
 		Order(sort + " " + direction + ", u.id DESC").
 		Offset(pageInfo.GetStartIdx()).Limit(pageInfo.GetPageSize()).
 		Scan(&rows).Error
@@ -108,12 +109,16 @@ func GetAffiliateInviters(keyword string, sortBy string, sortOrder string, pageI
 
 // AffiliateAdminSummary sums the ranking over every inviter.
 type AffiliateAdminSummary struct {
-	Inviters     int64 `json:"inviters"`
-	Invitees     int64 `json:"invitees"`
-	SignupReward int64 `json:"signup_reward"`
-	Accrued      int64 `json:"accrued"`
-	Claimed      int64 `json:"claimed"`
-	Unclaimed    int64 `json:"unclaimed"`
+	Inviters           int64 `json:"inviters"`
+	Invitees           int64 `json:"invitees"`
+	SignupReward       int64 `json:"signup_reward"`
+	Accrued            int64 `json:"accrued"`
+	Claimed            int64 `json:"claimed"`
+	Unclaimed          int64 `json:"unclaimed"`
+	UserPlatformQuota  int64 `json:"user_platform_quota"`
+	AdminPlatformQuota int64 `json:"admin_platform_quota"`
+	UExchangeQuota     int64 `json:"u_exchange_quota"`
+	AdminRevokedQuota  int64 `json:"admin_revoked_quota"`
 	// Claimers is how many users have claimed rebate at least once.
 	Claimers int64 `json:"claimers"`
 	// ExcludeSpecialRatio tells whether inviters with a special ratio earn
@@ -127,8 +132,8 @@ type AffiliateAdminSummary struct {
 func GetAffiliateAdminSummary() (*AffiliateAdminSummary, error) {
 	var rows []AffiliateInviterRow
 	err := affiliateInviterQuery("").
-		Select("u.aff_history AS signup_reward, u.affiliate_rebate_claimed AS claimed, " +
-			"COALESCE(inv.invitee_count, 0) AS invitee_count, COALESCE(inv.accrued, 0) AS accrued").
+		Select("u.aff_history AS signup_reward, COALESCE(a.claimed, 0) AS claimed, " +
+			"COALESCE(inv.invitee_count, 0) AS invitee_count, COALESCE(a.accrued, 0) AS accrued").
 		Scan(&rows).Error
 	if err != nil {
 		return nil, err
@@ -137,9 +142,38 @@ func GetAffiliateAdminSummary() (*AffiliateAdminSummary, error) {
 	for _, row := range rows {
 		summary.Invitees += row.InviteeCount
 		summary.SignupReward += row.SignupReward
-		summary.Accrued += row.Accrued
-		summary.Claimed += row.Claimed
-		summary.Unclaimed += max(row.Accrued-row.Claimed, 0)
+	}
+	// 资金总额包含已删除账户的历史，不能由当前用户资料筛选决定。
+	if err := DB.Model(&AffiliateAccount{}).Select("COALESCE(SUM(accrued), 0) AS accrued, COALESCE(SUM(claimed), 0) AS claimed, COALESCE(SUM(CASE WHEN accrued > claimed THEN accrued - claimed ELSE 0 END), 0) AS unclaimed").Scan(summary).Error; err != nil {
+		return nil, err
+	}
+	var claimTotals []struct {
+		Destination string
+		Quota       int64
+	}
+	if err := DB.Model(&AffiliateRebateClaim{}).Select("destination, COALESCE(SUM(quota), 0) AS quota").Group("destination").Scan(&claimTotals).Error; err != nil {
+		return nil, err
+	}
+	for _, total := range claimTotals {
+		if total.Destination == "u" {
+			summary.UExchangeQuota += total.Quota
+		} else {
+			summary.UserPlatformQuota += total.Quota
+		}
+	}
+	var adjustmentTotals []struct {
+		Kind  string
+		Quota int64
+	}
+	if err := DB.Model(&AffiliateLedgerEntry{}).Where("kind IN ?", []string{"admin_grant", "admin_revoke"}).Select("kind, -COALESCE(SUM(quota), 0) AS quota").Group("kind").Scan(&adjustmentTotals).Error; err != nil {
+		return nil, err
+	}
+	for _, total := range adjustmentTotals {
+		if total.Kind == "admin_grant" {
+			summary.AdminPlatformQuota = total.Quota
+		} else {
+			summary.AdminRevokedQuota = total.Quota
+		}
 	}
 	if err := DB.Model(&AffiliateRebateClaim{}).
 		Select("COUNT(DISTINCT user_id)").Scan(&summary.Claimers).Error; err != nil {
@@ -167,6 +201,7 @@ type AffiliateAdminClaim struct {
 	Username    string `json:"username" gorm:"column:username"`
 	DisplayName string `json:"display_name" gorm:"column:display_name"`
 	Quota       int    `json:"quota" gorm:"column:quota"`
+	Destination string `json:"destination" gorm:"column:destination"`
 	CreatedAt   int64  `json:"created_at" gorm:"column:created_at"`
 }
 
@@ -213,7 +248,7 @@ func GetAffiliateAdminDetail(inviterID int) (*AffiliateAdminDetail, error) {
 	}
 	detail.Claims = make([]AffiliateAdminClaim, 0)
 	if err := DB.Model(&AffiliateRebateClaim{}).
-		Select("id, user_id, quota, created_at").
+		Select("id, user_id, quota, destination, created_at").
 		Where("user_id = ?", inviterID).
 		Order("created_at DESC, id DESC").
 		Limit(affiliateAdminDetailLimit).Scan(&detail.Claims).Error; err != nil {
@@ -250,7 +285,7 @@ func GetAffiliateClaims(keyword string, startTs int64, endTs int64, pageInfo *co
 	}
 	claims := make([]AffiliateAdminClaim, 0, pageInfo.GetPageSize())
 	err := affiliateClaimQuery(keyword, startTs, endTs).
-		Select("c.id, c.user_id, c.quota, c.created_at, u.username, u.display_name").
+		Select("c.id, c.user_id, c.quota, c.destination, c.created_at, u.username, u.display_name").
 		Order("c.created_at DESC, c.id DESC").
 		Offset(pageInfo.GetStartIdx()).Limit(pageInfo.GetPageSize()).
 		Scan(&claims).Error
