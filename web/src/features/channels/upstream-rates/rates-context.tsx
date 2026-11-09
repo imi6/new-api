@@ -159,6 +159,12 @@ export function UpstreamRateCell(props: {
         ? format(summary.min)
         : `${format(summary.min)}–${format(summary.max)}`
   }
+  let badgeClassName = 'border-warning/30 bg-warning/10 text-warning'
+  if (summary?.direction === 'up') {
+    badgeClassName = 'border-destructive/30 bg-destructive/10 text-destructive'
+  } else if (summary?.direction === 'down') {
+    badgeClassName = 'border-success/30 bg-success/10 text-success'
+  }
   return (
     <Button
       type='button'
@@ -171,7 +177,7 @@ export function UpstreamRateCell(props: {
       })}
     >
       {label ? (
-        <GroupMultiplierBadge ratio={summary?.min} label={label} />
+        <GroupMultiplierBadge label={label} className={badgeClassName} />
       ) : (
         <span className='text-muted-foreground'>—</span>
       )}
