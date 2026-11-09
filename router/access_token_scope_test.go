@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -412,4 +413,164 @@ func TestAffiliateCashRoutesEnforceOwnershipAndRoles(t *testing.T) {
 		require.NoError(t, model.DB.First(&wallet, users[0].Id).Error)
 		assert.Equal(t, int64(10000000), wallet.Available, "旧平台领取不得改变U余额")
 	})
+}
+
+func TestInvoiceDeletionRouteAuthorizationAndFileCleanup(t *testing.T) {
+	setupRelayRouterTestDB(t)
+	require.NoError(t, i18n.Init())
+	require.NoError(t, model.DB.AutoMigrate(
+		&model.UserSession{}, &model.UserAccessToken{}, &model.Option{}, &model.AuditLog{},
+		&model.Invoice{}, &model.InvoiceItem{}, &model.InvoiceOrderLock{}, &model.InvoiceTaxPayment{},
+		&model.InvoiceDeletion{}, &model.InvoiceIDReservation{},
+	))
+	previousSecret := common.SessionSecret
+	previousGlobalLimit, previousCriticalLimit := common.GlobalApiRateLimitEnable, common.CriticalRateLimitEnable
+	common.SessionSecret = "invoice-delete-route-test-secret"
+	common.GlobalApiRateLimitEnable, common.CriticalRateLimitEnable = false, false
+	t.Cleanup(func() {
+		common.SessionSecret = previousSecret
+		common.GlobalApiRateLimitEnable, common.CriticalRateLimitEnable = previousGlobalLimit, previousCriticalLimit
+	})
+	storage := t.TempDir()
+	t.Setenv("INVOICE_FILE_DIR", storage)
+	users := make([]model.User, 2)
+	bundles := make([]*service.AuthBundle, 2)
+	for i, role := range []int{common.RoleCommonUser, common.RoleAdminUser} {
+		users[i] = model.User{Username: fmt.Sprintf("invoice-route-%d", i), AffCode: fmt.Sprintf("invoice-route-%d", i), Password: "unused", Role: role, Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1}
+		require.NoError(t, model.DB.Create(&users[i]).Error)
+		var err error
+		bundles[i], err = service.CreateLoginSession(users[i].Id, "password", "127.0.0.1", "invoice-route-test")
+		require.NoError(t, err)
+	}
+	engine := gin.New()
+	SetApiRouter(engine)
+	request := func(method, path, credential, body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		if credential != "" {
+			req.Header.Set("Authorization", "Bearer "+credential)
+		}
+		response := httptest.NewRecorder()
+		engine.ServeHTTP(response, req)
+		return response
+	}
+	stored, err := service.SaveInvoiceFile("invoice.pdf", []byte("%PDF-1.4\ninvoice deletion test"))
+	require.NoError(t, err)
+	invoice := model.Invoice{UserId: users[0].Id, Status: model.InvoiceStatusIssued, OrderAmount: "100.00", InvoiceAmount: "100.00", IssuedTime: common.GetTimestamp(), FileKey: stored.Key, FileName: stored.Name, FileMime: stored.Mime}
+	require.NoError(t, model.DB.Create(&invoice).Error)
+	path := fmt.Sprintf("/api/invoice/admin/%d/delete", invoice.Id)
+	const payload = `{"reason":"清理已交付记录"}`
+	for _, test := range []struct {
+		name, credential string
+		status           int
+	}{
+		{"未登录", "", http.StatusUnauthorized},
+		{"伪造凭据", "invalid", http.StatusUnauthorized},
+		{"普通用户", bundles[0].AccessToken, http.StatusForbidden},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			response := request(http.MethodPost, path, test.credential, payload)
+			assert.Equal(t, test.status, response.Code, response.Body.String())
+		})
+	}
+	cookieRequest := httptest.NewRequest(http.MethodPost, path, strings.NewReader(payload))
+	cookieRequest.AddCookie(&http.Cookie{Name: service.RefreshCookieName, Value: bundles[1].RefreshToken})
+	cookieResponse := httptest.NewRecorder()
+	engine.ServeHTTP(cookieResponse, cookieRequest)
+	assert.Equal(t, http.StatusUnauthorized, cookieResponse.Code)
+	revoked, err := service.CreateLoginSession(users[1].Id, "password", "127.0.0.1", "invoice-revoked-test")
+	require.NoError(t, err)
+	_, err = model.RevokeUserSession(users[1].Id, revoked.Session.SID, "test")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, request(http.MethodPost, path, revoked.AccessToken, payload).Code)
+	for _, test := range []struct {
+		name, scope string
+		expiresAt   int64
+		status      int
+	}{
+		{"只读令牌", "billing:read", 0, http.StatusForbidden},
+		{"过期令牌", "billing:write", common.GetTimestamp() - 1, http.StatusUnauthorized},
+	} {
+		raw := model.AccessTokenPrefix + common.GetRandomString(43)
+		token := model.UserAccessToken{Name: test.name, TokenHash: model.AccessTokenFingerprint(raw), TokenHint: model.AccessTokenHint(raw), ExpiresAt: test.expiresAt}
+		require.NoError(t, token.SetScopes([]string{test.scope}))
+		require.NoError(t, model.CreateUserAccessToken(users[1].Id, &token, service.AccessTokenMaxPerUser))
+		assert.Equal(t, test.status, request(http.MethodPost, path, raw, payload).Code, test.name)
+	}
+	// 拒绝的请求不能删除文件或申请；所有者在真正删除前仍能下载。
+	downloadPath := fmt.Sprintf("/api/invoice/%d/file", invoice.Id)
+	assert.Equal(t, "%PDF-1.4\ninvoice deletion test", request(http.MethodGet, downloadPath, bundles[0].AccessToken, "").Body.String())
+	var result struct {
+		Success bool `json:"success"`
+		Data    struct {
+			FileCleanupPending bool `json:"file_cleanup_pending"`
+		} `json:"data"`
+	}
+	response := request(http.MethodPost, path, bundles[1].AccessToken, `{"reason":"清理已交付记录","admin_id":999}`)
+	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+	require.True(t, result.Success, response.Body.String())
+	assert.False(t, result.Data.FileCleanupPending)
+	assert.Contains(t, response.Header().Get("Cache-Control"), "no-store")
+	_, err = os.Stat(filepath.Join(storage, stored.Key))
+	assert.True(t, os.IsNotExist(err))
+	var receipt model.InvoiceDeletion
+	require.NoError(t, model.DB.First(&receipt, invoice.Id).Error)
+	assert.Equal(t, users[1].Id, receipt.DeletedBy, "不能通过请求伪造操作人")
+	assert.Empty(t, receipt.FileKey)
+	for _, read := range []struct{ path, credential string }{
+		{downloadPath, bundles[0].AccessToken},
+		{fmt.Sprintf("/api/invoice/self/%d", invoice.Id), bundles[0].AccessToken},
+		{fmt.Sprintf("/api/invoice/admin/%d", invoice.Id), bundles[1].AccessToken},
+	} {
+		response = request(http.MethodGet, read.path, read.credential, "")
+		require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+		assert.False(t, result.Success, read.path)
+	}
+	response = request(http.MethodPost, path, bundles[1].AccessToken, payload)
+	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+	assert.True(t, result.Success, "网络重试应返回首次删除结果")
+
+	// 用非空目录制造真实文件清理失败，数据库删除仍然成功并留下重试信息。
+	blockedKey := strings.Repeat("b", 32) + ".pdf"
+	blockedPath := filepath.Join(storage, blockedKey)
+	require.NoError(t, os.Mkdir(blockedPath, 0o750))
+	blocker := filepath.Join(blockedPath, "keep")
+	require.NoError(t, os.WriteFile(blocker, []byte("block removal"), 0o600))
+	second := model.Invoice{UserId: users[0].Id, Status: model.InvoiceStatusIssued, OrderAmount: "50.00", FileKey: blockedKey}
+	require.NoError(t, model.DB.Create(&second).Error)
+	raw := model.AccessTokenPrefix + common.GetRandomString(43)
+	writer := model.UserAccessToken{Name: "invoice writer", TokenHash: model.AccessTokenFingerprint(raw), TokenHint: model.AccessTokenHint(raw)}
+	require.NoError(t, writer.SetScopes([]string{"billing:write"}))
+	require.NoError(t, model.CreateUserAccessToken(users[1].Id, &writer, service.AccessTokenMaxPerUser))
+	response = request(http.MethodPost, fmt.Sprintf("/api/invoice/admin/%d/delete", second.Id), raw, payload)
+	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+	require.True(t, result.Success, response.Body.String())
+	assert.True(t, result.Data.FileCleanupPending)
+	_, err = model.GetInvoiceById(second.Id)
+	assert.ErrorIs(t, err, model.ErrInvoiceNotFound)
+	pending, err := model.ListPendingInvoiceFileDeletions(0, 100)
+	require.NoError(t, err)
+	require.Len(t, pending, 1)
+	assert.Equal(t, blockedKey, pending[0].FileKey)
+	require.NoError(t, os.Remove(blocker))
+	_, err = service.CleanupDeletedInvoiceFiles(0)
+	require.NoError(t, err)
+	pending, err = model.ListPendingInvoiceFileDeletions(0, 100)
+	require.NoError(t, err)
+	assert.Empty(t, pending)
+	assert.NoError(t, service.CleanupDeletedInvoiceFile(&model.InvoiceDeletion{InvoiceID: second.Id, FileKey: blockedKey}), "重试已不存在的文件也应成功")
+
+	// 错误文件键不能逃逸附件根目录，且不能提前清除待重试信息。
+	outside := filepath.Join(t.TempDir(), strings.Repeat("c", 32)+".pdf")
+	require.NoError(t, os.WriteFile(outside, []byte("keep outside file"), 0o600))
+	unsafe := model.InvoiceDeletion{InvoiceID: second.Id + 1, UserID: users[0].Id, FileKey: outside, Reason: "legacy invalid key"}
+	require.NoError(t, model.DB.Create(&unsafe).Error)
+	assert.Error(t, service.CleanupDeletedInvoiceFile(&unsafe))
+	content, err := os.ReadFile(outside)
+	require.NoError(t, err)
+	assert.Equal(t, "keep outside file", string(content))
+	pending, err = model.ListPendingInvoiceFileDeletions(0, 100)
+	require.NoError(t, err)
+	require.Len(t, pending, 1)
+	assert.Equal(t, outside, pending[0].FileKey)
 }

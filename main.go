@@ -379,6 +379,7 @@ func InitResources() error {
 
 	service.StartAuthArtifactCleanup()
 	service.StartPartnerSubmitIpCleanup()
+	service.StartInvoiceFileCleanup()
 
 	return nil
 }
