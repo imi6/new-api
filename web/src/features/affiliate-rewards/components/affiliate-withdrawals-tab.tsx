@@ -205,6 +205,7 @@ export function AffiliateWithdrawalsTab() {
         toolbar={
           <div className='flex flex-wrap items-center gap-2'>
             <Select
+              items={statuses}
               value={status}
               onValueChange={(value) => {
                 setStatus(value ?? 'all')

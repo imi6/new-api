@@ -22,9 +22,10 @@ var affiliateCashDecimalPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,9})(\.[0-
 var affiliateCashIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 type AffiliateCashNetwork struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	AddressKind string `json:"address_kind"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// 兼容旧配置和订单快照，不再参与地址或网络规则校验。
+	AddressKind string `json:"address_kind,omitempty"`
 	Enabled     bool   `json:"enabled"`
 }
 
@@ -127,8 +128,8 @@ func validateAffiliateCashSettings(settings AffiliateCashSettings) error {
 	}
 	seen := make(map[string]bool)
 	for _, network := range settings.Networks {
-		if !affiliateCashIdentifierPattern.MatchString(network.ID) || len(network.ID) > 32 || seen[network.ID] || strings.TrimSpace(network.Name) == "" || utf8.RuneCountInString(network.Name) > 80 || !slices.Contains([]string{"evm", "tron"}, network.AddressKind) {
-			return common.NewMessage("Configure a unique withdrawal network and a supported address format")
+		if !affiliateCashIdentifierPattern.MatchString(network.ID) || len(network.ID) > 32 || seen[network.ID] || strings.TrimSpace(network.Name) == "" || utf8.RuneCountInString(network.Name) > 80 {
+			return common.NewMessage("Configure a unique withdrawal network with a name")
 		}
 		seen[network.ID] = true
 	}
@@ -211,7 +212,7 @@ func SaveAffiliateCashSettings(settings AffiliateCashSettings) (AffiliateCashSet
 				return err
 			}
 			index := slices.IndexFunc(snapshot.Networks, func(n AffiliateCashNetwork) bool { return n.ID == network.ID })
-			if index < 0 || snapshot.Networks[index].Name != network.Name || snapshot.Networks[index].AddressKind != network.AddressKind {
+			if index < 0 || snapshot.Networks[index].Name != network.Name {
 				return common.NewMessage("A network used by withdrawals cannot be renamed or reassigned. Create a new network ID instead")
 			}
 		}

@@ -40,7 +40,10 @@ export const affiliateWithdrawalSchema = z.object({
     .string()
     .trim()
     .min(1, 'Enter the receiving address')
-    .max(128, 'The receiving address is too long'),
+    .refine(
+      (value) => [...value].length <= 128,
+      'The receiving address is too long'
+    ),
 })
 
 export type AffiliateWithdrawalValues = z.infer<
