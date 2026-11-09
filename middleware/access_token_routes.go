@@ -200,6 +200,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/invoice/admin/:id/file":   accessTokenScopeRule("billing:write"),
 	"POST /api/invoice/admin/:id/issue":  accessTokenScopeRule("billing:write"),
 	"POST /api/invoice/admin/:id/reject": accessTokenScopeRule("billing:write"),
+	"POST /api/invoice/admin/:id/delete": accessTokenScopeRule("billing:write"),
 
 	// router/api-router.go: /api/option
 	"GET /api/option/":                                           accessTokenScopeRule("option:read"),
