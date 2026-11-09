@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -108,7 +109,7 @@ func AdjustUserQuota(userID, operatorRole int, mode string, value int) (*UserQuo
 // mode "revoke": mark the given quota as already-claimed without crediting
 // the wallet, shrinking the claimable balance. Useful to claw back an
 // over-credited amount. Only affiliate_rebate_claimed increases.
-func AdjustAffiliateRebate(userID, operatorRole int, mode string, value int) (*UserQuotaAdjustment, error) {
+func AdjustAffiliateRebate(userID, operatorRole int, mode string, value int, operatorIDs ...int) (*UserQuotaAdjustment, error) {
 	if userID <= 0 || (mode != "grant" && mode != "revoke") {
 		return nil, ErrInvalidUserQuotaAdjustment
 	}
@@ -129,12 +130,22 @@ func AdjustAffiliateRebate(userID, operatorRole int, mode string, value int) (*U
 		if operatorRole != common.RoleRootUser && operatorRole <= user.Role {
 			return ErrUserQuotaPermission
 		}
-		before := user.AffiliateRebateClaimed
+		account, err := lockAffiliateAccount(tx, userID)
+		if err != nil {
+			return err
+		}
+		if account.Claimed > common.MaxWalletQuota-value {
+			return ErrWalletQuotaLimitExceeded
+		}
+		if mode == "grant" && value > max(account.Accrued-account.Claimed, 0) {
+			return common.NewMessage("The rebate amount exceeds the claimable balance")
+		}
+		before := account.Claimed
 		updates := map[string]any{
-			"affiliate_rebate_claimed": gorm.Expr("affiliate_rebate_claimed + ?", value),
+			"affiliate_rebate_claimed": account.Claimed + value,
 		}
 		if mode == "grant" {
-			if user.Quota > common.MaxWalletQuota-value {
+			if user.Quota > common.MaxWalletQuota-value || user.UnpaidQuotaBalance > common.MaxWalletQuota-value {
 				return ErrWalletQuotaLimitExceeded
 			}
 			updates["quota"] = gorm.Expr("quota + ?", value)
@@ -146,6 +157,18 @@ func AdjustAffiliateRebate(userID, operatorRole int, mode string, value int) (*U
 		}
 		if result.RowsAffected != 1 {
 			return gorm.ErrRecordNotFound
+		}
+		account.Claimed += value
+		account.UpdatedAt = common.GetTimestamp()
+		if err := tx.Model(account).Updates(map[string]any{"claimed": account.Claimed, "updated_at": account.UpdatedAt}).Error; err != nil {
+			return err
+		}
+		actorID := 0
+		if len(operatorIDs) > 0 {
+			actorID = operatorIDs[0]
+		}
+		if err := tx.Create(&AffiliateLedgerEntry{UserID: userID, BusinessID: uuid.NewString(), Kind: "admin_" + mode, Quota: -value, ActorID: actorID, AccruedAfter: account.Accrued, ClaimedAfter: account.Claimed, CreatedAt: account.UpdatedAt}).Error; err != nil {
+			return err
 		}
 		adjustment = UserQuotaAdjustment{UserID: user.Id, Username: user.Username, Before: before, After: before + value}
 		return nil
