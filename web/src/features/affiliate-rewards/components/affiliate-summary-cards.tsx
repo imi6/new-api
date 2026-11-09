@@ -63,7 +63,7 @@ export function AffiliateSummaryCards(props: AffiliateSummaryCardsProps) {
     },
     {
       key: 'claimed',
-      title: t('Rebate claimed'),
+      title: t('Rebate claimed or deducted'),
       value: formatQuota(summary?.claimed ?? 0),
       description: t('{{count}} users claimed · {{unclaimed}} not claimed', {
         count: summary?.claimers ?? 0,
@@ -76,24 +76,60 @@ export function AffiliateSummaryCards(props: AffiliateSummaryCardsProps) {
 
   // Two a row on phones, so the table below keeps room to scroll.
   return (
-    <div className='grid shrink-0 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4'>
-      {cards.map((item) => (
-        <div
-          key={item.key}
-          className='bg-card rounded-xl border px-3 py-2.5 sm:p-4'
-        >
-          <StatCard
-            title={item.title}
-            value={item.value}
-            description={item.description}
-            icon={item.icon}
-            tone={item.tone}
-            loading={props.loading}
-            error={props.error}
-            details={[]}
-          />
-        </div>
-      ))}
+    <div className='shrink-0 space-y-2'>
+      <div className='grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4'>
+        {cards.map((item) => (
+          <div
+            key={item.key}
+            className='bg-card rounded-xl border px-3 py-2.5 sm:p-4'
+          >
+            <StatCard
+              title={item.title}
+              value={item.value}
+              description={item.description}
+              icon={item.icon}
+              tone={item.tone}
+              loading={props.loading}
+              error={props.error}
+              details={[]}
+            />
+          </div>
+        ))}
+      </div>
+      {summary && (
+        <dl className='grid grid-cols-2 gap-x-4 gap-y-2 text-xs xl:grid-cols-4'>
+          {[
+            {
+              label: t('User transfers to platform'),
+              amount: summary.user_platform_quota,
+            },
+            {
+              label: t('Admin transfers to platform'),
+              amount: summary.admin_platform_quota,
+            },
+            {
+              label: t('Original rebate exchanged for U'),
+              amount: summary.u_exchange_quota,
+            },
+            {
+              label: t('Administrative rebate deductions'),
+              amount: summary.admin_revoked_quota,
+            },
+          ].map((item) => (
+            <div key={item.label}>
+              <dt className='text-muted-foreground'>{item.label}</dt>
+              <dd className='font-medium tabular-nums'>
+                {formatQuota(item.amount ?? 0)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <p className='text-muted-foreground text-xs'>
+        {t(
+          'Rebate units and U are accounted separately. Historical opening adjustments are included in cumulative deductions, not actual payouts.'
+        )}
+      </p>
     </div>
   )
 }

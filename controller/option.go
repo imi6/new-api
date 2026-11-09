@@ -217,6 +217,10 @@ func UpdateOption(c *gin.Context) {
 		common.ApiErrorStatus(c, http.StatusBadRequest, common.NewMessage("Invalid parameters"))
 		return
 	}
+	if strings.EqualFold(option.Key, "AffiliateCashSettings") {
+		common.ApiErrorT(c, "Use the U withdrawal settings page to update these rules")
+		return
+	}
 	switch option.Value.(type) {
 	case bool:
 		option.Value = common.Interface2String(option.Value.(bool))
