@@ -168,7 +168,7 @@ func manageUserAffiliateRebate(c *gin.Context, req ManageRequest) {
 		markAuditLogged(c)
 	}()
 
-	adjustment, err := model.AdjustAffiliateRebate(req.Id, c.GetInt("role"), mode, req.Value)
+	adjustment, err := model.AdjustAffiliateRebate(req.Id, c.GetInt("role"), mode, req.Value, c.GetInt("id"))
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrInvalidUserQuotaAdjustment):

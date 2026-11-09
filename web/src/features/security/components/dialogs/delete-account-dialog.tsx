@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SecureVerificationDialog } from '@/features/auth/secure-verification'
 import { deleteUserAccount } from '@/features/profile/api'
+import { AffiliateCashDeletionNotice } from '@/features/referral/components/affiliate-cash-deletion-notice'
 import { clearAuthentication } from '@/lib/api'
 
 import { useAccountSecurity } from '../../hooks/use-account-security'
@@ -82,7 +83,7 @@ export function DeleteAccountDialog(props: DeleteAccountDialogProps) {
         onOpenChange={handleOpenChange}
         title={t('Delete Account')}
         desc={t(
-          'This action cannot be undone. This will permanently delete your account and remove all your data from our servers.'
+          'This action cannot be undone. Your account will be permanently deleted, while financial records are retained.'
         )}
         confirmText={security.pending ? t('Deleting...') : t('Delete Account')}
         destructive
@@ -90,6 +91,7 @@ export function DeleteAccountDialog(props: DeleteAccountDialogProps) {
         isLoading={security.pending}
         handleConfirm={handleDelete}
       >
+        <AffiliateCashDeletionNotice open={props.open} />
         <Alert variant='destructive'>
           <AlertTriangle className='size-4' />
           <AlertDescription>
