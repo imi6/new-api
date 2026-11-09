@@ -30,6 +30,10 @@ export type AffiliateSummary = {
   claimers: number
   /** Inviters with a special ratio earn no rebate now. */
   exclude_special_ratio: boolean
+  user_platform_quota?: number
+  admin_platform_quota?: number
+  u_exchange_quota?: number
+  admin_revoked_quota?: number
 }
 
 /** One inviter in the ranking. */
@@ -81,6 +85,7 @@ export type AffiliateClaim = {
   username?: string
   display_name?: string
   quota: number
+  destination?: 'platform' | 'u'
   created_at: number
 }
 
