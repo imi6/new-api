@@ -148,6 +148,22 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/user/2fa/stats":                          accessTokenScopeRule("user:read"),
 	"DELETE /api/user/:id/2fa":                         accessTokenScopeRule("user:write"),
 
+	// 首版 U 兑换和人工提现仅允许仪表盘会话访问。
+	"GET /api/user/affiliate_cash":                         accessTokenSessionRule,
+	"GET /api/user/affiliate_cash/ledger":                  accessTokenSessionRule,
+	"POST /api/user/affiliate_cash/exchange/preview":       accessTokenSessionRule,
+	"POST /api/user/affiliate_cash/exchange":               accessTokenSessionRule,
+	"GET /api/user/affiliate_cash/withdrawals":             accessTokenSessionRule,
+	"POST /api/user/affiliate_cash/withdrawals/preview":    accessTokenSessionRule,
+	"POST /api/user/affiliate_cash/withdrawals":            accessTokenSessionRule,
+	"POST /api/user/affiliate_cash/withdrawals/:id/cancel": accessTokenSessionRule,
+	"GET /api/user/affiliate/cash/settings":                accessTokenSessionRule,
+	"PUT /api/user/affiliate/cash/settings":                accessTokenSessionRule,
+	"GET /api/user/affiliate/cash/summary":                 accessTokenSessionRule,
+	"GET /api/user/affiliate/cash/withdrawals":             accessTokenSessionRule,
+	"GET /api/user/affiliate/cash/withdrawals/:id":         accessTokenSessionRule,
+	"POST /api/user/affiliate/cash/withdrawals/:id/action": accessTokenSessionRule,
+
 	// router/api-router.go: /api/subscription
 	"GET /api/subscription/plans":                                    accessTokenScopeRule("wallet:read"),
 	"GET /api/subscription/self":                                     accessTokenScopeRule("wallet:read"),
