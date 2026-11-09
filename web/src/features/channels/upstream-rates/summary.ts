@@ -38,6 +38,13 @@ export function summarizeUpstreamRate(rate: UpstreamRate) {
     )
   )
   const changes = current.flatMap((key) => (key.change ? [key.change] : []))
+  // 多个分组同时涨跌时优先提示上涨，避免掩盖成本增加。
+  let direction: 'up' | 'down' | undefined
+  if (changes.some((change) => change.to > change.from)) {
+    direction = 'up'
+  } else if (changes.some((change) => change.to < change.from)) {
+    direction = 'down'
+  }
   return {
     min: ratios.length ? Math.min(...ratios) : undefined,
     max: ratios.length ? Math.max(...ratios) : undefined,
@@ -46,6 +53,7 @@ export function summarizeUpstreamRate(rate: UpstreamRate) {
     approximate: values.some((key) => key.match_method === 'masked'),
     changed: current.some((key) => key.change !== undefined),
     change: groups.size === 1 ? changes[0] : undefined,
+    direction,
     moved: current.some((key) => key.moved_from !== undefined),
   }
 }
