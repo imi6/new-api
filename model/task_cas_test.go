@@ -39,6 +39,7 @@ func TestMain(m *testing.M) {
 	if err := db.AutoMigrate(
 		&Task{},
 		&User{},
+		&UserIDReservation{},
 		&UserSession{},
 		&AuthFlow{},
 		&ExternalIdentityClaim{},
@@ -62,8 +63,21 @@ func TestMain(m *testing.M) {
 		&UserAccessToken{},
 		&UserPaidConsumptionDay{},
 		&AffiliateRebateClaim{},
+		&AffiliateAccount{},
+		&AffiliateLedgerEntry{},
+		&AffiliateSettlementSource{},
+		&AffiliateCashWallet{},
+		&AffiliateCashEntry{},
+		&AffiliateCashExchange{},
+		&AffiliateWithdrawal{},
+		&AffiliateWithdrawalEvent{},
+		&AffiliateWithdrawalProof{},
+		&Option{},
 	); err != nil {
 		panic("failed to migrate: " + err.Error())
+	}
+	if err := db.Create(&Option{Key: affiliateAccountBackfillOption, Value: "true"}).Error; err != nil {
+		panic("failed to initialize referral account migration marker: " + err.Error())
 	}
 
 	os.Exit(m.Run())
@@ -85,6 +99,15 @@ func truncateTables(t *testing.T) {
 		DB.Exec("DELETE FROM users")
 		DB.Exec("DELETE FROM user_paid_consumption_days")
 		DB.Exec("DELETE FROM affiliate_rebate_claims")
+		DB.Exec("DELETE FROM affiliate_ledger_entries")
+		DB.Exec("DELETE FROM affiliate_settlement_sources")
+		DB.Exec("DELETE FROM affiliate_accounts")
+		DB.Exec("DELETE FROM affiliate_cash_wallets")
+		DB.Exec("DELETE FROM affiliate_cash_entries")
+		DB.Exec("DELETE FROM affiliate_cash_exchanges")
+		DB.Exec("DELETE FROM affiliate_withdrawals")
+		DB.Exec("DELETE FROM affiliate_withdrawal_events")
+		DB.Exec("DELETE FROM affiliate_withdrawal_proofs")
 		DB.Exec("DELETE FROM logs")
 		DB.Exec("DELETE FROM channels")
 		DB.Exec("DELETE FROM quota_data")

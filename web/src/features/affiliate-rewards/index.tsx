@@ -29,6 +29,7 @@ import { getAffiliateSummary } from './api'
 import { AffiliateClaimsTab } from './components/affiliate-claims-tab'
 import { AffiliateRankingTab } from './components/affiliate-ranking-tab'
 import { AffiliateSummaryCards } from './components/affiliate-summary-cards'
+import { AffiliateWithdrawalsTab } from './components/affiliate-withdrawals-tab'
 
 const route = getRouteApi('/_authenticated/affiliate-rewards/')
 
@@ -89,7 +90,10 @@ export function AffiliateRewards() {
               void navigate({
                 search: (prev) => ({
                   ...prev,
-                  tab: value === 'ranking' ? undefined : (value as 'claims'),
+                  tab:
+                    value === 'ranking'
+                      ? undefined
+                      : (value as 'claims' | 'withdrawals'),
                 }),
                 replace: true,
               })
@@ -99,12 +103,18 @@ export function AffiliateRewards() {
             <TabsList>
               <TabsTrigger value='ranking'>{t('Invite ranking')}</TabsTrigger>
               <TabsTrigger value='claims'>{t('Claim records')}</TabsTrigger>
+              <TabsTrigger value='withdrawals'>
+                {t('Withdrawal applications')}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value='ranking' className='min-h-0 flex-1'>
               <AffiliateRankingTab />
             </TabsContent>
             <TabsContent value='claims' className='min-h-0 flex-1'>
               <AffiliateClaimsTab />
+            </TabsContent>
+            <TabsContent value='withdrawals' className='min-h-0 flex-1'>
+              <AffiliateWithdrawalsTab />
             </TabsContent>
           </Tabs>
         </div>

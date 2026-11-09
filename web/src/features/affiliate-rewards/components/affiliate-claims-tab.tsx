@@ -123,12 +123,21 @@ export function AffiliateClaimsTab() {
     },
     {
       accessorKey: 'quota',
-      header: t('Amount'),
+      header: t('Rebate deducted'),
       cell: ({ row }) => (
         <span className='font-medium tabular-nums'>
           {formatQuota(row.original.quota)}
         </span>
       ),
+      size: 140,
+    },
+    {
+      accessorKey: 'destination',
+      header: t('Destination'),
+      cell: ({ row }) =>
+        row.original.destination === 'u'
+          ? t('Withdrawable U')
+          : t('Platform balance'),
       size: 140,
     },
     {
@@ -176,7 +185,7 @@ export function AffiliateClaimsTab() {
         isFetching={query.isFetching}
         emptyTitle={t('No claims yet')}
         emptyDescription={t(
-          'Rebate that users transfer to their wallet appears here.'
+          'Referral claims to platform credit or withdrawable U appear here. Amounts show the original rebate deducted.'
         )}
         // The space left under the count line; the table scrolls inside it.
         className='min-h-0 flex-1'

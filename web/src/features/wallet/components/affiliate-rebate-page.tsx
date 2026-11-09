@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -52,16 +52,20 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
   const [amount, setAmount] = useState(0)
   const [claiming, setClaiming] = useState(false)
   const [error, setError] = useState('')
+  const [refreshRequired, setRefreshRequired] = useState(false)
+  const claimRequest = useRef<{ quota: number; id: string } | null>(null)
+  const claimInFlight = useRef(false)
 
   const load = useCallback(async () => {
     const body = await getAffiliateRebate()
     if (body.success && body.data) {
       setSummary(body.data)
-      setAmount(quotaUnitsToDollars(body.data.claimable))
+      setAmount(quotaUnitsToDollars(body.data.max_claim_quota ?? 0))
       setError('')
-      return
+      return true
     }
     setError(getServerMessage(body) || t('Failed to load referral rebate'))
+    return false
   }, [t])
 
   useEffect(() => {
@@ -75,8 +79,10 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
   }, [load, t])
 
   const claimable = summary?.claimable ?? 0
-  const fullAmount = quotaUnitsToDollars(claimable)
-  const claimQuota = amount === fullAmount ? claimable : parseQuotaFromDollars(amount)
+  const maximum = summary?.max_claim_quota ?? 0
+  const fullAmount = quotaUnitsToDollars(maximum)
+  const claimQuota =
+    amount === fullAmount ? maximum : parseQuotaFromDollars(amount)
   const percent = summary?.percent ?? 0
   const weekClaimed = summary?.week_claimed ?? 0
   const requiredConsumption =
@@ -85,25 +91,50 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
       : 0
   const canSubmit =
     !claiming &&
+    !refreshRequired &&
     summary?.can_claim === true &&
     claimQuota >= minimumQuota &&
-    claimQuota <= claimable &&
+    claimQuota <= maximum &&
     (summary?.week_paid_consumed ?? 0) >= requiredConsumption
 
   const claim = async () => {
-    if (!canSubmit) return
+    if (!canSubmit || claimInFlight.current) return
+    if (claimRequest.current?.quota !== claimQuota) {
+      claimRequest.current = { quota: claimQuota, id: crypto.randomUUID() }
+    }
+    claimInFlight.current = true
     setClaiming(true)
     try {
-      const body = await claimAffiliateRebate(claimQuota)
+      const body = await claimAffiliateRebate(
+        claimQuota,
+        claimRequest.current.id
+      )
       if (!body.success) {
         setError(getServerMessage(body) || t('Failed to claim referral rebate'))
         return
       }
-      props.onClaimed?.()
-      await load()
+      claimRequest.current = null
+      setRefreshRequired(true)
+      const refreshed = await Promise.allSettled([
+        Promise.resolve().then(() => props.onClaimed?.()),
+        load(),
+      ])
+      if (
+        refreshed.some((result) => result.status === 'rejected') ||
+        (refreshed[1].status === 'fulfilled' && !refreshed[1].value)
+      ) {
+        setError(
+          t(
+            'Rebate claimed successfully. Refresh the page to update your balance.'
+          )
+        )
+      } else {
+        setRefreshRequired(false)
+      }
     } catch {
       setError(t('Failed to claim referral rebate'))
     } finally {
+      claimInFlight.current = false
       setClaiming(false)
     }
   }
@@ -119,7 +150,7 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
       </Button>
       <div className='grid gap-3 sm:grid-cols-3'>
         <Stat
-          label={t('Claimable rebate')}
+          label={t('Unclaimed rebate')}
           value={formatQuota(summary?.claimable ?? 0)}
         />
         <Stat
@@ -161,6 +192,9 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
         )}
       </p>
       <div className='flex max-w-xs flex-col gap-2'>
+        <p className='text-muted-foreground text-xs'>
+          {t('Maximum available now')}: {formatQuota(maximum)}
+        </p>
         <Label htmlFor='affiliate-rebate-amount'>{t('Amount to claim')}</Label>
         <Input
           id='affiliate-rebate-amount'
@@ -188,7 +222,9 @@ export function AffiliateRebatePage(props: { onClaimed?: () => void }) {
       <div className='flex flex-col gap-2'>
         <h2 className='text-sm font-medium'>{t('Invitees')}</h2>
         {(summary?.invitees ?? []).length === 0 ? (
-          <p className='text-muted-foreground text-sm'>{t('No invitees yet')}</p>
+          <p className='text-muted-foreground text-sm'>
+            {t('No invitees yet')}
+          </p>
         ) : (
           summary?.invitees.map((invitee) => (
             <div

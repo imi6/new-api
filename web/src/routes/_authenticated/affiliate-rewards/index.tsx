@@ -24,7 +24,7 @@ import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 const affiliateRewardsSearchSchema = z.object({
-  tab: z.enum(['ranking', 'claims']).optional().catch('ranking'),
+  tab: z.enum(['ranking', 'claims', 'withdrawals']).optional().catch('ranking'),
   page: z.number().optional().catch(1),
   pageSize: z.number().optional().catch(20),
   filter: z.string().optional().catch(''),
