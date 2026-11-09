@@ -266,6 +266,7 @@ export interface AffiliateRebateSummary {
   accrued: number
   claimed: number
   claimable: number
+  max_claim_quota: number
   /** Groups that earn rebate; empty means every group earns it. */
   rebate_groups: string[]
   invitees: AffiliateInviteeRebate[]
@@ -279,8 +280,12 @@ export async function getAffiliateRebate(): Promise<
 }
 
 export async function claimAffiliateRebate(
-  quota: number
+  quota: number,
+  requestID: string
 ): Promise<ApiResponse> {
-  const res = await api.post('/api/user/affiliate_rebate/claim', { quota })
+  const res = await api.post('/api/user/affiliate_rebate/claim', {
+    quota,
+    request_id: requestID,
+  })
   return res.data
 }
