@@ -27,7 +27,8 @@ import type { Invoice } from '@/features/invoice/types'
 import { formatTimestampToDate } from '@/lib/format'
 
 export function useInvoiceColumns(
-  onOpen: (invoice: Invoice) => void
+  onOpen: (invoice: Invoice) => void,
+  onDelete: (invoice: Invoice) => void
 ): ColumnDef<Invoice>[] {
   const { t } = useTranslation()
   return [
@@ -124,18 +125,29 @@ export function useInvoiceColumns(
       id: 'actions',
       header: () => <span className='sr-only'>{t('Actions')}</span>,
       cell: ({ row }) => (
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={() => onOpen(row.original)}
-        >
-          {row.original.status === 'pending_review'
-            ? t('Process')
-            : t('Details')}
-        </Button>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => onOpen(row.original)}
+          >
+            {row.original.status === 'pending_review'
+              ? t('Process')
+              : t('Details')}
+          </Button>
+          {row.original.status === 'issued' && (
+            <Button
+              variant='destructive'
+              size='sm'
+              onClick={() => onDelete(row.original)}
+            >
+              {t('Delete')}
+            </Button>
+          )}
+        </div>
       ),
       enableHiding: false,
-      size: 100,
+      size: 180,
     },
   ]
 }

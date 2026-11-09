@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -138,15 +139,73 @@ func RemoveInvoiceFile(key string) {
 	if key == "" || !validInvoiceFileKey(key) {
 		return
 	}
+	if err := removeInvoiceFile(key); err != nil {
+		common.SysError(common.LogText("failed to delete invoice file %s: %s", key, err.Error()))
+	}
+}
+
+func removeInvoiceFile(key string) error {
+	if !validInvoiceFileKey(key) {
+		return errors.New("invalid invoice file key")
+	}
 	root, err := openInvoiceRoot()
 	if err != nil {
-		common.SysError(common.LogText("failed to open invoice directory: %s", err.Error()))
-		return
+		return err
 	}
 	defer root.Close()
 	if err := root.Remove(key); err != nil && !errors.Is(err, os.ErrNotExist) {
-		common.SysError(common.LogText("failed to delete invoice file %s: %s", key, err.Error()))
+		return err
 	}
+	return nil
+}
+
+// CleanupDeletedInvoiceFile 只有文件已清除或原本不存在，才清除持久化重试信息。
+func CleanupDeletedInvoiceFile(deletion *model.InvoiceDeletion) error {
+	if deletion.FileKey == "" {
+		return nil
+	}
+	if err := removeInvoiceFile(deletion.FileKey); err != nil {
+		return err
+	}
+	return model.MarkInvoiceFileDeleted(deletion.InvoiceID, deletion.FileKey)
+}
+
+// CleanupDeletedInvoiceFiles 每批最多处理 100 条，返回下批游标，避免坏文件阻塞后续任务。
+func CleanupDeletedInvoiceFiles(afterInvoiceID int) (int, error) {
+	const batchSize = 100
+	pending, err := model.ListPendingInvoiceFileDeletions(afterInvoiceID, batchSize)
+	if err != nil {
+		return afterInvoiceID, err
+	}
+	for i := range pending {
+		if err := CleanupDeletedInvoiceFile(&pending[i]); err != nil {
+			common.SysError(common.LogText("failed to clean up deleted invoice attachment invoice_id=%d: %s", pending[i].InvoiceID, err.Error()))
+		}
+	}
+	if len(pending) < batchSize {
+		return 0, nil
+	}
+	return pending[len(pending)-1].InvoiceID, nil
+}
+
+// StartInvoiceFileCleanup 启动时清理一次，此后每分钟重试；沿用附件主节点存储约定。
+func StartInvoiceFileCleanup() {
+	if !common.IsMasterNode {
+		return
+	}
+	go func() {
+		afterInvoiceID := 0
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			var err error
+			afterInvoiceID, err = CleanupDeletedInvoiceFiles(afterInvoiceID)
+			if err != nil {
+				common.SysError(common.LogText("failed to list deleted invoice attachments: %s", err.Error()))
+			}
+			<-ticker.C
+		}
+	}()
 }
 
 func invoiceCenterLink() string {

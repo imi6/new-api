@@ -329,7 +329,7 @@ export function RechargeFormCard({
                     {t('Payment Method')}
                   </Label>
                   {hasStandardPaymentMethods ? (
-                    <div className='grid grid-cols-2 gap-1.5 sm:gap-3'>
+                    <div className='grid grid-cols-3 gap-1.5 sm:gap-3'>
                       {topupInfo?.pay_methods?.map((method) => {
                         const loadingKey = `${method.type}:${paymentMethodGateway(method)}:${method.name}`
                         const minTopup = Math.max(
