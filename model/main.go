@@ -392,6 +392,8 @@ func migrateDB() error {
 		&InvoiceItem{},
 		&InvoiceOrderLock{},
 		&InvoiceTaxPayment{},
+		&InvoiceDeletion{},
+		&InvoiceIDReservation{},
 		&GroupHealthProbe{},
 		&IntelligenceCheckResult{},
 		&GroupCacheStat{},
@@ -409,6 +411,9 @@ func migrateDB() error {
 	}
 	if err := InitializeUserIDReservations(DB); err != nil {
 		return fmt.Errorf("initialize permanent user identities: %w", err)
+	}
+	if err := InitializeInvoiceIDReservations(DB); err != nil {
+		return fmt.Errorf("initialize permanent invoice identities: %w", err)
 	}
 	if err := EnsureLegacyAccessTokenRetireAt(common.GetTimestamp()); err != nil {
 		return fmt.Errorf("initialize legacy access token deadline: %w", err)

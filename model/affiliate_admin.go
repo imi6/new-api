@@ -144,9 +144,18 @@ func GetAffiliateAdminSummary() (*AffiliateAdminSummary, error) {
 		summary.SignupReward += row.SignupReward
 	}
 	// 资金总额包含已删除账户的历史，不能由当前用户资料筛选决定。
-	if err := DB.Model(&AffiliateAccount{}).Select("COALESCE(SUM(accrued), 0) AS accrued, COALESCE(SUM(claimed), 0) AS claimed, COALESCE(SUM(CASE WHEN accrued > claimed THEN accrued - claimed ELSE 0 END), 0) AS unclaimed").Scan(summary).Error; err != nil {
+	// 单独接收资金聚合，避免 Scan 重置已汇总的邀请人数和注册奖励。
+	var accountTotals struct {
+		Accrued   int64
+		Claimed   int64
+		Unclaimed int64
+	}
+	if err := DB.Model(&AffiliateAccount{}).Select("COALESCE(SUM(accrued), 0) AS accrued, COALESCE(SUM(claimed), 0) AS claimed, COALESCE(SUM(CASE WHEN accrued > claimed THEN accrued - claimed ELSE 0 END), 0) AS unclaimed").Scan(&accountTotals).Error; err != nil {
 		return nil, err
 	}
+	summary.Accrued = accountTotals.Accrued
+	summary.Claimed = accountTotals.Claimed
+	summary.Unclaimed = accountTotals.Unclaimed
 	var claimTotals []struct {
 		Destination string
 		Quota       int64

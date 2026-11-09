@@ -81,6 +81,7 @@ func InitializeUserIDReservations(db *gorm.DB, logDatabases ...*gorm.DB) error {
 			{&SubscriptionPreConsumeRecord{}, []string{"user_id"}},
 			{&Invoice{}, []string{"user_id"}},
 			{&InvoiceTaxPayment{}, []string{"user_id"}},
+			{&InvoiceDeletion{}, []string{"user_id", "deleted_by"}},
 			{&Task{}, []string{"user_id"}},
 			{&Midjourney{}, []string{"user_id"}},
 			{&Checkin{}, []string{"user_id"}},
