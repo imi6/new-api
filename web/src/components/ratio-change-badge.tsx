@@ -51,8 +51,8 @@ interface RatioChangeBadgeProps {
 }
 
 /**
- * Marks a group whose ratio changed recently, green for cheaper and orange
- * for dearer, or that is new. The tooltip says from what, to what and when.
+ * 标记近期倍率变动或新增分组：下降显示绿色，上涨显示红色。
+ * 悬浮提示展示变动前后的倍率及日期。
  */
 export function RatioChangeBadge(props: RatioChangeBadgeProps) {
   const { t } = useTranslation()
@@ -77,7 +77,7 @@ export function RatioChangeBadge(props: RatioChangeBadgeProps) {
       <StatusBadge
         label={formatValue(Math.abs(change.to - change.from))}
         icon={cheaper ? ArrowDown : ArrowUp}
-        variant={cheaper ? 'success' : 'warning'}
+        variant={cheaper ? 'success' : 'danger'}
         size='sm'
         copyable={false}
       />
