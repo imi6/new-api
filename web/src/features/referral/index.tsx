@@ -204,6 +204,7 @@ export function ReferralPage() {
                   icon={<Gift className='size-4' />}
                   label={t('Accrued rebate')}
                   value={formatQuota(accrued)}
+                  sub={t('Total rebate earned')}
                 />
                 <StatCard
                   tone='teal'
