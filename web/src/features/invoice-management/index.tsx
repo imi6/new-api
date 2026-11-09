@@ -28,11 +28,12 @@ import {
   INVOICE_STATUS_FILTERS,
   INVOICE_STATUS_META,
 } from '@/features/invoice/lib/invoice'
-import type { InvoiceStatus } from '@/features/invoice/types'
+import type { Invoice, InvoiceStatus } from '@/features/invoice/types'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 
 import { useInvoiceColumns } from './components/invoice-columns'
+import { InvoiceDeleteDialog } from './components/invoice-delete-dialog'
 import { InvoiceDetailDrawer } from './components/invoice-detail-drawer'
 import {
   useAdminInvoices,
@@ -46,7 +47,11 @@ export function InvoiceManagement() {
   const isMobile = useMediaQuery('(max-width: 640px)')
   const refresh = useRefreshAdminInvoices()
   const [detailId, setDetailId] = useState<number | null>(null)
-  const columns = useInvoiceColumns((invoice) => setDetailId(invoice.id))
+  const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null)
+  const columns = useInvoiceColumns(
+    (invoice) => setDetailId(invoice.id),
+    setDeleteTarget
+  )
 
   const {
     globalFilter,
@@ -149,7 +154,21 @@ export function InvoiceManagement() {
             if (!open) setDetailId(null)
           }}
           onChanged={() => void refresh()}
+          onDelete={setDeleteTarget}
         />
+        {deleteTarget && (
+          <InvoiceDeleteDialog
+            key={deleteTarget.id}
+            invoice={deleteTarget}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTarget(null)
+            }}
+            onDeleted={(id) => {
+              setDeleteTarget(null)
+              setDetailId((current) => (current === id ? null : current))
+            }}
+          />
+        )}
       </SectionPageLayout.Content>
     </SectionPageLayout>
   )
