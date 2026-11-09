@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -161,7 +162,7 @@ function AffiliateCashSettingsForm(props: {
   const amounts = [
     {
       name: 'exchange_rate' as const,
-      label: t('USDT per platform rebate unit'),
+      label: t('Rebate to USDT exchange rate'),
       disabled: false,
     },
     {
@@ -200,7 +201,7 @@ function AffiliateCashSettingsForm(props: {
           onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
         >
           <fieldset disabled={disabled} className='space-y-4'>
-            <SettingsFormGrid>
+            <SettingsFormGrid className='items-start'>
               {[
                 {
                   name: 'exchange_enabled' as const,
@@ -246,6 +247,20 @@ function AffiliateCashSettingsForm(props: {
                           disabled={disabled || item.disabled}
                         />
                       </FormControl>
+                      {item.name === 'exchange_rate' && (
+                        <FormDescription className='flex flex-col gap-1 text-xs leading-relaxed'>
+                          <span>
+                            {t(
+                              'USDT received per USD of platform rebate, regardless of the display currency.'
+                            )}
+                          </span>
+                          <span>
+                            {t(
+                              'Enter 1 to exchange $100 of rebate for 100 USDT, or 0.1 for 10 USDT. Withdrawal fees are calculated separately.'
+                            )}
+                          </span>
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
