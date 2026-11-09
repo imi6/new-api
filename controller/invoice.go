@@ -590,3 +590,30 @@ func AdminRejectInvoice(c *gin.Context) {
 	go service.NotifyInvoiceRejected(model.GetUserLanguage(result.Invoice.UserId), result.Invoice, result.RefundQuota > 0)
 	common.ApiSuccess(c, gin.H{"invoice": result.Invoice, "refund_quota": result.RefundQuota})
 }
+
+// AdminDeleteInvoice 只删除已开票申请；附件清理失败不回滚已经完成的删除。
+func AdminDeleteInvoice(c *gin.Context) {
+	id, ok := invoiceIdParam(c)
+	if !ok {
+		return
+	}
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	deletion, err := model.DeleteIssuedInvoice(id, c.GetInt("id"), req.Reason)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	cleanupPending := false
+	if err := service.CleanupDeletedInvoiceFile(deletion); err != nil {
+		cleanupPending = true
+		common.SysError(common.LogText("failed to clean up deleted invoice attachment invoice_id=%d: %s", id, err.Error()))
+	}
+	common.ApiSuccess(c, gin.H{"file_cleanup_pending": cleanupPending})
+}
