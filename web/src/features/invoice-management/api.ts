@@ -35,6 +35,10 @@ export interface InvoiceFileInfo {
   file_mime: string
 }
 
+export interface DeleteInvoiceResult {
+  file_cleanup_pending: boolean
+}
+
 export async function getAdminInvoices(params: {
   page: number
   pageSize: number
@@ -81,5 +85,13 @@ export async function rejectAdminInvoice(
   reason: string
 ): Promise<ApiResponse<{ invoice: Invoice; refund_quota: number }>> {
   const res = await api.post(`/api/invoice/admin/${id}/reject`, { reason })
+  return res.data
+}
+
+export async function deleteAdminInvoice(
+  id: number,
+  reason: string
+): Promise<ApiResponse<DeleteInvoiceResult>> {
+  const res = await api.post(`/api/invoice/admin/${id}/delete`, { reason })
   return res.data
 }

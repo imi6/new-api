@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -311,6 +312,65 @@ func TestAffiliateAccountMigrationPreservesDebtAndDeletedSource(t *testing.T) {
 	admin, err := GetAffiliateAdminSummary()
 	require.NoError(t, err)
 	assert.EqualValues(t, 110, admin.Accrued)
+}
+
+func TestAffiliateAdminSummaryPreservesInviteStatistics(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		withAccounts bool
+	}{
+		{name: "邀请关系存在但尚无返利账户"},
+		{name: "资金汇总包含已删除账户", withAccounts: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			setupUserUpdateTestState(t)
+			for _, fixture := range []struct {
+				name     string
+				invitees int
+				signup   int
+			}{
+				{name: "summary-first", invitees: 5, signup: 5},
+				{name: "summary-second", invitees: 1, signup: 2},
+				{name: "summary-third", invitees: 1, signup: 3},
+			} {
+				inviter := createRebateTestUser(t, fixture.name, User{AffHistoryQuota: fixture.signup})
+				for i := range fixture.invitees {
+					createRebateTestUser(t, fmt.Sprintf("%s-invitee-%d", fixture.name, i), User{InviterId: inviter.Id})
+				}
+				if test.withAccounts {
+					require.NoError(t, DB.Create(&AffiliateAccount{UserID: inviter.Id, Accrued: fixture.invitees * 100, Claimed: 10}).Error)
+				}
+			}
+			if test.withAccounts {
+				deleted := createRebateTestUser(t, "summary-deleted", User{AffHistoryQuota: 99})
+				require.NoError(t, DB.Create(&AffiliateAccount{UserID: deleted.Id, Accrued: 200, Claimed: 250}).Error)
+				require.NoError(t, DB.Delete(&deleted).Error)
+			}
+
+			ranking, total, err := GetAffiliateInviters("", "invitees", "desc", &common.PageInfo{Page: 1, PageSize: 10})
+			require.NoError(t, err)
+			require.Len(t, ranking, 3)
+			assert.EqualValues(t, 3, total)
+			assert.EqualValues(t, 5, ranking[0].InviteeCount)
+			assert.EqualValues(t, 1, ranking[1].InviteeCount)
+			assert.EqualValues(t, 1, ranking[2].InviteeCount)
+
+			summary, err := GetAffiliateAdminSummary()
+			require.NoError(t, err)
+			assert.EqualValues(t, 3, summary.Inviters)
+			assert.EqualValues(t, 7, summary.Invitees)
+			assert.EqualValues(t, 10, summary.SignupReward)
+			if test.withAccounts {
+				assert.EqualValues(t, 900, summary.Accrued)
+				assert.EqualValues(t, 280, summary.Claimed)
+				assert.EqualValues(t, 670, summary.Unclaimed)
+			} else {
+				assert.Zero(t, summary.Accrued)
+				assert.Zero(t, summary.Claimed)
+				assert.Zero(t, summary.Unclaimed)
+			}
+		})
+	}
 }
 
 func TestAffiliateClaimReplayDoesNotCreditTwiceAfterRulesChange(t *testing.T) {
