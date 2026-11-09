@@ -103,8 +103,8 @@ type InvoiceItem struct {
 	OrderTime int64  `json:"order_time"`
 }
 
-// InvoiceOrderLock holds an order for one live application. The unique index
-// lets only one application claim an order on every supported database.
+// InvoiceOrderLock 保留订单的开票占用；已开票申请删除后仍保留，防止重复开票。
+// 唯一索引保证所有受支持的数据库都只能由一个申请占用同一订单。
 type InvoiceOrderLock struct {
 	Id        int    `json:"id"`
 	OrderType string `json:"order_type" gorm:"type:varchar(16);uniqueIndex:idx_invoice_order_lock"`
@@ -538,6 +538,11 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 			invoice.TaxPaymentMethod = payment.PaymentMethod
 			invoice.TaxGateway = payment.Gateway
 		}
+		reservation := InvoiceIDReservation{}
+		if err := tx.Create(&reservation).Error; err != nil {
+			return err
+		}
+		invoice.Id = reservation.ID
 		if err := tx.Create(invoice).Error; err != nil {
 			return err
 		}
@@ -568,8 +573,8 @@ func CreateInvoice(userId int, input *InvoiceInput) (*Invoice, []InvoiceItem, er
 	return invoice, items, nil
 }
 
-// ListInvoiceableOrders returns the user's orders inside the invoicing period
-// that no live application holds, newest first.
+// ListInvoiceableOrders 按新到旧返回开票期限内未被占用的订单。
+// 已开票后删除申请的订单仍保留占用，不会重新变为可开票订单。
 func ListInvoiceableOrders(userId int) ([]InvoiceOrder, error) {
 	orders, err := loadInvoiceOrders(DB, userId, invoiceOrderCutoff(), nil)
 	if err != nil {
@@ -625,9 +630,12 @@ func GetInvoiceSummary(userId int) (*InvoiceSummary, error) {
 		available = available.Add(decimal.RequireFromString(order.Amount))
 	}
 	var invoices []Invoice
-	if err := DB.Select("status", "order_amount").
-		Where("user_id = ? AND status IN ?", userId, []string{InvoiceStatusPendingPayment, InvoiceStatusPendingReview, InvoiceStatusIssued}).
-		Find(&invoices).Error; err != nil {
+	// 在同一 SQL 快照内统计申请与删除凭据，避免并发删除导致漏计或重复计数。
+	active := DB.Model(&Invoice{}).Select("status", "order_amount").
+		Where("user_id = ? AND status IN ?", userId, []string{InvoiceStatusPendingPayment, InvoiceStatusPendingReview, InvoiceStatusIssued})
+	deleted := DB.Model(&InvoiceDeletion{}).Select("? AS status, order_amount", InvoiceStatusIssued).
+		Where("user_id = ?", userId)
+	if err := DB.Raw("? UNION ALL ?", active, deleted).Scan(&invoices).Error; err != nil {
 		return nil, err
 	}
 	processing, issued := decimal.Zero, decimal.Zero
@@ -794,10 +802,18 @@ func CompleteInvoiceTaxPayment(tradeNo string, paidMoney string, callbackGateway
 		// of both tables uses, so two writers never wait on each other.
 		invoice := &Invoice{}
 		if err := lockForUpdate(tx).Where("id = ?", located.InvoiceId).First(invoice).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrInvoiceNotFound
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
 			}
-			return err
+			// 已删除申请仍以最小凭据参与支付幂等，不恢复任何开票资料。
+			var deletion InvoiceDeletion
+			if err := lockForUpdate(tx).Where("invoice_id = ?", located.InvoiceId).First(&deletion).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return ErrInvoiceNotFound
+				}
+				return err
+			}
+			invoice.Id, invoice.UserId, invoice.Status = deletion.InvoiceID, deletion.UserID, InvoiceStatusIssued
 		}
 		payment := &InvoiceTaxPayment{}
 		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(payment).Error; err != nil {
