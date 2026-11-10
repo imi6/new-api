@@ -52,6 +52,7 @@
     "Bot connection status": "机器人连接状态",
     "Bot delivery blocked": "机器人消息受阻",
     "Bot ID": "机器人 ID",
+    "Bot settings": "机器人设置",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "暂时无法读取机器人状态，可重试，不影响 Telegram 登录。",
     "Cancel withdrawal": "取消提现",
     "Cancellation fee policy": "取消手续费规则",

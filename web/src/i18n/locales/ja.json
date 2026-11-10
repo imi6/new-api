@@ -52,6 +52,7 @@
     "Bot connection status": "ボット接続状態",
     "Bot delivery blocked": "ボットの送信がブロックされています",
     "Bot ID": "ボット ID",
+    "Bot settings": "ボット設定",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "ボットの状態を取得できません。Telegram ログインを変更せずに再試行できます。",
     "Cancel withdrawal": "出金をキャンセル",
     "Cancellation fee policy": "キャンセル時の手数料規則",
