@@ -28,6 +28,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import type { UserProfile } from '@/features/profile/types'
+import { getTelegramBotStatus } from '@/features/telegram-bot/api'
 import {
   EMPTY_TELEGRAM_PREFERENCES,
   type TelegramBotStatus,
@@ -87,7 +88,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('defaults to connecting the bot and enabling every notification on first binding', async () => {
+it('defaults to connecting the bot with balance reminders enabled and group ratio changes disabled', async () => {
   const { user, onAuthorize } = fixture({ preferences_version: 0 })
   const bind = await screen.findByRole('button', { name: 'Bind' })
   await waitFor(() => expect(bind).toBeEnabled())
@@ -105,12 +106,16 @@ it('defaults to connecting the bot and enabling every notification on first bind
   ]) {
     expect(within(dialog).getByRole('switch', { name })).toBeChecked()
   }
+  expect(
+    within(dialog).getByRole('switch', { name: 'Group ratio changes' })
+  ).not.toBeChecked()
   expect(onAuthorize).not.toHaveBeenCalled()
   await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
   expect(onAuthorize).toHaveBeenCalledWith(
     {
       enabled: true,
       low_balance: true,
+      group_ratio: false,
       topup: true,
       subscription: true,
       expiry: true,
@@ -154,11 +159,15 @@ it('keeps the bot connected when the user disables all notifications before bind
   expect(
     within(dialog).getByRole('switch', { name: 'Top-up credited' })
   ).toHaveAttribute('aria-disabled', 'true')
+  expect(
+    within(dialog).getByRole('switch', { name: 'Group ratio changes' })
+  ).toHaveAttribute('aria-disabled', 'true')
   await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
   expect(onAuthorize).toHaveBeenCalledWith(
     {
       enabled: false,
       low_balance: true,
+      group_ratio: false,
       topup: true,
       subscription: true,
       expiry: true,
@@ -183,6 +192,7 @@ it.each([0, 2])(
       {
         enabled: preferences_version === 0,
         low_balance: preferences_version === 0,
+        group_ratio: false,
         topup: preferences_version === 0,
         subscription: preferences_version === 0,
         expiry: preferences_version === 0,
@@ -218,6 +228,7 @@ it('opens bot settings and test messaging in a dialog while keeping the security
   for (const name of [
     'Telegram notifications',
     'Low platform balance',
+    'Group ratio changes',
     'Top-up credited',
     'Subscription activated',
     'Subscription expiring soon',
@@ -291,7 +302,14 @@ it('saves notification preferences from bot settings and reopens the saved value
   await user.click(
     within(dialog).getByRole('switch', { name: 'Telegram notifications' })
   )
-  const preferences = { ...EMPTY_TELEGRAM_PREFERENCES, enabled: true }
+  await user.click(
+    within(dialog).getByRole('switch', { name: 'Group ratio changes' })
+  )
+  const preferences = {
+    ...EMPTY_TELEGRAM_PREFERENCES,
+    enabled: true,
+    group_ratio: true,
+  }
   vi.mocked(api.get).mockResolvedValue({
     data: {
       success: true,
@@ -329,6 +347,32 @@ it('saves notification preferences from bot settings and reopens the saved value
   expect(
     within(reopened).getByRole('switch', { name: 'Telegram notifications' })
   ).toBeChecked()
+  expect(
+    within(reopened).getByRole('switch', { name: 'Group ratio changes' })
+  ).toBeChecked()
+})
+
+it('defaults group ratio notifications off when an older status response omits the preference', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        ...status,
+        preferences: {
+          enabled: true,
+          low_balance: true,
+          topup: false,
+          subscription: false,
+          expiry: false,
+        },
+      },
+    },
+  })
+  const result = await getTelegramBotStatus()
+  expect(result.preferences).toMatchObject({
+    low_balance: true,
+    group_ratio: false,
+  })
 })
 
 it('disables bot settings while the administrator has paused the bot', async () => {
