@@ -207,7 +207,7 @@ func beginTelegramBotOAuthTx(tx *gorm.DB, userID int, prefs *TelegramBotPreferen
 	return &TelegramBotOAuthIntent{UserID: userID, BotID: cfg.BotID, ConfigVersion: cfg.Version, ConnectionVersion: conn.FlowVersion, Preferences: selected}, nil
 }
 
-func CompleteTelegramBotOAuthTx(tx *gorm.DB, userID int, telegramID string, intent *TelegramBotOAuthIntent) error {
+func CompleteTelegramBotOAuthTx(tx *gorm.DB, userID int, telegramID string, intent *TelegramBotOAuthIntent, permissionConfirmed bool) error {
 	if intent == nil || intent.UserID != userID {
 		return ErrTelegramBotExpired
 	}
@@ -238,22 +238,28 @@ func CompleteTelegramBotOAuthTx(tx *gorm.DB, userID int, telegramID string, inte
 	conn.BotID = cfg.BotID
 	conn.TelegramID = telegramID
 	conn.ChatID = telegramID
-	// 已通过本次明确的消息授权，连接立即可用；欢迎消息只负责异步投递。
-	conn.Status = TelegramBotConnected
-	conn.ConnectedAt = time.Now().Unix()
-	conn.LastStateEventAt, conn.LastStateUpdateID = conn.ConnectedAt, 0
+	now := time.Now().Unix()
+	// Telegram 可能不回传已授予的 Bot scope；未知时自动验证实际投递，不要求用户再次绑定。
+	conn.Status = TelegramBotConnecting
+	messageKind := "connect"
+	if permissionConfirmed {
+		conn.Status = TelegramBotConnected
+		conn.ConnectedAt = now
+		messageKind = "welcome"
+	}
+	conn.LastStateEventAt, conn.LastStateUpdateID = now, 0
 	conn.LastError = ""
-	conn.UpdatedAt = conn.ConnectedAt
+	conn.UpdatedAt = now
 	applyTelegramPreferences(&conn, intent.Preferences)
 	if err := tx.Save(&conn).Error; err != nil {
 		return err
 	}
-	if conn.Preferences.Enabled && conn.Preferences.LowBalance {
+	if permissionConfirmed && conn.Preferences.Enabled && conn.Preferences.LowBalance {
 		if err := InitializeTelegramLowBalanceStateTx(tx, &conn); err != nil {
 			return err
 		}
 	}
-	return EnqueueTelegramBotMessageTx(tx, &conn, "welcome", fmt.Sprintf("welcome:%d:%d", userID, conn.Version), "", time.Now().Unix()+86400)
+	return EnqueueTelegramBotMessageTx(tx, &conn, messageKind, fmt.Sprintf("%s:%d:%d", messageKind, userID, conn.Version), "", now+86400)
 }
 
 func applyTelegramPreferences(conn *TelegramBotConnection, prefs TelegramBotPreferences) {
