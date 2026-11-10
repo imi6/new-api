@@ -20,6 +20,7 @@ import { Check, ChevronsUpDown } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { GroupLabels } from '@/components/group-labels'
 import type { GroupRatioChange } from '@/components/ratio-change-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,6 +37,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { useMediaQuery } from '@/hooks'
+import type { GroupLabel } from '@/lib/group-labels'
 import { cn } from '@/lib/utils'
 
 import { groupApiKeyOptions } from '../lib/api-key-group-sections'
@@ -46,6 +48,7 @@ import {
 } from './auto-group-visuals'
 
 export type ApiKeyGroupOption = {
+  badges?: GroupLabel[]
   value: string
   label: string
   desc?: string
@@ -111,7 +114,7 @@ export function ApiKeyGroupCombobox({
     }> = []
 
     for (const section of sections) {
-      const previous = blocks[blocks.length - 1]
+      const previous = blocks.at(-1)
       if (!section.title && previous && !previous.title) {
         previous.options.push(...section.options)
         continue
@@ -159,8 +162,11 @@ export function ApiKeyGroupCombobox({
         )}
         <span className='flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-3'>
           <span className='min-w-0'>
-            <span className='block truncate font-medium'>
-              {selectedDisplay || placeholder || t('Select a group')}
+            <span className='flex min-w-0 flex-wrap items-center gap-1.5 font-medium'>
+              <GroupLabels labels={selectedOption?.badges} />
+              <span className='truncate'>
+                {selectedDisplay || placeholder || t('Select a group')}
+              </span>
             </span>
             {selectedOption?.desc && (
               <span className='text-muted-foreground block truncate text-[11px] sm:text-xs'>
@@ -233,8 +239,9 @@ export function ApiKeyGroupCombobox({
                         )}
                       />
                       <span className='min-w-0 flex-1'>
-                        <span className='block truncate font-medium'>
-                          {option.itemLabel}
+                        <span className='flex min-w-0 flex-wrap items-center gap-1.5 font-medium'>
+                          <GroupLabels labels={option.badges} />
+                          <span className='truncate'>{option.itemLabel}</span>
                         </span>
                         {option.desc && option.desc !== option.label && (
                           <span className='text-muted-foreground block truncate text-xs'>

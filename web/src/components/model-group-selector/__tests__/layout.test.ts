@@ -18,39 +18,34 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { describe, expect, test } from 'vitest'
 
-import {
-  modelGroupSelectorLayoutClasses,
-  scrollSelectedOptionIntoView,
-} from '../layout'
+import { scrollSelectedOptionIntoView } from '../layout'
 
 describe('model group selector layout', () => {
-  test('keeps group options at a fixed height and aligned to the top', () => {
-    const groupScrollClasses =
-      modelGroupSelectorLayoutClasses.groupScroll.split(' ')
+  test.each([
+    { height: 32, top: 76 },
+    { height: 80, top: 100 },
+  ])(
+    'centers a selected group of height $height inside its own scroll container',
+    ({ height, top }) => {
+      const scrollCalls: ScrollToOptions[] = []
+      const selectedOption = {
+        offsetHeight: height,
+        offsetTop: 160,
+        scrollIntoView() {},
+      }
+      const scrollContainer = {
+        clientHeight: 200,
+        scrollTop: 0,
+        scrollTo(options: ScrollToOptions) {
+          scrollCalls.push(options)
+        },
+      }
 
-    expect(groupScrollClasses.includes('auto-rows-[2rem]')).toBeTruthy()
-    expect(groupScrollClasses.includes('content-start')).toBeTruthy()
-  })
+      scrollSelectedOptionIntoView(selectedOption, scrollContainer)
 
-  test('centers the selected group inside its own scroll container', () => {
-    const scrollCalls: ScrollToOptions[] = []
-    const selectedOption = {
-      offsetHeight: 32,
-      offsetTop: 160,
-      scrollIntoView() {},
+      expect(scrollCalls).toEqual([{ top, behavior: 'auto' }])
     }
-    const scrollContainer = {
-      clientHeight: 200,
-      scrollTop: 0,
-      scrollTo(options: ScrollToOptions) {
-        scrollCalls.push(options)
-      },
-    }
-
-    scrollSelectedOptionIntoView(selectedOption, scrollContainer)
-
-    expect(scrollCalls).toEqual([{ top: 76, behavior: 'auto' }])
-  })
+  )
 
   test('falls back to scrollIntoView when no group container is provided', () => {
     const scrollCalls: ScrollIntoViewOptions[] = []

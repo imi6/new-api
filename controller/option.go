@@ -347,6 +347,11 @@ func UpdateOption(c *gin.Context) {
 			common.ApiError(c, err)
 			return
 		}
+	case common.GroupBadgeConfigOption:
+		if _, err := common.ParseGroupBadgeConfig(option.Value.(string)); err != nil {
+			common.ApiError(c, err)
+			return
+		}
 	case "GroupPlatformMap":
 		// Display-only classification shown to every user, so it must be a
 		// flat JSON object of non-empty group name -> short platform name.

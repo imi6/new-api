@@ -24,6 +24,7 @@ import {
   Info,
   Plus,
   Trash2,
+  Tags,
 } from 'lucide-react'
 import { Reorder } from 'motion/react'
 import {
@@ -46,6 +47,7 @@ import {
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
 import { EmptyState } from '@/components/empty-state'
+import { GroupLabels } from '@/components/group-labels'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -81,6 +83,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatNumber } from '@/lib/format'
+import { isGroupLabelConfig, parseGroupLabelConfig } from '@/lib/group-labels'
 
 import { ChannelTypeLogo } from '../../channels/components/channel-type-badge'
 import {
@@ -90,7 +93,9 @@ import {
   isPlatformType,
 } from '../../keys/lib/api-key-group-platforms'
 import { safeJsonParse } from '../utils/json-parser'
+import { GroupLabelEditor } from './group-label-editor'
 import { GroupSpecialUsableRulesEditor } from './group-special-usable-editor'
+import { validateJsonString } from './utils'
 
 export type GroupSettingsSection =
   | 'pricing'
@@ -110,17 +115,21 @@ type GroupRatioVisualEditorProps = {
   maxTokenAutoGroupsField: ReactNode
   groupSpecialUsableGroup: string
   groupPlatformMap: string
+  groupBadgeConfig?: string
+  onGroupNamesValidityChange?: (valid: boolean) => void
   onChange: (field: string, value: string) => void
 }
 
 type GroupPricingRow = {
   _id: string
   name: string
+  committedName: string
   ratio: string
   topupRatio: string
   selectable: boolean
   description: string
   platform: string
+  labelIds: string[]
 }
 
 type RegistryEntry = {
@@ -172,10 +181,12 @@ function buildGroupPricingRows(
   groupRatio: string,
   userUsableGroups: string,
   topupGroupRatio: string,
-  groupPlatformMap: string
+  groupPlatformMap: string,
+  groupBadgeConfig: string = ''
 ): GroupPricingRow[] {
   const ratioMap = parseRatioMap(groupRatio)
   const usableMap = parseUsableMap(userUsableGroups)
+  const badgeConfig = parseGroupLabelConfig(groupBadgeConfig)
   const topupMap = parseRatioMap(topupGroupRatio)
   const platformMap = safeJsonParse<Record<string, string>>(groupPlatformMap, {
     fallback: {},
@@ -190,24 +201,30 @@ function buildGroupPricingRows(
   return [...names].map((name) => ({
     _id: createGroupPricingId(),
     name,
+    committedName: name,
     ratio: String(normalizeRatio(ratioMap[name])),
     topupRatio: Object.hasOwn(topupMap, name) ? String(topupMap[name]) : '',
     selectable: Object.hasOwn(usableMap, name),
     description: String(usableMap[name] ?? ''),
     // A value that is not a channel type (a name saved by an earlier
     // version) is dropped, and the next save removes it from the map.
-    platform: isPlatformType(platformMap[name]) ? String(platformMap[name]) : '',
+    platform: isPlatformType(platformMap[name])
+      ? String(platformMap[name])
+      : '',
+    labelIds: Object.hasOwn(badgeConfig.groups, name)
+      ? badgeConfig.groups[name]
+      : [],
   }))
 }
 
 function serializeGroupPricingRows(rows: GroupPricingRow[]) {
-  const groupRatio: Record<string, number> = {}
-  const userUsableGroups: Record<string, string> = {}
-  const topupGroupRatio: Record<string, number> = {}
-  const groupPlatformMap: Record<string, string> = {}
+  const groupRatio: Record<string, number> = Object.create(null)
+  const userUsableGroups: Record<string, string> = Object.create(null)
+  const topupGroupRatio: Record<string, number> = Object.create(null)
+  const groupPlatformMap: Record<string, string> = Object.create(null)
 
   for (const row of rows) {
-    const name = row.name.trim()
+    const name = row.committedName
     if (!name) continue
     groupRatio[name] = normalizeRatio(row.ratio)
     if (row.selectable) {
@@ -233,6 +250,14 @@ function serializeGroupPricingRows(rows: GroupPricingRow[]) {
   }
 }
 
+function isGroupNameCommitted(row: GroupPricingRow): boolean {
+  const name = row.name.trim()
+  return (
+    name !== '' &&
+    (row.name === row.committedName || name === row.committedName)
+  )
+}
+
 function groupPricingSignature(rows: GroupPricingRow[]): string {
   const serialized = serializeGroupPricingRows(rows)
   return JSON.stringify({
@@ -240,6 +265,9 @@ function groupPricingSignature(rows: GroupPricingRow[]): string {
     userUsableGroups: parseUsableMap(serialized.UserUsableGroups),
     topupGroupRatio: parseRatioMap(serialized.TopupGroupRatio),
     groupPlatformMap: parseUsableMap(serialized.GroupPlatformMap),
+    groupLabels: Object.fromEntries(
+      rows.map((row) => [row.committedName, row.labelIds])
+    ),
   })
 }
 
@@ -247,7 +275,8 @@ function sourceGroupPricingSignature(
   groupRatio: string,
   userUsableGroups: string,
   topupGroupRatio: string,
-  groupPlatformMap: string
+  groupPlatformMap: string,
+  groupBadgeConfig: string = ''
 ): string {
   // Rebuild through the same row model so entries for groups that no longer
   // exist are dropped exactly as serializeGroupPricingRows drops them.
@@ -256,7 +285,8 @@ function sourceGroupPricingSignature(
       groupRatio,
       userUsableGroups,
       topupGroupRatio,
-      groupPlatformMap
+      groupPlatformMap,
+      groupBadgeConfig
     )
   )
 }
@@ -313,6 +343,8 @@ export const GroupRatioVisualEditor = memo(function GroupRatioVisualEditor({
   maxTokenAutoGroupsField,
   groupSpecialUsableGroup,
   groupPlatformMap,
+  groupBadgeConfig = '',
+  onGroupNamesValidityChange,
   onChange,
 }: GroupRatioVisualEditorProps) {
   const { t, i18n } = useTranslation()
@@ -407,6 +439,8 @@ export const GroupRatioVisualEditor = memo(function GroupRatioVisualEditor({
           userUsableGroups={userUsableGroups}
           topupGroupRatio={topupGroupRatio}
           groupPlatformMap={groupPlatformMap}
+          groupBadgeConfig={groupBadgeConfig}
+          onGroupNamesValidityChange={onGroupNamesValidityChange}
           onChange={onChange}
           onShowDetail={setDetailGroup}
         />
@@ -513,6 +547,8 @@ type GroupPricingTableProps = {
   userUsableGroups: string
   topupGroupRatio: string
   groupPlatformMap: string
+  groupBadgeConfig: string
+  onGroupNamesValidityChange?: (valid: boolean) => void
   onChange: (field: string, value: string) => void
   onShowDetail: (name: string) => void
 }
@@ -522,13 +558,30 @@ function GroupPricingTable({
   userUsableGroups,
   topupGroupRatio,
   groupPlatformMap,
+  groupBadgeConfig,
+  onGroupNamesValidityChange,
   onChange,
   onShowDetail,
 }: GroupPricingTableProps) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
+  const [editingLabels, setEditingLabels] = useState<string | null>(null)
+  const badgeConfig = useMemo(
+    () => parseGroupLabelConfig(groupBadgeConfig),
+    [groupBadgeConfig]
+  )
+  const labelsValid = validateJsonString(groupBadgeConfig, {
+    predicate: isGroupLabelConfig,
+  }).valid
+  const labelMap = new Map(badgeConfig.labels.map((label) => [label.id, label]))
   const [rows, setRows] = useState<GroupPricingRow[]>(() =>
-    buildGroupPricingRows(groupRatio, userUsableGroups, topupGroupRatio, groupPlatformMap)
+    buildGroupPricingRows(
+      groupRatio,
+      userUsableGroups,
+      topupGroupRatio,
+      groupPlatformMap,
+      groupBadgeConfig
+    )
   )
 
   useEffect(() => {
@@ -536,7 +589,8 @@ function GroupPricingTable({
       groupRatio,
       userUsableGroups,
       topupGroupRatio,
-      groupPlatformMap
+      groupPlatformMap,
+      groupBadgeConfig
     )
     setRows((currentRows) => {
       if (groupPricingSignature(currentRows) === incomingSignature) {
@@ -546,21 +600,53 @@ function GroupPricingTable({
         groupRatio,
         userUsableGroups,
         topupGroupRatio,
-        groupPlatformMap
+        groupPlatformMap,
+        groupBadgeConfig
       )
     })
-  }, [groupRatio, userUsableGroups, topupGroupRatio, groupPlatformMap])
+  }, [
+    groupRatio,
+    userUsableGroups,
+    topupGroupRatio,
+    groupPlatformMap,
+    groupBadgeConfig,
+  ])
 
   const emitRows = useCallback(
     (nextRows: GroupPricingRow[]) => {
+      if (!labelsValid) return
       setRows(nextRows)
       const serialized = serializeGroupPricingRows(nextRows)
       onChange('GroupRatio', serialized.GroupRatio)
       onChange('UserUsableGroups', serialized.UserUsableGroups)
       onChange('TopupGroupRatio', serialized.TopupGroupRatio)
       onChange('GroupPlatformMap', serialized.GroupPlatformMap)
+      const nextById = new Map(nextRows.map((row) => [row._id, row]))
+      const groups = new Map(Object.entries(badgeConfig.groups))
+      let groupsChanged = false
+      for (const row of rows) {
+        const next = nextById.get(row._id)
+        const name = row.committedName
+        const nextName = next?.committedName
+        if (next && name === nextName) continue
+        groups.delete(name)
+        if (next && nextName && next.labelIds.length) {
+          groups.set(nextName, next.labelIds)
+        }
+        groupsChanged = true
+      }
+      if (groupsChanged) {
+        onChange(
+          'GroupBadgeConfig',
+          JSON.stringify(
+            { labels: badgeConfig.labels, groups: Object.fromEntries(groups) },
+            null,
+            2
+          )
+        )
+      }
     },
-    [onChange]
+    [onChange, badgeConfig, labelsValid, rows]
   )
 
   // The same channel types, names and icons as the channel picker.
@@ -577,19 +663,40 @@ function GroupPricingTable({
   const updateRow = useCallback(
     (
       id: string,
-      field: Exclude<keyof GroupPricingRow, '_id'>,
+      field: Exclude<
+        keyof GroupPricingRow,
+        '_id' | 'labelIds' | 'committedName'
+      >,
       value: string | number | boolean
     ) => {
-      emitRows(
-        rows.map((row) => (row._id === id ? { ...row, [field]: value } : row))
+      const nextRows = rows.map((row) =>
+        row._id === id ? { ...row, [field]: value } : row
       )
+      if (field === 'name') {
+        const name = String(value).trim()
+        const unavailable = rows.some(
+          (row) =>
+            row._id !== id &&
+            (row.committedName === name || row.name.trim() === name)
+        )
+        if (!name || unavailable) {
+          setRows(nextRows)
+          return
+        }
+        for (const row of nextRows) {
+          if (row._id === id) row.committedName = name
+        }
+      }
+      emitRows(nextRows)
     },
     [emitRows, rows]
   )
 
   const addRow = useCallback(() => {
     setSearch('')
-    const existingNames = new Set(rows.map((row) => row.name))
+    const existingNames = new Set(
+      rows.flatMap((row) => [row.name.trim(), row.committedName])
+    )
     let index = 1
     let name = `group_${index}`
     while (existingNames.has(name)) {
@@ -600,11 +707,13 @@ function GroupPricingTable({
       {
         _id: createGroupPricingId(),
         name,
+        committedName: name,
         ratio: '1',
         topupRatio: '',
         selectable: true,
         description: '',
         platform: '',
+        labelIds: [],
       },
       ...rows,
     ])
@@ -629,7 +738,13 @@ function GroupPricingTable({
       .map(([name]) => name)
   }, [rows])
 
+  const namesValid = rows.every(isGroupNameCommitted)
+  useEffect(() => {
+    onGroupNamesValidityChange?.(namesValid)
+  }, [namesValid, onGroupNamesValidityChange])
+
   const query = search.trim().toLowerCase()
+  const labelRow = rows.find((row) => row._id === editingLabels)
   const visibleRows = rows.filter(
     (row) =>
       !query ||
@@ -649,228 +764,310 @@ function GroupPricingTable({
               )}
             </CardDescription>
           </div>
-          <Button onClick={addRow} size='sm' className='sm:self-start'>
+          <Button
+            onClick={addRow}
+            size='sm'
+            className='sm:self-start'
+            disabled={!labelsValid}
+          >
             <Plus className='mr-2 h-4 w-4' />
             {t('Add group')}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className='flex min-w-0 flex-col gap-4'>
-          <InputGroup className='max-w-sm'>
-            <InputGroupAddon>
-              <Search aria-hidden='true' />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              aria-label={t('Search groups by name or description')}
-              placeholder={t('Search groups by name or description')}
-            />
-            {search && (
-              <InputGroupAddon align='inline-end'>
-                <InputGroupButton
-                  size='icon-xs'
-                  aria-label={t('Clear search')}
-                  onClick={() => setSearch('')}
-                >
-                  <X aria-hidden='true' />
-                </InputGroupButton>
-              </InputGroupAddon>
+        {!labelsValid && (
+          <p role='alert' className='text-destructive mb-3 text-sm'>
+            {t(
+              'Group label configuration is invalid. Fix it in the JSON editor before changing groups.'
             )}
-          </InputGroup>
-          <StaticDataTable
-            tableClassName='min-w-[900px]'
-            tableProps={{ 'aria-label': t('Pricing groups') }}
-            data={visibleRows}
-            getRowKey={(row) => row._id}
-            emptyClassName='text-muted-foreground h-20 text-sm'
-            emptyContent={
-              <EmptyState
-                className='min-h-40'
-                title={
-                  query
-                    ? t('No results found')
-                    : t('No groups yet. Add a group to get started.')
-                }
-                action={
-                  query ? (
+          </p>
+        )}
+        <fieldset disabled={!labelsValid} className='min-w-0'>
+          <div className='flex min-w-0 flex-col gap-4'>
+            <InputGroup className='max-w-sm'>
+              <InputGroupAddon>
+                <Search aria-hidden='true' />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                aria-label={t('Search groups by name or description')}
+                placeholder={t('Search groups by name or description')}
+              />
+              {search && (
+                <InputGroupAddon align='inline-end'>
+                  <InputGroupButton
+                    size='icon-xs'
+                    aria-label={t('Clear search')}
+                    onClick={() => setSearch('')}
+                  >
+                    <X aria-hidden='true' />
+                  </InputGroupButton>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
+            <StaticDataTable
+              tableClassName='min-w-[900px]'
+              tableProps={{ 'aria-label': t('Pricing groups') }}
+              data={visibleRows}
+              getRowKey={(row) => row._id}
+              emptyClassName='text-muted-foreground h-20 text-sm'
+              emptyContent={
+                <EmptyState
+                  className='min-h-40'
+                  title={
+                    query
+                      ? t('No results found')
+                      : t('No groups yet. Add a group to get started.')
+                  }
+                  action={
+                    query ? (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => setSearch('')}
+                      >
+                        {t('Clear search')}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              }
+              columns={[
+                {
+                  id: 'group',
+                  header: t('Group name'),
+                  className: 'min-w-40',
+                  cell: (row) => (
+                    <Input
+                      value={row.name}
+                      aria-label={t('Group name')}
+                      onChange={(event) =>
+                        updateRow(row._id, 'name', event.target.value)
+                      }
+                      aria-invalid={
+                        !isGroupNameCommitted(row) ||
+                        duplicateNames.includes(row.name.trim())
+                      }
+                    />
+                  ),
+                },
+                {
+                  id: 'labels',
+                  header: t('Group labels'),
+                  className: 'min-w-40',
+                  cell: (row) => (
                     <Button
+                      type='button'
                       variant='outline'
                       size='sm'
-                      onClick={() => setSearch('')}
+                      className='h-auto min-h-8 max-w-64 flex-wrap justify-start py-1.5'
+                      aria-label={t('Edit labels for {{group}}', {
+                        group: row.name,
+                      })}
+                      disabled={!isGroupNameCommitted(row)}
+                      onClick={() => setEditingLabels(row._id)}
                     >
-                      {t('Clear search')}
+                      <GroupLabels
+                        labels={row.labelIds.flatMap((id) => {
+                          const label = labelMap.get(id)
+                          return label ? [label] : []
+                        })}
+                      />
+                      <Tags className='size-3.5' aria-hidden='true' />
+                      {!row.labelIds.length && t('Edit')}
                     </Button>
-                  ) : undefined
-                }
-              />
-            }
-            columns={[
-              {
-                id: 'group',
-                header: t('Group name'),
-                className: 'min-w-40',
-                cell: (row) => (
-                  <Input
-                    value={row.name}
-                    aria-label={t('Group name')}
-                    onChange={(event) =>
-                      updateRow(row._id, 'name', event.target.value)
-                    }
-                    aria-invalid={duplicateNames.includes(row.name.trim())}
-                  />
-                ),
-              },
-              {
-                id: 'ratio',
-                header: t('Ratio'),
-                className: 'w-28',
-                cell: (row) => (
-                  <Input
-                    type='number'
-                    min={0}
-                    step={0.0001}
-                    value={row.ratio}
-                    aria-label={t('Ratio')}
-                    onChange={(event) =>
-                      updateRow(row._id, 'ratio', event.target.value)
-                    }
-                  />
-                ),
-              },
-              {
-                id: 'topup-ratio',
-                header: t('Top-up ratio'),
-                className: 'w-28',
-                cell: (row) => (
-                  <Input
-                    type='number'
-                    min={0}
-                    step={0.0001}
-                    value={row.topupRatio}
-                    aria-label={t('Top-up ratio')}
-                    placeholder={t('Not set')}
-                    onChange={(event) =>
-                      updateRow(row._id, 'topupRatio', event.target.value)
-                    }
-                  />
-                ),
-              },
-              {
-                id: 'selectable',
-                header: t('User selectable'),
-                className: 'w-28 text-center',
-                cell: (row) => (
-                  <div className='flex justify-center'>
-                    <Checkbox
-                      checked={row.selectable}
-                      onCheckedChange={(checked) =>
-                        updateRow(row._id, 'selectable', checked === true)
-                      }
-                      aria-label={t('User selectable')}
-                    />
-                  </div>
-                ),
-              },
-              {
-                id: 'description',
-                header: t('Description'),
-                className: 'min-w-56',
-                cell: (row) =>
-                  row.selectable ? (
-                    <Input
-                      value={row.description}
-                      aria-label={t('Group description')}
-                      placeholder={t('Group description')}
-                      onChange={(event) =>
-                        updateRow(row._id, 'description', event.target.value)
-                      }
-                    />
-                  ) : (
-                    <span className='text-muted-foreground px-3 text-sm'>
-                      -
-                    </span>
                   ),
-              },
-              {
-                id: 'platform',
-                header: t('Platform'),
-                className: 'w-44',
-                cell: (row) => {
-                  const autoPlatform = apiKeyPlatformLabel(
-                    apiKeyGroupPlatform(row.name),
-                    t
-                  )
-                  // The first option clears the assignment, so the group
-                  // falls back to name matching.
-                  return (
-                    <Combobox
-                      options={[
-                        {
-                          value: AUTO_PLATFORM,
-                          label: t('Auto ({{platform}})', {
-                            platform: autoPlatform,
-                          }),
-                        },
-                        ...platformOptions,
-                      ]}
-                      value={row.platform || AUTO_PLATFORM}
-                      showSelectedIcon
-                      onValueChange={(value) => {
-                        if (!value) return
-                        updateRow(
-                          row._id,
-                          'platform',
-                          value === AUTO_PLATFORM ? '' : value
-                        )
-                      }}
-                      className='w-full'
-                      placeholder={t('Platform')}
-                      aria-label={t('Platform')}
-                    />
-                  )
                 },
-              },
-              {
-                id: 'actions',
-                header: t('Actions'),
-                className: 'text-right',
-                cellClassName: 'text-right',
-                cell: (row) => (
-                  <div className='flex justify-end gap-1'>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      onClick={() => onShowDetail(row.name.trim())}
-                      disabled={!row.name.trim()}
-                      aria-label={t('Details')}
-                    >
-                      <Info className='h-4 w-4' />
-                    </Button>
-                    <Button
-                      variant='ghost'
-                      size='sm'
-                      onClick={() => removeRow(row._id)}
-                      aria-label={t('Delete')}
-                    >
-                      <Trash2 className='h-4 w-4' />
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-          />
+                {
+                  id: 'ratio',
+                  header: t('Ratio'),
+                  className: 'w-28',
+                  cell: (row) => (
+                    <Input
+                      type='number'
+                      min={0}
+                      step={0.0001}
+                      value={row.ratio}
+                      aria-label={t('Ratio')}
+                      onChange={(event) =>
+                        updateRow(row._id, 'ratio', event.target.value)
+                      }
+                    />
+                  ),
+                },
+                {
+                  id: 'topup-ratio',
+                  header: t('Top-up ratio'),
+                  className: 'w-28',
+                  cell: (row) => (
+                    <Input
+                      type='number'
+                      min={0}
+                      step={0.0001}
+                      value={row.topupRatio}
+                      aria-label={t('Top-up ratio')}
+                      placeholder={t('Not set')}
+                      onChange={(event) =>
+                        updateRow(row._id, 'topupRatio', event.target.value)
+                      }
+                    />
+                  ),
+                },
+                {
+                  id: 'selectable',
+                  header: t('User selectable'),
+                  className: 'w-28 text-center',
+                  cell: (row) => (
+                    <div className='flex justify-center'>
+                      <Checkbox
+                        checked={row.selectable}
+                        onCheckedChange={(checked) =>
+                          updateRow(row._id, 'selectable', checked === true)
+                        }
+                        aria-label={t('User selectable')}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: 'description',
+                  header: t('Description'),
+                  className: 'min-w-56',
+                  cell: (row) =>
+                    row.selectable ? (
+                      <Input
+                        value={row.description}
+                        aria-label={t('Group description')}
+                        placeholder={t('Group description')}
+                        onChange={(event) =>
+                          updateRow(row._id, 'description', event.target.value)
+                        }
+                      />
+                    ) : (
+                      <span className='text-muted-foreground px-3 text-sm'>
+                        -
+                      </span>
+                    ),
+                },
+                {
+                  id: 'platform',
+                  header: t('Platform'),
+                  className: 'w-44',
+                  cell: (row) => {
+                    const autoPlatform = apiKeyPlatformLabel(
+                      apiKeyGroupPlatform(row.name),
+                      t
+                    )
+                    // The first option clears the assignment, so the group
+                    // falls back to name matching.
+                    return (
+                      <Combobox
+                        options={[
+                          {
+                            value: AUTO_PLATFORM,
+                            label: t('Auto ({{platform}})', {
+                              platform: autoPlatform,
+                            }),
+                          },
+                          ...platformOptions,
+                        ]}
+                        value={row.platform || AUTO_PLATFORM}
+                        showSelectedIcon
+                        onValueChange={(value) => {
+                          if (!value) return
+                          updateRow(
+                            row._id,
+                            'platform',
+                            value === AUTO_PLATFORM ? '' : value
+                          )
+                        }}
+                        className='w-full'
+                        placeholder={t('Platform')}
+                        aria-label={t('Platform')}
+                      />
+                    )
+                  },
+                },
+                {
+                  id: 'actions',
+                  header: t('Actions'),
+                  className: 'text-right',
+                  cellClassName: 'text-right',
+                  cell: (row) => (
+                    <div className='flex justify-end gap-1'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => onShowDetail(row.committedName)}
+                        aria-label={t('Details')}
+                      >
+                        <Info className='h-4 w-4' />
+                      </Button>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        onClick={() => removeRow(row._id)}
+                        aria-label={t('Delete')}
+                      >
+                        <Trash2 className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]}
+            />
 
-          {duplicateNames.length > 0 && (
-            <p className='text-destructive text-sm'>
-              {t('Duplicate group names: {{names}}', {
-                names: duplicateNames.join(', '),
-              })}
-            </p>
-          )}
-        </div>
+            {duplicateNames.length > 0 && (
+              <p className='text-destructive text-sm'>
+                {t('Duplicate group names: {{names}}', {
+                  names: duplicateNames.join(', '),
+                })}
+              </p>
+            )}
+            {rows.some((row) => !row.name.trim()) && (
+              <p className='text-destructive text-sm'>
+                {t('Value is required')}
+              </p>
+            )}
+          </div>
+        </fieldset>
       </CardContent>
+      {labelRow && (
+        <GroupLabelEditor
+          key={labelRow._id}
+          group={labelRow.name}
+          labels={badgeConfig.labels}
+          selected={labelRow.labelIds}
+          onClose={() => setEditingLabels(null)}
+          onApply={(labels, selected) => {
+            setRows(
+              rows.map((row) =>
+                row._id === labelRow._id ? { ...row, labelIds: selected } : row
+              )
+            )
+            const group = labelRow.committedName
+            onChange(
+              'GroupBadgeConfig',
+              JSON.stringify(
+                {
+                  labels,
+                  groups: Object.fromEntries([
+                    ...Object.entries(badgeConfig.groups).filter(
+                      ([name]) => name !== group
+                    ),
+                    ...(selected.length ? [[group, selected]] : []),
+                  ]),
+                },
+                null,
+                2
+              )
+            )
+            setEditingLabels(null)
+          }}
+        />
+      )}
     </Card>
   )
 }
