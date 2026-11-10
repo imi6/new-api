@@ -161,7 +161,7 @@ describe('API key group table cell', () => {
     render(<CellHarness group={groupName} ratio={12.345678} />)
     expect(
       screen.getByText(groupName).closest('[data-slot="tooltip-trigger"]')
-    ).toHaveClass('max-w-50')
+    ).toHaveClass('max-w-84')
     expect(screen.getByText('12.345678x')).toBeInTheDocument()
     await userEvent.tab()
     expect(
