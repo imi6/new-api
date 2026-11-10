@@ -119,7 +119,7 @@ func TelegramBotWebhookURL() (string, error) {
 }
 
 // SaveTelegramBotConfig 验证身份后保存配置；回调注册失败保留可诊断状态，不假装启用成功。
-func SaveTelegramBotConfig(ctx context.Context, enabled bool, token string, version int64) (*model.TelegramBotConfig, error) {
+func SaveTelegramBotConfig(ctx context.Context, enabled bool, token string, version int64, reminders *model.TelegramBotReminderSettings) (*model.TelegramBotConfig, error) {
 	previous, err := model.GetTelegramBotConfig()
 	if err != nil {
 		return nil, err
@@ -132,6 +132,17 @@ func SaveTelegramBotConfig(ctx context.Context, enabled bool, token string, vers
 	}
 	cfg := *previous
 	cfg.Enabled = enabled
+	if reminders != nil {
+		if reminders.LowBalanceEnabled != nil {
+			cfg.LowBalanceEnabled = reminders.LowBalanceEnabled
+		}
+		if reminders.GroupRatioChangeEnabled != nil {
+			cfg.GroupRatioChangeEnabled = *reminders.GroupRatioChangeEnabled
+		}
+	}
+	if cfg.Enabled != previous.Enabled || cfg.LowBalanceNotificationsEnabled() != previous.LowBalanceNotificationsEnabled() || cfg.GroupRatioChangeEnabled != previous.GroupRatioChangeEnabled {
+		cfg.ReminderVersion++
+	}
 	cfg.Token = strings.TrimSpace(token)
 	if !enabled && strings.TrimSpace(token) == previous.Token {
 		cfg.WebhookStatus = "disabled"
@@ -946,5 +957,10 @@ func sendTelegramBotOutbox(ctx context.Context, snapshot *model.TelegramBotConfi
 
 func telegramBusinessMessage(lang string, event *model.TelegramBusinessEvent) string {
 	params := map[string]any{"Amount": logger.FormatQuota(int(event.AmountQuota)), "Balance": logger.FormatQuota(int(event.BalanceQuota)), "Title": event.Title, "Source": event.Source, "Time": time.Unix(event.OccurredAt, 0).In(time.Local).Format("2006-01-02 15:04 MST"), "End": time.Unix(event.ExpiresAt, 0).In(time.Local).Format("2006-01-02 15:04 MST")}
+	if event.Kind == "group_ratio" {
+		params["Group"] = event.GroupName
+		params["OldRatio"] = strconv.FormatFloat(event.OldRatio, 'f', -1, 64)
+		params["NewRatio"] = strconv.FormatFloat(event.NewRatio, 'f', -1, 64)
+	}
 	return i18n.Translate(lang, "telegram.bot.event."+event.Kind, params)
 }
