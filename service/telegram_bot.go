@@ -554,7 +554,8 @@ func processTelegramBotInbox(cfg *model.TelegramBotConfig, row *model.TelegramBo
 			return nil
 		}
 	}
-	lang := user.GetSetting().Language
+	// 机器人私聊统一使用简体中文，独立于网页语言设置。
+	lang := i18n.LangZhCN
 	var text string
 	switch row.Command {
 	case "/start", "/help":
@@ -822,10 +823,10 @@ func sendTelegramBotOutbox(ctx context.Context, snapshot *model.TelegramBotConfi
 		finish("discarded", "account unavailable", 0)
 		return
 	}
-	lang := user.GetSetting().Language
+	lang := i18n.LangZhCN
 	text := row.Payload
 	if row.Kind == "help" {
-		text = i18n.Translate("", "telegram.bot.not_connected", map[string]any{"URL": strings.TrimRight(system_setting.ServerAddress, "/") + "/security"})
+		text = i18n.Translate(lang, "telegram.bot.not_connected", map[string]any{"URL": strings.TrimRight(system_setting.ServerAddress, "/") + "/security"})
 	}
 	var replyMarkup map[string]any
 	if row.Kind == "reply" && strings.HasPrefix(row.Payload, "{") {
