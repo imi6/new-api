@@ -70,8 +70,7 @@ export function GroupLabels(props: {
   return (
     <span
       className={cn(
-        'inline-flex max-w-full min-w-0 flex-wrap items-center gap-1',
-        props.compact && 'flex-nowrap overflow-hidden',
+        'inline-flex max-w-full min-w-0 flex-nowrap items-center gap-1 overflow-hidden',
         props.className
       )}
     >
@@ -82,8 +81,7 @@ export function GroupLabels(props: {
             key={label.id}
             variant='outline'
             className={cn(
-              'h-4.5 max-w-full min-w-0 gap-0.5 rounded px-1 py-0 text-[10px] leading-none font-medium shadow-none [&>svg]:size-3',
-              props.compact ? 'shrink' : 'shrink-0',
+              'h-4 max-w-full min-w-0 shrink gap-0.5 rounded px-1 py-0 text-[10px] leading-none font-medium shadow-none [&>svg]:size-2.5!',
               labelColors[label.color] ?? labelColors.slate
             )}
           >
