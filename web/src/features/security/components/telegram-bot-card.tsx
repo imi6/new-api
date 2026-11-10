@@ -271,13 +271,6 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
           </AlertDescription>
         </Alert>
       )}
-      {data?.connected && (
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'Bot commands: /balance, /usage, /subs, /checkin, /notify and /help'
-          )}
-        </p>
-      )}
       {data?.connected && settingsOpen && (
         <TelegramBotSettingsDialog
           key={data.preferences_version}
