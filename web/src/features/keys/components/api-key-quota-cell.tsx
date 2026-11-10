@@ -106,7 +106,7 @@ export function ApiKeyQuotaCell(props: ApiKeyQuotaCellProps) {
             )
       }
       className={
-        props.variant === 'card' ? 'space-y-2.5' : 'max-w-45 space-y-1.5'
+        props.variant === 'card' ? 'space-y-2.5' : 'max-w-41 space-y-1.5'
       }
       triggerClassName={props.variant === 'card' ? 'py-0' : undefined}
       afterTrigger={
