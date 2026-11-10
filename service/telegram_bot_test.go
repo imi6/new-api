@@ -355,6 +355,11 @@ func TestTelegramBotDeliveryChecksRecipientAndFailureClasses(t *testing.T) {
 		Requests           int
 	}{
 		{"connect", `{"ok":true,"result":{"from":{"id":12345,"is_bot":true},"chat":{"id":42,"type":"private"}}}`, nil, "connect", "sent", model.TelegramBotConnected, 1},
+		{"connect_timeout", "", errors.New("secret request URL must not escape"), "connect", "pending", model.TelegramBotConnecting, 1},
+		{"connect_blocked", `{"ok":false,"error_code":403}`, nil, "connect", "failed", model.TelegramBotBlocked, 1},
+		{"connect_rate_limit", `{"ok":false,"error_code":429,"parameters":{"retry_after":120}}`, nil, "connect", "pending", model.TelegramBotConnecting, 1},
+		{"connect_wrong_bot", `{"ok":true,"result":{"from":{"id":67890,"is_bot":true},"chat":{"id":42,"type":"private"}}}`, nil, "connect", "failed", model.TelegramBotUnconnected, 1},
+		{"connect_group", `{"ok":true,"result":{"from":{"id":12345,"is_bot":true},"chat":{"id":42,"type":"group"}}}`, nil, "connect", "failed", model.TelegramBotUnconnected, 1},
 		{"welcome", `{"ok":true,"result":{"from":{"id":12345,"is_bot":true},"chat":{"id":42,"type":"private"}}}`, nil, "welcome", "sent", model.TelegramBotConnected, 1},
 		{"welcome_wrong_recipient", `{"ok":true,"result":{"from":{"id":12345,"is_bot":true},"chat":{"id":43,"type":"private"}}}`, nil, "welcome", "failed", model.TelegramBotConnected, 1},
 		{"welcome_timeout", "", errors.New("secret request URL must not escape"), "welcome", "pending", model.TelegramBotConnected, 1},
@@ -374,20 +379,27 @@ func TestTelegramBotDeliveryChecksRecipientAndFailureClasses(t *testing.T) {
 				require.NoError(t, model.DB.Save(conn).Error)
 			}
 			if test.Kind == "connect" {
-				conn.Status = model.TelegramBotConnecting
-				require.NoError(t, model.DB.Save(conn).Error)
+				intent, err := model.BeginTelegramBotOAuth(conn.UserID, model.TelegramBotPreferences{})
+				require.NoError(t, err)
+				require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+					return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent, false)
+				}))
+				conn, err = model.GetTelegramBotConnection(conn.UserID)
+				require.NoError(t, err)
 			}
 			kind := test.Kind
 			if kind == "stale" {
 				kind = "test"
 			}
-			require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
-				expiresAt := time.Now().Unix() + 300
+			if test.Kind == "connect" {
 				if test.Name == "expired_connect" {
-					expiresAt = time.Now().Unix() - 1
+					require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Where("user_id = ?", conn.UserID).Update("expires_at", time.Now().Unix()-1).Error)
 				}
-				return model.EnqueueTelegramBotMessageTx(tx, conn, kind, "test:"+test.Name, "", expiresAt)
-			}))
+			} else {
+				require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+					return model.EnqueueTelegramBotMessageTx(tx, conn, kind, "test:"+test.Name, "", time.Now().Unix()+300)
+				}))
+			}
 			if test.Kind == "stale" {
 				require.NoError(t, model.DisconnectTelegramBot(conn.UserID))
 			}
@@ -418,7 +430,7 @@ func TestTelegramBotDeliveryChecksRecipientAndFailureClasses(t *testing.T) {
 				assert.NotEmpty(t, current.LastError)
 			}
 			assert.Equal(t, test.Requests, requests)
-			if test.Name == "rate_limit" {
+			if test.Name == "rate_limit" || test.Name == "connect_rate_limit" {
 				assert.GreaterOrEqual(t, saved.NextAttemptAt, time.Now().Unix()+119)
 			}
 			if test.Name == "connect" {
@@ -460,13 +472,10 @@ func TestTelegramBotPrivateStartCompletesPendingAuthorization(t *testing.T) {
 	intent, err := model.BeginTelegramBotOAuth(conn.UserID, conn.Preferences)
 	require.NoError(t, err)
 	require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
-		return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent)
+		return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent, false)
 	}))
 	conn, err = model.GetTelegramBotConnection(conn.UserID)
 	require.NoError(t, err)
-	// 模拟升级前已完成授权、尚未收到欢迎消息的旧连接。
-	require.NoError(t, model.DB.Model(conn).Update("status", model.TelegramBotConnecting).Error)
-	require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", conn.UserID, "welcome").Update("kind", "connect").Error)
 	require.Equal(t, model.TelegramBotConnecting, conn.Status)
 	now := time.Now().Unix()
 	data := []byte(fmt.Sprintf(`{"update_id":99,"message":{"message_id":7,"from":{"id":42,"is_bot":false},"chat":{"id":42,"type":"private"},"date":%d,"text":"/start"}}`, now))
@@ -513,7 +522,7 @@ func TestTelegramBotOAuthBindingAllowsCommandsBeforeWelcomeDelivery(t *testing.T
 	intent, err := model.BeginTelegramBotOAuth(before.UserID, model.TelegramBotPreferences{})
 	require.NoError(t, err)
 	require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
-		return model.CompleteTelegramBotOAuthTx(tx, before.UserID, before.TelegramID, intent)
+		return model.CompleteTelegramBotOAuthTx(tx, before.UserID, before.TelegramID, intent, true)
 	}))
 	conn, err := model.GetTelegramBotConnection(before.UserID)
 	require.NoError(t, err)
@@ -563,12 +572,8 @@ func TestTelegramBotQueuedInactiveMessageIsDiscardedAfterAuthorization(t *testin
 			intent, err := model.BeginTelegramBotOAuth(conn.UserID, conn.Preferences)
 			require.NoError(t, err)
 			require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
-				return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent)
+				return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent, status == model.TelegramBotConnected)
 			}))
-			if status == model.TelegramBotConnecting {
-				// 兼容升级前仍在等待投递确认的连接，旧未连接提示同样需要取消。
-				require.NoError(t, model.DB.Model(conn).Update("status", status).Error)
-			}
 			if status == model.TelegramBotConnected {
 				current, err := model.GetTelegramBotConnection(conn.UserID)
 				require.NoError(t, err)
