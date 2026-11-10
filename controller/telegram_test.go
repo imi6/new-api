@@ -519,11 +519,15 @@ func TestTelegramOAuthBotBindingAndSupplement(t *testing.T) {
 		name            string
 		existingBinding bool
 		tokenScope      string
+		wantStatus      string
+		wantMessageKind string
 	}{
-		{"new_binding_with_unchanged_scope", false, ""},
-		{"existing_binding_with_unchanged_scope", true, ""},
-		{"new_binding_with_explicit_bot_scope", false, "openid profile telegram:bot_access"},
-		{"existing_binding_with_explicit_bot_scope", true, "openid profile telegram:bot_access"},
+		{"new_binding_without_scope", false, "", model.TelegramBotConnecting, "connect"},
+		{"existing_binding_without_scope", true, "", model.TelegramBotConnecting, "connect"},
+		{"new_binding_without_bot_scope", false, "openid profile", model.TelegramBotConnecting, "connect"},
+		{"existing_binding_without_bot_scope", true, "openid profile", model.TelegramBotConnecting, "connect"},
+		{"new_binding_with_explicit_bot_scope", false, "openid profile telegram:bot_access", model.TelegramBotConnected, "welcome"},
+		{"existing_binding_with_explicit_bot_scope", true, "openid profile telegram:bot_access", model.TelegramBotConnected, "welcome"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			fixture := setupTelegramOAuthTest(t)
@@ -546,21 +550,27 @@ func TestTelegramOAuthBotBindingAndSupplement(t *testing.T) {
 			var data struct {
 				Action string `json:"action"`
 				Bot    bool   `json:"telegram_bot"`
+				Denied bool   `json:"permission_denied"`
 			}
 			require.NoError(t, common.Unmarshal(result.Data, &data))
 			assert.Equal(t, "bind", data.Action)
 			assert.True(t, data.Bot)
+			assert.False(t, data.Denied, "Telegram 省略机器人 scope 时需要自动验证，不能当作用户拒绝")
 			stored, err := model.GetUserByTelegramID("42")
 			require.NoError(t, err)
 			assert.Equal(t, fixture.user.Id, stored.Id)
 			connection, err := model.GetTelegramBotConnection(fixture.user.Id)
 			require.NoError(t, err)
-			assert.Equal(t, model.TelegramBotConnected, connection.Status, "同一次授权成功后即可使用机器人，无需启动或恢复连接")
+			assert.Equal(t, scenario.wantStatus, connection.Status)
 			assert.EqualValues(t, 12345, connection.BotID)
 			assert.Equal(t, "42", connection.TelegramID)
 			assert.Equal(t, "42", connection.ChatID)
 			assert.Equal(t, model.TelegramBotPreferences{}, connection.Preferences)
-			assert.Positive(t, connection.ConnectedAt)
+			if scenario.wantStatus == model.TelegramBotConnected {
+				assert.Positive(t, connection.ConnectedAt)
+			} else {
+				assert.Zero(t, connection.ConnectedAt, "投递尚未验证时不能提前记录连接成功")
+			}
 			assert.Positive(t, connection.AuthorizationVersion)
 			assert.Empty(t, connection.LastError)
 			var claims int64
@@ -569,12 +579,12 @@ func TestTelegramOAuthBotBindingAndSupplement(t *testing.T) {
 			var messages int64
 			require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Where("user_id = ?", fixture.user.Id).Count(&messages).Error)
 			assert.EqualValues(t, 1, messages)
-			var welcome model.TelegramBotOutbox
-			require.NoError(t, model.DB.Where("user_id = ?", fixture.user.Id).First(&welcome).Error)
-			assert.Equal(t, "welcome", welcome.Kind)
-			assert.Equal(t, connection.BotID, welcome.BotID)
-			assert.Equal(t, connection.Version, welcome.ConnectionVersion)
-			assert.Equal(t, connection.ChatID, welcome.ChatID)
+			var message model.TelegramBotOutbox
+			require.NoError(t, model.DB.Where("user_id = ?", fixture.user.Id).First(&message).Error)
+			assert.Equal(t, scenario.wantMessageKind, message.Kind)
+			assert.Equal(t, connection.BotID, message.BotID)
+			assert.Equal(t, connection.Version, message.ConnectionVersion)
+			assert.Equal(t, connection.ChatID, message.ChatID)
 			assert.Equal(t, http.StatusForbidden, telegramOAuthCallback(state, code, fixture.identity).Code)
 			require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Where("user_id = ?", fixture.user.Id).Count(&messages).Error)
 			assert.EqualValues(t, 1, messages)
@@ -620,47 +630,77 @@ func TestTelegramOAuthBotSupplementRejectsIdentityAndFlowChanges(t *testing.T) {
 	}
 }
 
-func TestTelegramOAuthDeniedMessagePermissionPreservesWebsiteBinding(t *testing.T) {
-	for _, existingBinding := range []bool{false, true} {
-		name := "new binding"
-		if existingBinding {
-			name = "existing binding"
-		}
-		t.Run(name, func(t *testing.T) {
-			fixture := setupTelegramOAuthTest(t)
-			fixture.enableBot(t)
-			fixture.tokenScope = "openid profile"
-			intent := model.AuthFlowIntentBind
-			if existingBinding {
-				require.NoError(t, model.DB.Model(fixture.user).Update("telegram_id", "42").Error)
-				require.NoError(t, model.InitializeExternalIdentityClaims())
-				intent = model.AuthFlowIntentTelegramBot
-			}
-			state, code := fixture.authorizationRequest(t, oauthStateRequest{
-				Provider: "telegram", Intent: intent, TelegramBot: &model.TelegramBotPreferences{Enabled: true, TopUp: true},
-			}, fixture.identity, telegramIdentityClaims(42))
-			response := telegramOAuthCallback(state, code, fixture.identity)
-			var result securityEnrollmentResponse
-			require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
-			require.True(t, result.Success, response.Body.String())
-			var data struct {
-				Bot    bool `json:"telegram_bot"`
-				Denied bool `json:"permission_denied"`
-			}
-			require.NoError(t, common.Unmarshal(result.Data, &data))
-			assert.False(t, data.Bot)
-			assert.True(t, data.Denied)
-			connection, err := model.GetTelegramBotConnection(fixture.user.Id)
-			require.NoError(t, err)
-			assert.Equal(t, model.TelegramBotUnconnected, connection.Status)
-			assert.Zero(t, connection.AuthorizationVersion)
-			assert.Zero(t, connection.ConnectedAt)
-			stored, err := model.GetUserByTelegramID("42")
-			require.NoError(t, err)
-			assert.Equal(t, fixture.user.Id, stored.Id)
-			var messages int64
-			require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Count(&messages).Error)
-			assert.Zero(t, messages)
-		})
+func TestTelegramOAuthUnknownBotPermissionReconnectsAfterOneAuthorization(t *testing.T) {
+	fixture := setupTelegramOAuthTest(t)
+	fixture.enableBot(t)
+	fixture.tokenScope = "openid profile"
+	require.NoError(t, model.DB.Model(fixture.user).Update("telegram_id", "42").Error)
+	require.NoError(t, model.InitializeExternalIdentityClaims())
+	previousConnectedAt := time.Now().Add(-time.Hour).Unix()
+	require.NoError(t, model.DB.Create(&model.TelegramBotConnection{
+		UserID: fixture.user.Id, BotID: 12345, TelegramID: "42", ChatID: "42",
+		Status: model.TelegramBotDisconnected, Version: 3, AuthorizationVersion: 2,
+		PreferencesVersion: 1, ConnectedAt: previousConnectedAt,
+	}).Error)
+	prefs := model.TelegramBotPreferences{Enabled: true, TopUp: true}
+	state, code := fixture.authorizationRequest(t, oauthStateRequest{
+		Provider: "telegram", Intent: model.AuthFlowIntentTelegramBot, TelegramBot: &prefs,
+	}, fixture.identity, telegramIdentityClaims(42))
+	response := telegramOAuthCallback(state, code, fixture.identity)
+	var result securityEnrollmentResponse
+	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+	require.True(t, result.Success, response.Body.String())
+	var data struct {
+		Bot    bool `json:"telegram_bot"`
+		Denied bool `json:"permission_denied"`
 	}
+	require.NoError(t, common.Unmarshal(result.Data, &data))
+	assert.True(t, data.Bot)
+	assert.False(t, data.Denied)
+	connection, err := model.GetTelegramBotConnection(fixture.user.Id)
+	require.NoError(t, err)
+	assert.Equal(t, model.TelegramBotConnecting, connection.Status)
+	assert.EqualValues(t, 4, connection.Version)
+	assert.EqualValues(t, 3, connection.AuthorizationVersion)
+	assert.EqualValues(t, 2, connection.PreferencesVersion)
+	assert.Equal(t, prefs, connection.Preferences)
+	assert.Equal(t, previousConnectedAt, connection.ConnectedAt, "尚未投递确认时保留上次实际成功时间")
+	stored, err := model.GetUserByTelegramID("42")
+	require.NoError(t, err)
+	assert.Equal(t, fixture.user.Id, stored.Id)
+	var messages []model.TelegramBotOutbox
+	require.NoError(t, model.DB.Where("user_id = ?", fixture.user.Id).Find(&messages).Error)
+	require.Len(t, messages, 1)
+	assert.Equal(t, "connect", messages[0].Kind, "同一次授权自动安排连接确认，无需另外发起恢复流程")
+	assert.Equal(t, connection.Version, messages[0].ConnectionVersion)
+	assert.Equal(t, "42", messages[0].ChatID)
+}
+
+func TestTelegramOAuthBotBindingCancellationDoesNotConnect(t *testing.T) {
+	fixture := setupTelegramOAuthTest(t)
+	fixture.enableBot(t)
+	state, code := fixture.authorizationRequest(t, oauthStateRequest{
+		Provider: "telegram", Intent: model.AuthFlowIntentBind,
+		TelegramBot: &model.TelegramBotPreferences{Enabled: true, TopUp: true},
+	}, fixture.identity, telegramIdentityClaims(42))
+	path := "/api/oauth/telegram?" + url.Values{"state": {state}, "error": {"access_denied"}}.Encode()
+	response := securityEnrollmentRequest("GET", path, "", "", fixture.identity, func(c *gin.Context) {
+		c.Params = gin.Params{{Key: "provider", Value: "telegram"}}
+		HandleOAuth(c)
+	})
+	var result securityEnrollmentResponse
+	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+	assert.False(t, result.Success)
+	stored, err := model.GetUserById(fixture.user.Id, false)
+	require.NoError(t, err)
+	assert.Empty(t, stored.TelegramId)
+	connection, err := model.GetTelegramBotConnection(fixture.user.Id)
+	require.NoError(t, err)
+	assert.Equal(t, model.TelegramBotUnconnected, connection.Status)
+	assert.Zero(t, connection.AuthorizationVersion)
+	assert.Zero(t, connection.PreferencesVersion)
+	var messages int64
+	require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Count(&messages).Error)
+	assert.Zero(t, messages)
+	assert.Equal(t, http.StatusForbidden, telegramOAuthCallback(state, code, fixture.identity).Code)
 }
