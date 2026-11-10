@@ -83,7 +83,7 @@ export function PartnerMarkDialog(props: PartnerMarkDialogProps) {
   const remove = useMutation({
     mutationFn: () => deletePartnerSite(row?.site_id ?? 0),
     onSuccess: () => {
-      toast.success(t('Deleted'))
+      toast.success(t('Deleted successfully'))
       setDeleting(false)
       props.onChanged()
       props.onOpenChange(false)

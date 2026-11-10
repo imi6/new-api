@@ -88,6 +88,14 @@ export async function markPartnerSite(
   requireServerSuccess(res.data)
 }
 
+/** Deletes one group; the site goes with its last group. */
+export async function deletePartnerOffer(id: number): Promise<void> {
+  const res = await api.delete<Response<null>>(
+    `/api/partner/admin/offers/${id}`
+  )
+  requireServerSuccess(res.data)
+}
+
 export async function deletePartnerSite(id: number): Promise<void> {
   const res = await api.delete<Response<null>>(
     `/api/partner/admin/sites/${id}`
