@@ -19,6 +19,25 @@ For commercial licensing, please contact support@quantumnous.com
 // Static translation keys that don't get picked up by the t('...') regex.
 // These cover dynamic labels (e.g. constants, configs) that are passed into t at runtime.
 export const STATIC_I18N_KEYS = [
+  // Telegram Bot：服务端错误与诊断文案由动态映射展示。
+  'Telegram Bot',
+  'Telegram bot connection started',
+  'Telegram bot connection failed. Please reconnect.',
+  'Telegram bot is not configured',
+  'Telegram bot is not connected',
+  'Telegram bot settings changed. Please reload and try again.',
+  'Telegram bot authorization expired. Please try again.',
+  'Telegram bot request failed. Please try again later.',
+  'Telegram bot token is invalid',
+  'Telegram bot and Telegram login must use the same bot',
+  'This Telegram bot already has another webhook',
+  'Telegram bot notifications are disabled',
+  'Telegram bot requires a public HTTPS server address',
+  'Changed Telegram bot notification settings',
+  'Disconnected Telegram bot',
+  'Started Telegram bot reconnection',
+  'Confirmed Telegram bot reconnection',
+  'Updated Telegram bot configuration',
   // 上游倍率：服务端状态和错误由动态映射传入 t()。
   'No upstream rate sources',
   'Not yet synchronized',

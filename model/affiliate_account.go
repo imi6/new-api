@@ -279,6 +279,11 @@ func claimAffiliateRebateTx(tx *gorm.DB, user *User, quota int, destination stri
 	if err := tx.Model(&User{}).Where("id = ?", user.Id).Updates(updates).Error; err != nil {
 		return false, err
 	}
+	if destination == "platform" {
+		if err := ResetTelegramLowBalanceAfterCreditTx(tx, user.Id); err != nil {
+			return false, err
+		}
+	}
 	if err := tx.Model(account).Updates(map[string]any{"claimed": account.Claimed, "updated_at": account.UpdatedAt}).Error; err != nil {
 		return false, err
 	}

@@ -471,6 +471,10 @@ const AUDIT_TEMPLATES: Record<string, string> = {
   'user.binding_bind': 'Account binding',
   'user.binding_unbind': 'Account unlinking',
   'user.email_binding_resend': 'Email confirmation code resend',
+  'user.telegram_bot_preferences': 'Changed Telegram bot notification settings',
+  'user.telegram_bot_disconnect': 'Disconnected Telegram bot',
+  'user.telegram_bot_recovery_start': 'Started Telegram bot reconnection',
+  'user.telegram_bot_recovery_confirm': 'Confirmed Telegram bot reconnection',
 
   login: 'Logged in successfully via {{method}}',
   // User management
@@ -491,6 +495,7 @@ const AUDIT_TEMPLATES: Record<string, string> = {
   'user.oauth_unbind': 'Removed an OAuth binding for the user',
   // System settings
   'option.update': 'Updated system setting {{key}}',
+  'telegram_bot.config_update': 'Updated Telegram bot configuration',
   'option.passkey_domains':
     'Updated Passkey domains: removed {{domains}}; affected {{known}}; unknown {{unknown}}',
   'option.passkey_domains_confirmed':
