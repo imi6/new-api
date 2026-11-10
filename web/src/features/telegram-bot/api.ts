@@ -39,7 +39,14 @@ export async function getTelegramBotStatus(signal?: AbortSignal) {
     userBase,
     { signal }
   )
-  return requireServerSuccess(response.data).data
+  const status = requireServerSuccess(response.data).data
+  return {
+    ...status,
+    preferences: {
+      ...status.preferences,
+      group_ratio: status.preferences.group_ratio ?? false,
+    },
+  }
 }
 
 export async function updateTelegramPreferences(payload: {
@@ -92,18 +99,11 @@ export async function getTelegramBotConfig(signal?: AbortSignal) {
     '/api/telegram-bot/config',
     { signal }
   )
-  const config = requireServerSuccess(response.data).data
-  return {
-    ...config,
-    low_balance_enabled: config.low_balance_enabled ?? true,
-    group_ratio_change_enabled: config.group_ratio_change_enabled ?? false,
-  }
+  return requireServerSuccess(response.data).data
 }
 
 export async function updateTelegramBotConfig(payload: {
   enabled: boolean
-  low_balance_enabled?: boolean
-  group_ratio_change_enabled?: boolean
   version: number
   bot_token?: string
 }) {
@@ -111,10 +111,5 @@ export async function updateTelegramBotConfig(payload: {
     '/api/telegram-bot/config',
     payload
   )
-  const config = requireServerSuccess(response.data).data
-  return {
-    ...config,
-    low_balance_enabled: config.low_balance_enabled ?? true,
-    group_ratio_change_enabled: config.group_ratio_change_enabled ?? false,
-  }
+  return requireServerSuccess(response.data).data
 }
