@@ -106,7 +106,7 @@ func ConfirmTelegramBotRecovery(token string, identity AuthSessionIdentity) erro
 		if err := tx.Model(&conn).Update("chat_id", payload.ChatID).Error; err != nil {
 			return err
 		}
-		return tx.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ? AND connection_version = ? AND status = ?", identity.UserID, "connect", conn.Version, "pending").Update("chat_id", payload.ChatID).Error
+		return tx.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ? AND connection_version = ? AND status = ?", identity.UserID, "welcome", conn.Version, "pending").Update("chat_id", payload.ChatID).Error
 	})
 	return err
 }
@@ -128,8 +128,11 @@ func ConfirmTelegramBotConnection(snapshot *TelegramBotConnection, chatID int64)
 		if err := lockForUpdate(tx).First(&conn, "user_id = ?", snapshot.UserID).Error; err != nil {
 			return err
 		}
-		if conn.BotID != snapshot.BotID || conn.Version != snapshot.Version || conn.Status != TelegramBotConnecting || user.Status != common.UserStatusEnabled || user.TelegramId != conn.TelegramID {
+		if conn.BotID != snapshot.BotID || conn.Version != snapshot.Version || (conn.Status != TelegramBotConnecting && conn.Status != TelegramBotConnected) || user.Status != common.UserStatusEnabled || user.TelegramId != conn.TelegramID || strconv.FormatInt(chatID, 10) != conn.TelegramID {
 			return ErrTelegramBotExpired
+		}
+		if conn.Status == TelegramBotConnected {
+			return nil
 		}
 		conn.ChatID = strconv.FormatInt(chatID, 10)
 		conn.Status = TelegramBotConnected

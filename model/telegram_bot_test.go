@@ -33,6 +33,12 @@ func telegramBotConnectionFixture(t *testing.T, name, telegramID string, prefs T
 		require.NoError(t, ConfirmTelegramBotConnection(conn, tgID))
 		conn, err = GetTelegramBotConnection(user.Id)
 		require.NoError(t, err)
+	} else {
+		// 显式模拟升级前已授权但仍等待欢迎投递确认的旧连接。
+		conn.Status, conn.ConnectedAt = TelegramBotConnecting, 0
+		require.NoError(t, DB.Save(conn).Error)
+		require.NoError(t, DB.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", conn.UserID, "welcome").Update("kind", "connect").Error)
+		require.NoError(t, DB.Where("user_id = ?", conn.UserID).Delete(&TelegramLowBalanceState{}).Error)
 	}
 	return &user, conn
 }
@@ -158,6 +164,59 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 			conn, err = GetTelegramBotConnection(user.Id)
 			require.NoError(t, err)
 			assert.Equal(t, TelegramBotConnected, conn.Status)
+
+			t.Run("oauth_authorization_connects_before_welcome_delivery", func(t *testing.T) {
+				for index, notificationPrefs := range []TelegramBotPreferences{{Enabled: true, LowBalance: true}, {}} {
+					telegramID := strconv.Itoa(55 + index)
+					other := User{Username: "telegram-instant-" + telegramID, AffCode: "tg-instant-" + telegramID, Status: common.UserStatusEnabled, TelegramId: telegramID, Quota: 2000}
+					require.NoError(t, db.Create(&other).Error)
+					intent, err := BeginTelegramBotOAuth(other.Id, notificationPrefs)
+					require.NoError(t, err)
+					require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
+						return CompleteTelegramBotOAuthTx(tx, other.Id, telegramID, intent)
+					}))
+					connected, err := GetTelegramBotConnection(other.Id)
+					require.NoError(t, err)
+					assert.Equal(t, TelegramBotConnected, connected.Status)
+					assert.Positive(t, connected.ConnectedAt)
+					assert.Equal(t, telegramID, connected.ChatID)
+					assert.Equal(t, notificationPrefs, connected.Preferences)
+					var tasks []TelegramBotOutbox
+					require.NoError(t, db.Where("user_id = ?", other.Id).Find(&tasks).Error)
+					require.Len(t, tasks, 1)
+					require.Equal(t, "welcome", tasks[0].Kind)
+					welcome := tasks[0]
+					welcome.Status, welcome.LeaseOwner, welcome.LeaseUntil = "processing", "instant-welcome", time.Now().Unix()+120
+					require.NoError(t, db.Save(&welcome).Error)
+					allowed, err := AuthorizeTelegramBotSend(&welcome)
+					require.NoError(t, err)
+					assert.True(t, allowed, "welcome delivery is independent of proactive notification preferences")
+					require.NoError(t, FinishTelegramBotOutbox(&welcome, "failed", "temporary welcome failure", 0))
+					after, err := GetTelegramBotConnection(other.Id)
+					require.NoError(t, err)
+					assert.Equal(t, *connected, *after, "welcome failure must not revoke a completed authorization")
+					tgID, err := strconv.ParseInt(telegramID, 10, 64)
+					require.NoError(t, err)
+					require.NoError(t, ConfirmTelegramBotConnection(connected, tgID))
+					require.ErrorIs(t, ConfirmTelegramBotConnection(connected, tgID+100), ErrTelegramBotExpired)
+					require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error {
+						return CompleteTelegramBotOAuthTx(tx, other.Id, telegramID, intent)
+					}), ErrTelegramBotExpired)
+					if notificationPrefs.LowBalance {
+						var baseline TelegramLowBalanceState
+						require.NoError(t, db.First(&baseline, other.Id).Error)
+						assert.EqualValues(t, 1, baseline.Round)
+						assert.Equal(t, connected.Version, baseline.ConnectionVersion)
+						assert.False(t, baseline.Below)
+					}
+					require.NoError(t, DisconnectTelegramBot(other.Id))
+					welcome.Status, welcome.LeaseOwner, welcome.LeaseUntil = "processing", "late-welcome", time.Now().Unix()+120
+					require.NoError(t, db.Save(&welcome).Error)
+					allowed, err = AuthorizeTelegramBotSend(&welcome)
+					require.NoError(t, err)
+					assert.False(t, allowed, "disconnect still revokes a pending welcome")
+				}
+			})
 
 			t.Run("checkin_is_atomic_and_daily", func(t *testing.T) {
 				*operation_setting.GetCheckinSetting() = operation_setting.CheckinSetting{Enabled: true, MinQuota: 100, MaxQuota: 100}
@@ -657,7 +716,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				current, err = GetTelegramBotConnection(other.Id)
 				require.NoError(t, err)
 				assert.Equal(t, newer.Version, current.Version)
-				assert.Equal(t, TelegramBotConnecting, current.Status)
+				assert.Equal(t, TelegramBotConnected, current.Status)
 				require.NoError(t, DisconnectTelegramBot(other.Id))
 				require.ErrorIs(t, ConfirmTelegramBotConnection(newer, 50), ErrTelegramBotExpired)
 			})
