@@ -205,10 +205,10 @@ it('opens bot settings and test messaging in a dialog while keeping the security
   const { user } = fixture({ connected: true, status: 'connected' }, true)
   expect(await screen.findByRole('button', { name: 'Open bot' })).toBeVisible()
   expect(
-    screen.getByText(
+    screen.queryByText(
       'Bot commands: /balance, /usage, /subs, /checkin, /notify and /help'
     )
-  ).toBeVisible()
+  ).not.toBeInTheDocument()
   expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   expect(
     screen.queryByRole('button', { name: 'Send test message' })
@@ -319,7 +319,7 @@ it('saves notification preferences from bot settings and reopens the saved value
   )
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   const saved = await screen.findByRole('dialog', { name: 'Bot settings' })
-  await waitFor(() => expect(saved).toContainElement(document.activeElement))
+  await waitFor(() => expect(saved.contains(document.activeElement)).toBe(true))
   await user.keyboard('{Escape}')
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -453,7 +453,9 @@ it('reloads conflicting notification settings and requires a new review instead 
   )
   expect(dialog).not.toBeInTheDocument()
   const latest = screen.getByRole('dialog', { name: 'Bot settings' })
-  await waitFor(() => expect(latest).toContainElement(document.activeElement))
+  await waitFor(() =>
+    expect(latest.contains(document.activeElement)).toBe(true)
+  )
   expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
   expect(put).toHaveBeenCalledTimes(1)
   await user.click(
