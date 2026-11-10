@@ -38,6 +38,7 @@ type TelegramOAuthFlow struct {
 	CodeVerifier string `json:"code_verifier"`
 	ClientID     string `json:"client_id"`
 	RedirectURI  string `json:"redirect_uri"`
+	BotAccess    bool   `json:"bot_access,omitempty"`
 }
 
 func TelegramConfigurationError() error {
@@ -67,11 +68,15 @@ func NewTelegramOAuthFlow() (*TelegramOAuthFlow, error) {
 }
 
 func (flow *TelegramOAuthFlow) AuthorizationURL(state string) string {
+	scope := "openid profile"
+	if flow.BotAccess {
+		scope += " telegram:bot_access"
+	}
 	values := url.Values{
 		"client_id":             {flow.ClientID},
 		"redirect_uri":          {flow.RedirectURI},
 		"response_type":         {"code"},
-		"scope":                 {"openid profile"},
+		"scope":                 {scope},
 		"state":                 {state},
 		"code_challenge":        {oauth2.S256ChallengeFromVerifier(flow.CodeVerifier)},
 		"code_challenge_method": {"S256"},
