@@ -29,6 +29,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createJSONStorage } from 'zustand/middleware'
 
+import { GroupLabelsContext } from '@/components/group-labels-context'
 import { api } from '@/lib/api'
 import {
   DEFAULT_CURRENCY_CONFIG,
@@ -88,6 +89,41 @@ afterEach(() => {
 })
 
 describe('model cards', () => {
+  it('shows the first group labels while keeping its original name and overflow count', () => {
+    const group = 'default-with-a-long-group-name'
+    render(
+      <GroupLabelsContext
+        value={{
+          [group]: [
+            { id: 'self', name: '自营', icon: 'shield', color: 'teal' },
+            {
+              id: 'genuine',
+              name: '保真',
+              icon: 'badge-check',
+              color: 'amber',
+            },
+          ],
+          premium: [
+            { id: 'other', name: '另一组标签', icon: 'star', color: 'blue' },
+          ],
+        }}
+      >
+        <ModelCard
+          model={pricingModel({ enable_groups: [group, 'premium'] })}
+          onClick={vi.fn()}
+        />
+      </GroupLabelsContext>
+    )
+    expect(screen.getByText('自营')).toBeVisible()
+    expect(screen.getByText('保真')).toBeVisible()
+    expect(screen.getByText(group)).toHaveAttribute(
+      'title',
+      `${group}, premium`
+    )
+    expect(screen.getByText('+1')).toHaveAttribute('title', 'premium')
+    expect(screen.queryByText('另一组标签')).not.toBeInTheDocument()
+  })
+
   it('shows separate generic and image cache prices including a free image cache', () => {
     render(
       <CachedPriceCell

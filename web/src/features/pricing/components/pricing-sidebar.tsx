@@ -20,6 +20,8 @@ import { ChevronDown, RotateCcw } from 'lucide-react'
 import { memo, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { GroupLabels } from '@/components/group-labels'
+import { useGroupLabels } from '@/components/group-labels-context'
 import {
   type GroupRatioChange,
   RatioChangeBadge,
@@ -50,6 +52,7 @@ import { getModelQuotaType, parseTags } from '../lib/filters'
 import type { PricingModel } from '../types'
 
 type FilterOption = {
+  group?: string
   value: string
   label: string
   count?: number
@@ -113,6 +116,7 @@ function FilterChip(props: {
   /** Pill chips with a filled selection, for the horizontal bar. */
   pill?: boolean
 }) {
+  const labels = useGroupLabels(props.option.group)
   let variant: 'outline' | 'secondary' | 'default' = 'outline'
   let countClassName = 'bg-muted text-muted-foreground'
   if (props.active && props.pill) {
@@ -138,6 +142,7 @@ function FilterChip(props: {
       {props.option.icon && (
         <span className='shrink-0'>{props.option.icon}</span>
       )}
+      <GroupLabels labels={labels} />
       <span className='truncate'>{props.option.label}</span>
       {(props.option.suffix || props.option.count != null) && (
         <span
@@ -237,13 +242,16 @@ export const PricingSidebar = memo(function PricingSidebar(
   const shownGroups =
     props.platformFilter === FILTER_ALL
       ? props.groups
-      : props.groups.filter((group) => platformOf(group) === props.platformFilter)
+      : props.groups.filter(
+          (group) => platformOf(group) === props.platformFilter
+        )
   const groupOptions: FilterOption[] = [
     {
       value: FILTER_ALL,
       label: t('All Groups'),
     },
     ...shownGroups.map((group) => ({
+      group,
       value: group,
       label: group,
       suffix: formatGroupRatio(props.groupRatios?.[group]),

@@ -20,6 +20,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test } from 'vitest'
 
+import type { GroupLabel } from '@/lib/group-labels'
+
 const { createInstance } = await import('i18next')
 const { I18nextProvider, initReactI18next } = await import('react-i18next')
 const { TooltipProvider } = await import('@/components/ui/tooltip')
@@ -46,6 +48,7 @@ function CellHarness(props: {
   ratio?: number | string
   crossGroupRetry?: boolean
   shouldReduceMotion?: boolean
+  labels?: GroupLabel[]
 }) {
   return (
     <I18nextProvider i18n={i18n}>
@@ -53,6 +56,7 @@ function CellHarness(props: {
         <ApiKeyGroupCell
           group={props.group}
           ratio={props.ratio}
+          labels={props.labels}
           crossGroupRetry={props.crossGroupRetry ?? false}
           shouldReduceMotion={props.shouldReduceMotion ?? false}
         />
@@ -62,6 +66,22 @@ function CellHarness(props: {
 }
 
 describe('API key group table cell', () => {
+  test('shows configured labels in order before the real group name', () => {
+    const { container } = render(
+      <CellHarness
+        group='Claude'
+        ratio={1}
+        labels={[
+          { id: 'self', name: '自营', icon: 'shield', color: 'teal' },
+          { id: 'genuine', name: '保真', icon: 'badge-check', color: 'amber' },
+        ]}
+      />
+    )
+    expect(container.textContent).toContain('自营保真Claude')
+    expect(screen.getByText('自营')).toBeVisible()
+    expect(screen.getByText('保真')).toBeVisible()
+    expect(screen.getByText('Claude')).toBeVisible()
+  })
   test('keeps the group and compact localized multiplier together with one subtle flowing edge', () => {
     const { container } = render(
       <CellHarness group='auto' ratio='自动' crossGroupRetry />
