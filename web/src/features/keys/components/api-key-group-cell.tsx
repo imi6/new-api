@@ -57,7 +57,7 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
       group && typeof props.ratio === 'number' ? props.ratio : undefined
     return (
       <TruncatedCell
-        className={isMobile ? 'w-full' : 'max-w-50'}
+        className={isMobile ? 'w-full' : 'max-w-84'}
         tabIndex={0}
         tooltipContent={group || t('Follow user group')}
         tooltipClassName='break-all'
@@ -134,7 +134,7 @@ function AutoRoutePopover(props: {
             onMouseLeave={hide}
             className={cn(
               'ml-0 gap-3 overflow-visible text-xs',
-              props.isMobile ? 'w-full justify-between' : 'max-w-50'
+              props.isMobile ? 'w-full justify-between' : 'max-w-84'
             )}
           />
         }
