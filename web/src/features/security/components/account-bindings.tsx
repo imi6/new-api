@@ -16,7 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Mail, Shield, Send, Link2, Unlink } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Mail, Shield, Link2, Unlink } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -43,6 +44,7 @@ import type {
   BindingItem,
   AccountSecurityResult,
 } from '@/features/profile/types'
+import type { TelegramBotPreferences } from '@/features/telegram-bot/types'
 import { useDialogs } from '@/hooks/use-dialog'
 import { useStatus } from '@/hooks/use-status'
 import { api } from '@/lib/api'
@@ -60,6 +62,7 @@ import {
 import { useAccountSecurity } from '../hooks/use-account-security'
 import { EmailBindDialog } from './dialogs/email-bind-dialog'
 import { WeChatBindDialog } from './dialogs/wechat-bind-dialog'
+import { TelegramBotCard } from './telegram-bot-card'
 
 // ============================================================================
 // Account Bindings Tab Component
@@ -80,6 +83,7 @@ type PreparedOAuthBinding = AccountSecurityResult & {
 
 export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const dialogs = useDialogs<DialogKey>()
   const { status, loading } = useStatus()
   const [customBindings, setCustomBindings] = useState<CustomOAuthBinding[]>([])
@@ -140,7 +144,11 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
     }
   }
 
-  const startOAuthBinding = async (provider: string) => {
+  const startOAuthBinding = async (
+    provider: string,
+    telegramBot?: TelegramBotPreferences,
+    botOnly = false
+  ) => {
     const prepared = await security.run(async (signal) => {
       const proof = await security.verify(
         { scope: 'account.binding.bind', context: { provider } },
@@ -148,10 +156,11 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
       )
       const authorization = await createOAuthAuthorization(
         provider,
-        'bind',
+        botOnly ? 'telegram_bot' : 'bind',
         undefined,
         signal,
-        proof
+        proof,
+        telegramBot
       )
       return {
         provider,
@@ -185,7 +194,9 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
           prepare: async () => ({ state: prepared.state, url: prepared.url }),
         })
         const callback = exchange.callback
-        const outcome = await authResult<AccountSecurityResult>(
+        const outcome = await authResult<
+          AccountSecurityResult & { permission_denied?: boolean }
+        >(
           api.get(`/api/oauth/${prepared.provider}`, {
             ...authRequestOptions,
             singleUseAuthorization: true,
@@ -211,9 +222,14 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
       }
     })
     if (result) {
-      toast.success(t('Binding successful!'))
+      if (result.permission_denied) {
+        toast.warning(t('Telegram message permission was not granted'))
+      } else {
+        toast.success(t('Binding successful!'))
+      }
       onUpdate()
       await fetchCustomBindings()
+      void queryClient.invalidateQueries({ queryKey: ['telegram-bot', 'self'] })
     }
   }
 
@@ -288,19 +304,6 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
       onBind: () => void startOAuthBinding('oidc'),
     },
     {
-      id: 'telegram',
-      label: t('Telegram'),
-      icon: Send,
-      value: (profile as unknown as Record<string, unknown>).telegram_id as
-        | string
-        | undefined,
-      isBound: Boolean(
-        (profile as unknown as Record<string, unknown>).telegram_id
-      ),
-      isEnabled: status?.telegram_oauth || false,
-      onBind: () => void startOAuthBinding('telegram'),
-    },
-    {
       id: 'linuxdo',
       label: t('LinuxDO'),
       icon: IconLinuxDo,
@@ -373,6 +376,15 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
             </li>
           )
         })}
+        <TelegramBotCard
+          key={`${profile.id}:${security.sessionKey}`}
+          profile={profile}
+          oauthEnabled={Boolean(status.telegram_oauth)}
+          locked={bindingsLocked}
+          onAuthorize={(preferences, botOnly) =>
+            void startOAuthBinding('telegram', preferences, botOnly)
+          }
+        />
         {customProviders?.map((provider) => {
           const binding = customBindingsByProviderId.get(provider.id)
           const isBound = !!binding
