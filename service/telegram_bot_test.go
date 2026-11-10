@@ -447,6 +447,138 @@ func TestTelegramBotStartRestoresOnlyBlockedConnections(t *testing.T) {
 	}
 }
 
+func TestTelegramBotPrivateStartCompletesPendingAuthorization(t *testing.T) {
+	_, cfg, conn := setupTelegramBotServiceTest(t)
+	intent, err := model.BeginTelegramBotOAuth(conn.UserID, conn.Preferences)
+	require.NoError(t, err)
+	require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+		return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent)
+	}))
+	conn, err = model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	require.Equal(t, model.TelegramBotConnecting, conn.Status)
+	now := time.Now().Unix()
+	data := []byte(fmt.Sprintf(`{"update_id":99,"message":{"message_id":7,"from":{"id":42,"is_bot":false},"chat":{"id":42,"type":"private"},"date":%d,"text":"/start"}}`, now))
+	require.NoError(t, ReceiveTelegramBotUpdate(cfg, cfg.WebhookSecret, data))
+	command, err := model.ClaimTelegramBotInbox("command-worker")
+	require.NoError(t, err)
+	require.NotNil(t, command)
+	require.NoError(t, processTelegramBotInbox(cfg, command))
+	require.NoError(t, model.FinishTelegramBotInbox(command, "done"))
+	current, err := model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	assert.Equal(t, model.TelegramBotConnected, current.Status)
+	assert.Equal(t, conn.Version, current.Version)
+	assert.Equal(t, conn.AuthorizationVersion, current.AuthorizationVersion)
+	var requests []string
+	telegramBotHTTPClient = &http.Client{Transport: telegramBotRoundTripper(func(req *http.Request) (*http.Response, error) {
+		var payload struct {
+			Text string `json:"text"`
+		}
+		if err := common.DecodeJson(req.Body, &payload); err != nil {
+			return nil, err
+		}
+		requests = append(requests, payload.Text)
+		body := fmt.Sprintf(`{"ok":true,"result":{"message_id":88,"date":%d,"from":{"id":12345,"is_bot":true,"username":"test_bot"},"chat":{"id":42,"type":"private"},"text":"ok"}}`, now)
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
+	for range 2 {
+		task, err := model.ClaimTelegramBotOutbox("delivery-worker")
+		require.NoError(t, err)
+		require.NotNil(t, task)
+		sendTelegramBotOutbox(context.Background(), cfg, task)
+	}
+	require.Len(t, requests, 1, "私聊已经确认连接，旧欢迎任务不得再发送")
+	assert.Contains(t, requests[0], "/balance")
+	assert.NotContains(t, requests[0], "not active")
+	assert.NotContains(t, requests[0], "尚未连接")
+	var inactive int64
+	require.NoError(t, model.DB.Model(&model.TelegramBotOutbox{}).Where("kind = ?", "help").Count(&inactive).Error)
+	assert.Zero(t, inactive)
+}
+
+func TestTelegramBotQueuedInactiveMessageIsDiscardedAfterAuthorization(t *testing.T) {
+	for _, status := range []string{model.TelegramBotConnecting, model.TelegramBotConnected} {
+		t.Run(status, func(t *testing.T) {
+			_, cfg, conn := setupTelegramBotServiceTest(t)
+			require.NoError(t, model.DB.Model(conn).Update("status", model.TelegramBotDisconnected).Error)
+			data := []byte(fmt.Sprintf(`{"update_id":99,"message":{"from":{"id":42,"is_bot":false},"chat":{"id":42,"type":"private"},"date":%d,"text":"/start"}}`, time.Now().Unix()))
+			require.NoError(t, ReceiveTelegramBotUpdate(cfg, cfg.WebhookSecret, data))
+			command, err := model.ClaimTelegramBotInbox("command-worker")
+			require.NoError(t, err)
+			require.NotNil(t, command)
+			require.NoError(t, processTelegramBotInbox(cfg, command))
+			require.NoError(t, model.FinishTelegramBotInbox(command, "done"))
+			intent, err := model.BeginTelegramBotOAuth(conn.UserID, conn.Preferences)
+			require.NoError(t, err)
+			require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+				return model.CompleteTelegramBotOAuthTx(tx, conn.UserID, conn.TelegramID, intent)
+			}))
+			if status == model.TelegramBotConnected {
+				current, err := model.GetTelegramBotConnection(conn.UserID)
+				require.NoError(t, err)
+				require.NoError(t, model.ConfirmTelegramBotConnection(current, 42))
+			}
+			task, err := model.ClaimTelegramBotOutbox("delivery-worker")
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			require.Equal(t, "help", task.Kind)
+			sendTelegramBotOutbox(context.Background(), cfg, task)
+			var saved model.TelegramBotOutbox
+			require.NoError(t, model.DB.First(&saved, task.ID).Error)
+			assert.Equal(t, "discarded", saved.Status, "旧未连接提示必须结束，不能继续发送或等待租约超时重取")
+			assert.Empty(t, saved.LeaseOwner)
+			current, err := model.GetTelegramBotConnection(conn.UserID)
+			require.NoError(t, err)
+			assert.Equal(t, status, current.Status)
+		})
+	}
+}
+
+func TestTelegramBotFinalAuthorizationFailureReleasesTheTask(t *testing.T) {
+	for _, mode := range []string{"changed", "paused", "unavailable"} {
+		t.Run(mode, func(t *testing.T) {
+			_, cfg, conn := setupTelegramBotServiceTest(t)
+			require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+				return model.EnqueueTelegramBotMessageTx(tx, conn, "test", "authorization-race", "", time.Now().Unix()+300)
+			}))
+			task, err := model.ClaimTelegramBotOutbox("delivery-worker")
+			require.NoError(t, err)
+			require.NotNil(t, task)
+			configReads := 0
+			require.NoError(t, model.DB.Callback().Query().Before("gorm:query").Register("test:telegram_authorization_race", func(tx *gorm.DB) {
+				if tx.Statement.Table != "telegram_bot_configs" {
+					return
+				}
+				configReads++
+				if configReads != 2 {
+					return
+				}
+				switch mode {
+				case "changed":
+					tx.AddError(tx.Session(&gorm.Session{NewDB: true}).Model(&model.TelegramBotConnection{}).Where("user_id = ?", conn.UserID).Updates(map[string]any{"status": model.TelegramBotDisconnected, "version": conn.Version + 1}).Error)
+				case "paused":
+					tx.AddError(tx.Session(&gorm.Session{NewDB: true}).Model(&model.TelegramBotConfig{}).Where("id = ?", 1).Update("enabled", false).Error)
+				case "unavailable":
+					tx.AddError(errors.New("temporary database failure"))
+				}
+			}))
+			sendTelegramBotOutbox(context.Background(), cfg, task)
+			require.NoError(t, model.DB.Callback().Query().Remove("test:telegram_authorization_race"))
+			var saved model.TelegramBotOutbox
+			require.NoError(t, model.DB.First(&saved, task.ID).Error)
+			if mode == "changed" {
+				assert.Equal(t, "discarded", saved.Status)
+			} else {
+				assert.Equal(t, "pending", saved.Status)
+				assert.Greater(t, saved.NextAttemptAt, time.Now().Unix())
+			}
+			assert.Empty(t, saved.LeaseOwner)
+			assert.Zero(t, saved.LeaseUntil)
+		})
+	}
+}
+
 func TestTelegramBotLateForbiddenResponseDoesNotUndoANewerStart(t *testing.T) {
 	_, cfg, conn := setupTelegramBotServiceTest(t)
 	require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {

@@ -87,29 +87,118 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('requests bot access only after the user explicitly chooses it during binding', async () => {
-  const { user, onAuthorize } = fixture()
+it('defaults to connecting the bot and enabling every notification on first binding', async () => {
+  const { user, onAuthorize } = fixture({ preferences_version: 0 })
   const bind = await screen.findByRole('button', { name: 'Bind' })
   await waitFor(() => expect(bind).toBeEnabled())
   await user.click(bind)
   const dialog = await screen.findByRole('dialog', {
     name: 'Bind Telegram Account',
   })
-  expect(
-    within(dialog).getByRole('switch', {
-      name: 'Connect bot with this authorization',
-    })
-  ).not.toBeChecked()
+  for (const name of [
+    'Connect bot with this authorization',
+    'Telegram notifications',
+    'Low platform balance',
+    'Top-up credited',
+    'Subscription activated',
+    'Subscription expiring soon',
+  ]) {
+    expect(within(dialog).getByRole('switch', { name })).toBeChecked()
+  }
+  expect(onAuthorize).not.toHaveBeenCalled()
+  await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+  expect(onAuthorize).toHaveBeenCalledWith(
+    {
+      enabled: true,
+      low_balance: true,
+      topup: true,
+      subscription: true,
+      expiry: true,
+    },
+    false
+  )
+})
+
+it('allows first binding without bot access when the user turns off the default connection', async () => {
+  const { user, onAuthorize } = fixture({ preferences_version: 0 })
+  const bind = await screen.findByRole('button', { name: 'Bind' })
+  await waitFor(() => expect(bind).toBeEnabled())
+  await user.click(bind)
+  const dialog = await screen.findByRole('dialog')
   await user.click(
     within(dialog).getByRole('switch', {
       name: 'Connect bot with this authorization',
     })
   )
   expect(
-    within(dialog).getByRole('switch', { name: 'Telegram notifications' })
-  ).not.toBeChecked()
+    within(dialog).queryByRole('switch', { name: 'Telegram notifications' })
+  ).not.toBeInTheDocument()
   await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
-  expect(onAuthorize).toHaveBeenCalledWith(EMPTY_TELEGRAM_PREFERENCES, false)
+  expect(onAuthorize).toHaveBeenCalledWith(undefined, false)
+})
+
+it('keeps the bot connected when the user disables all notifications before binding', async () => {
+  const { user, onAuthorize } = fixture({ preferences_version: 0 })
+  const bind = await screen.findByRole('button', { name: 'Bind' })
+  await waitFor(() => expect(bind).toBeEnabled())
+  await user.click(bind)
+  const dialog = await screen.findByRole('dialog')
+  await user.click(
+    within(dialog).getByRole('switch', { name: 'Telegram notifications' })
+  )
+  expect(
+    within(dialog).getByRole('switch', {
+      name: 'Connect bot with this authorization',
+    })
+  ).toBeChecked()
+  expect(
+    within(dialog).getByRole('switch', { name: 'Top-up credited' })
+  ).toHaveAttribute('aria-disabled', 'true')
+  await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+  expect(onAuthorize).toHaveBeenCalledWith(
+    {
+      enabled: false,
+      low_balance: true,
+      topup: true,
+      subscription: true,
+      expiry: true,
+    },
+    false
+  )
+})
+
+it.each([0, 2])(
+  'uses defaults only for an unsaved preference version when reconnecting, version %s',
+  async (preferences_version) => {
+    const { user, onAuthorize } = fixture({ preferences_version }, true)
+    const enable = await screen.findByRole('button', { name: 'Enable bot' })
+    await waitFor(() => expect(enable).toBeEnabled())
+    await user.click(enable)
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByRole('switch', { name: 'Telegram notifications' })
+    ).toHaveAttribute('aria-checked', String(preferences_version === 0))
+    await user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+    expect(onAuthorize).toHaveBeenCalledWith(
+      {
+        enabled: preferences_version === 0,
+        low_balance: preferences_version === 0,
+        topup: preferences_version === 0,
+        subscription: preferences_version === 0,
+        expiry: preferences_version === 0,
+      },
+      true
+    )
+  }
+)
+
+it('keeps Telegram binding available without bot access when the administrator disables the bot', async () => {
+  const { user, onAuthorize } = fixture({ available: false })
+  const bind = await screen.findByRole('button', { name: 'Bind' })
+  await waitFor(() => expect(bind).toBeEnabled())
+  await user.click(bind)
+  expect(onAuthorize).toHaveBeenCalledWith()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 it('keeps account commands available when proactive notifications are disabled', async () => {
