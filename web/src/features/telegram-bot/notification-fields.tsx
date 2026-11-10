@@ -39,6 +39,7 @@ export function TelegramNotificationFields(
     { key: 'topup' as const, label: t('Top-up credited') },
     { key: 'subscription' as const, label: t('Subscription activated') },
     { key: 'expiry' as const, label: t('Subscription expiring soon') },
+    { key: 'group_ratio' as const, label: t('Group ratio changes') },
   ]
 
   return (

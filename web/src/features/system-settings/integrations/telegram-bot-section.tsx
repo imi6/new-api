@@ -64,8 +64,6 @@ import { useResetForm } from '../hooks/use-reset-form'
 
 const configSchema = z.object({
   enabled: z.boolean(),
-  low_balance_enabled: z.boolean(),
-  group_ratio_change_enabled: z.boolean(),
   bot_token: z.string().trim(),
   version: z.number().int().nonnegative(),
 })
@@ -111,8 +109,6 @@ function TelegramBotSettingsForm(props: {
     resolver: zodResolver(configSchema),
     defaultValues: {
       enabled: props.initial.enabled,
-      low_balance_enabled: props.initial.low_balance_enabled,
-      group_ratio_change_enabled: props.initial.group_ratio_change_enabled,
       bot_token: '',
       version: props.initial.version,
     },
@@ -123,8 +119,6 @@ function TelegramBotSettingsForm(props: {
       ? undefined
       : {
           enabled: props.initial.enabled,
-          low_balance_enabled: props.initial.low_balance_enabled,
-          group_ratio_change_enabled: props.initial.group_ratio_change_enabled,
           bot_token: '',
           version: props.initial.version,
         }
@@ -133,16 +127,12 @@ function TelegramBotSettingsForm(props: {
     mutationFn: (values: BotConfigValues) =>
       updateTelegramBotConfig({
         enabled: values.enabled,
-        low_balance_enabled: values.low_balance_enabled,
-        group_ratio_change_enabled: values.group_ratio_change_enabled,
         version: values.version,
         ...(values.bot_token ? { bot_token: values.bot_token } : {}),
       }),
     onSuccess: async (saved) => {
       form.reset({
         enabled: saved.enabled,
-        low_balance_enabled: saved.low_balance_enabled,
-        group_ratio_change_enabled: saved.group_ratio_change_enabled,
         bot_token: '',
         version: saved.version,
       })
@@ -173,9 +163,6 @@ function TelegramBotSettingsForm(props: {
         onReset={() =>
           form.reset({
             enabled: props.initial.enabled,
-            low_balance_enabled: props.initial.low_balance_enabled,
-            group_ratio_change_enabled:
-              props.initial.group_ratio_change_enabled,
             bot_token: '',
             version: props.initial.version,
           })
@@ -203,56 +190,6 @@ function TelegramBotSettingsForm(props: {
                   <FormDescription>
                     {t(
                       'Disabling the bot pauses commands and messages without changing Telegram login.'
-                    )}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={disabled}
-                  />
-                </FormControl>
-              </SettingsSwitchItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name='low_balance_enabled'
-            render={({ field }) => (
-              <SettingsSwitchItem>
-                <div className='min-w-0 space-y-1'>
-                  <FormLabel>
-                    {t('Telegram low balance notifications')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t(
-                      'Independent of email reminders. Uses the personal low balance threshold, or the site default when unset.'
-                    )}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={disabled}
-                  />
-                </FormControl>
-              </SettingsSwitchItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name='group_ratio_change_enabled'
-            render={({ field }) => (
-              <SettingsSwitchItem>
-                <div className='min-w-0 space-y-1'>
-                  <FormLabel>
-                    {t('Telegram group ratio change notifications')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t(
-                      'Checks effective ratios for available user groups every minute. Enabling only establishes a baseline; later changes notify users with Telegram notifications enabled.'
                     )}
                   </FormDescription>
                 </div>
@@ -328,9 +265,6 @@ function TelegramBotSettingsForm(props: {
                   onClick={() =>
                     save.mutate({
                       enabled: props.initial.enabled,
-                      low_balance_enabled: props.initial.low_balance_enabled,
-                      group_ratio_change_enabled:
-                        props.initial.group_ratio_change_enabled,
                       version: props.initial.version,
                       bot_token: '',
                     })
