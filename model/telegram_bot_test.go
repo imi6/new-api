@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,6 +37,34 @@ func telegramBotConnectionFixture(t *testing.T, name, telegramID string, prefs T
 		require.NoError(t, err)
 	}
 	return &user, conn
+}
+
+func telegramGroupRatioReminderFixture(t *testing.T, name, telegramID string) (*User, *TelegramBotConnection) {
+	t.Helper()
+	ratios := ratio_setting.GroupRatio2JSONString()
+	specialRatios := ratio_setting.GroupGroupRatio2JSONString()
+	usableGroups := setting.UserUsableGroups2JSONString()
+	visibility := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.ReadAll()
+	cfg, err := GetTelegramBotConfig()
+	require.NoError(t, err)
+	savedConfig := *cfg
+	t.Cleanup(func() {
+		require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(ratios))
+		require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(specialRatios))
+		require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(usableGroups))
+		ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.Clear()
+		ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.AddAll(visibility)
+		require.NoError(t, DB.Save(&savedConfig).Error)
+	})
+	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":1,"discount":1,"free":0,"hidden":7,"auto":1}`))
+	require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(`{"vip":{"discount":0.5}}`))
+	require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"standard":"Standard","discount":"Discount","free":"Free","auto":"Auto"}`))
+	ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.Clear()
+	require.NoError(t, DB.Model(cfg).Updates(map[string]any{"group_ratio_change_enabled": true, "reminder_version": gorm.Expr("reminder_version + 1")}).Error)
+	user, conn := telegramBotConnectionFixture(t, name, telegramID, TelegramBotPreferences{Enabled: true}, true)
+	require.NoError(t, DB.Model(user).Update("group", "vip").Error)
+	user.Group = "vip"
+	return user, conn
 }
 
 // TestTelegramBotDatabaseContracts 覆盖真实三库迁移、账务原子性及跨实例队列约束。
@@ -87,7 +117,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 			}
 			t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 			base := []any{&User{}, &Checkin{}, &AuthFlow{}, &UserSession{}, &ExternalIdentityClaim{}, &TopUp{}, &Redemption{}, &SubscriptionPlan{}, &SubscriptionOrder{}, &UserSubscription{}, &Option{}}
-			added := []any{&TelegramBotConfig{}, &TelegramBotConnection{}, &TelegramBotInbox{}, &TelegramBotOutbox{}, &TelegramLowBalanceState{}}
+			added := []any{&TelegramBotConfig{}, &TelegramBotConnection{}, &TelegramBotInbox{}, &TelegramBotOutbox{}, &TelegramLowBalanceState{}, &TelegramGroupRatioState{}}
 			// 外部 DSN 只能指向本测试专用数据库，结束后只清理本次创建的测试表。
 			tables := append(append([]any{}, base...), added...)
 			for _, table := range tables {
@@ -101,6 +131,19 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 			assert.True(t, db.Migrator().HasIndex(&TelegramBotInbox{}, "idx_tg_inbox_due"))
 			assert.True(t, db.Migrator().HasIndex(&TelegramBotOutbox{}, "idx_telegram_bot_outboxes_event_key"))
 			assert.True(t, db.Migrator().HasIndex(&TelegramBotOutbox{}, "idx_tg_outbox_due"))
+			freshConfig := TelegramBotConfig{ID: 1, Enabled: true}
+			require.NoError(t, db.Create(&freshConfig).Error)
+			require.NoError(t, db.First(&freshConfig, 1).Error)
+			assert.True(t, freshConfig.LowBalanceNotificationsEnabled())
+			assert.False(t, freshConfig.GroupRatioChangeEnabled)
+			require.NoError(t, db.Model(&freshConfig).Updates(map[string]any{"low_balance_enabled": false, "group_ratio_change_enabled": true, "reminder_version": 3}).Error)
+			for range 2 {
+				require.NoError(t, db.AutoMigrate(added...))
+			}
+			require.NoError(t, db.First(&freshConfig, 1).Error)
+			assert.False(t, freshConfig.LowBalanceNotificationsEnabled())
+			assert.True(t, freshConfig.GroupRatioChangeEnabled)
+			assert.EqualValues(t, 3, freshConfig.ReminderVersion)
 			require.NoError(t, db.Migrator().DropTable(tables...))
 			require.NoError(t, db.AutoMigrate(base...))
 			user := User{Username: "telegram-contract", Status: common.UserStatusEnabled, TelegramId: "42", Quota: 2000}
@@ -114,10 +157,18 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 			assert.Equal(t, user.Quota, saved.Quota)
 			assert.True(t, db.Migrator().HasIndex(&Checkin{}, "idx_user_checkin_date"))
 			t.Run("existing_bot_rows_receive_safe_migration_defaults", func(t *testing.T) {
+				legacyConfig := TelegramBotConfig{ID: 1, Enabled: true, BotID: 987, Version: 5}
 				legacyConn := TelegramBotConnection{UserID: user.Id, Version: 7, Status: TelegramBotConnected}
 				legacyInbox := TelegramBotInbox{BotID: 987, UpdateID: 987, UserID: user.Id, Status: "pending"}
+				legacyBalance := TelegramLowBalanceState{UserID: user.Id, ConnectionVersion: 7, Threshold: 1000, Below: true, Round: 3}
+				require.NoError(t, db.Create(&legacyConfig).Error)
 				require.NoError(t, db.Create(&legacyConn).Error)
 				require.NoError(t, db.Create(&legacyInbox).Error)
+				require.NoError(t, db.Create(&legacyBalance).Error)
+				for _, column := range []string{"LowBalanceEnabled", "GroupRatioChangeEnabled", "ReminderVersion"} {
+					require.NoError(t, db.Migrator().DropColumn(&TelegramBotConfig{}, column))
+				}
+				require.NoError(t, db.Migrator().DropColumn(&TelegramLowBalanceState{}, "SettingsVersion"))
 				for _, column := range []string{"AuthorizationVersion", "LastStateEventAt", "LastStateUpdateID"} {
 					require.NoError(t, db.Migrator().DropColumn(&TelegramBotConnection{}, column))
 				}
@@ -127,6 +178,17 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				for range 2 {
 					require.NoError(t, db.AutoMigrate(added...))
 				}
+				migratedConfig, err := GetTelegramBotConfig()
+				require.NoError(t, err)
+				assert.EqualValues(t, 5, migratedConfig.Version)
+				assert.True(t, migratedConfig.LowBalanceNotificationsEnabled())
+				assert.False(t, migratedConfig.GroupRatioChangeEnabled)
+				assert.Zero(t, migratedConfig.ReminderVersion)
+				var migratedBalance TelegramLowBalanceState
+				require.NoError(t, db.First(&migratedBalance, user.Id).Error)
+				assert.EqualValues(t, 3, migratedBalance.Round)
+				assert.True(t, migratedBalance.Below)
+				assert.Zero(t, migratedBalance.SettingsVersion)
 				var migrated TelegramBotConnection
 				require.NoError(t, db.First(&migrated, user.Id).Error)
 				assert.EqualValues(t, 7, migrated.Version)
@@ -142,6 +204,8 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				assert.EqualValues(t, 1, migrated.AuthorizationVersion)
 				require.NoError(t, db.Delete(&legacyConn).Error)
 				require.NoError(t, db.Delete(&legacyInbox).Error)
+				require.NoError(t, db.Delete(&legacyConfig).Error)
+				require.NoError(t, db.Delete(&legacyBalance).Error)
 			})
 			system_setting.SetTelegramBotEnabled(true)
 			common.QuotaRemindEnabled, common.QuotaRemindThreshold = true, 1000
@@ -335,7 +399,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 					})
 				}
 				if dialect == "sqlite" {
-					require.NoError(t, scanTelegramUserReminders(context.Background(), other.Id, cfg.BotID))
+					require.NoError(t, scanTelegramUserReminders(context.Background(), other.Id, cfg.BotID, true))
 					require.NoError(t, credit())
 				} else {
 					locked, release, creditStarted := make(chan struct{}), make(chan struct{}), make(chan struct{})
@@ -349,7 +413,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 					}))
 					t.Cleanup(func() { require.NoError(t, db.Callback().Query().Remove(marker)) })
 					go func() {
-						scanResult <- scanTelegramUserReminders(context.WithValue(context.Background(), marker, true), other.Id, cfg.BotID)
+						scanResult <- scanTelegramUserReminders(context.WithValue(context.Background(), marker, true), other.Id, cfg.BotID, true)
 					}()
 					select {
 					case <-locked:
@@ -366,7 +430,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.NoError(t, db.First(&state, other.Id).Error)
 				assert.False(t, state.Below, "credit committed after the scan must preserve recovery")
 				require.NoError(t, db.Model(&User{}).Where("id = ?", other.Id).Update("quota", 500).Error)
-				require.NoError(t, scanTelegramUserReminders(context.Background(), other.Id, cfg.BotID))
+				require.NoError(t, scanTelegramUserReminders(context.Background(), other.Id, cfg.BotID, true))
 				var count int64
 				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "low_balance").Count(&count).Error)
 				assert.EqualValues(t, 2, count, "a later drop must produce the next reminder")
@@ -520,9 +584,14 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.ErrorIs(t, ConfirmTelegramBotRecovery(token, identity), ErrTelegramBotExpired)
 			})
 
-			t.Run("zero_or_disabled_threshold_does_not_block_connection", func(t *testing.T) {
+			t.Run("telegram_low_balance_uses_its_own_switch_and_does_not_replay_on_enable", func(t *testing.T) {
 				previousEnabled, previousThreshold := common.QuotaRemindEnabled, common.QuotaRemindThreshold
-				t.Cleanup(func() { common.QuotaRemindEnabled, common.QuotaRemindThreshold = previousEnabled, previousThreshold })
+				previousConfig, err := GetTelegramBotConfig()
+				require.NoError(t, err)
+				t.Cleanup(func() {
+					common.QuotaRemindEnabled, common.QuotaRemindThreshold = previousEnabled, previousThreshold
+					require.NoError(t, db.Save(previousConfig).Error)
+				})
 				common.QuotaRemindEnabled, common.QuotaRemindThreshold = true, 0
 				other, connected := telegramBotConnectionFixture(t, "zero", "46", TelegramBotPreferences{Enabled: true, LowBalance: true}, true)
 				assert.Equal(t, TelegramBotConnected, connected.Status)
@@ -530,6 +599,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.NoError(t, db.First(&state, other.Id).Error)
 				assert.Zero(t, state.Threshold)
 				assert.False(t, state.Below)
+				require.NoError(t, db.Model(&cfg).Updates(map[string]any{"low_balance_enabled": false, "reminder_version": gorm.Expr("reminder_version + 1")}).Error)
 				common.QuotaRemindEnabled, common.QuotaRemindThreshold = false, -1
 				_, connected = telegramBotConnectionFixture(t, "disabled", "47", TelegramBotPreferences{Enabled: true, LowBalance: true}, true)
 				assert.Equal(t, TelegramBotConnected, connected.Status)
@@ -541,6 +611,32 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
 					return UpdateTelegramBotPreferencesTx(tx, connected.UserID, connected.PreferencesVersion, TelegramBotPreferences{Enabled: true, LowBalance: true})
 				}))
+
+				// 邮件提醒关闭后，Telegram 独立开关仍应触发新一轮低余额提醒。
+				common.QuotaRemindThreshold = 1000
+				require.NoError(t, db.Model(&cfg).Updates(map[string]any{"low_balance_enabled": true, "reminder_version": gorm.Expr("reminder_version + 1")}).Error)
+				emailDisabled, _ := telegramBotConnectionFixture(t, "email-disabled", "90", TelegramBotPreferences{Enabled: true, LowBalance: true}, true)
+				require.NoError(t, db.Model(emailDisabled).Update("quota", 500).Error)
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var task TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ? AND kind = ?", emailDisabled.Id, "low_balance").First(&task).Error)
+				var event TelegramBusinessEvent
+				require.NoError(t, common.UnmarshalJsonStr(task.Payload, &event))
+				valid, err := TelegramBusinessEventStillValid(&event)
+				require.NoError(t, err)
+				assert.True(t, valid)
+				require.NoError(t, db.Model(&cfg).Updates(map[string]any{"low_balance_enabled": false, "reminder_version": gorm.Expr("reminder_version + 1")}).Error)
+				valid, err = TelegramBusinessEventStillValid(&event)
+				require.NoError(t, err)
+				assert.False(t, valid)
+				require.NoError(t, db.Model(&cfg).Updates(map[string]any{"low_balance_enabled": true, "reminder_version": gorm.Expr("reminder_version + 1")}).Error)
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				valid, err = TelegramBusinessEventStillValid(&event)
+				require.NoError(t, err)
+				assert.False(t, valid, "重新开启后台提醒不能复活关闭前的任务")
+				var count int64
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", emailDisabled.Id, "low_balance").Count(&count).Error)
+				assert.EqualValues(t, 1, count, "重新开启时仅建立当前余额基线")
 			})
 
 			t.Run("authorized_private_start_confirms_only_the_current_connection", func(t *testing.T) {
@@ -785,6 +881,222 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				allowed, err = AuthorizeTelegramBotSend(&row)
 				require.NoError(t, err)
 				assert.False(t, allowed)
+			})
+
+			t.Run("group_ratio_snapshots_persist_and_notify_effective_changes_once", func(t *testing.T) {
+				other, _ := telegramGroupRatioReminderFixture(t, "ratio-snapshot", "91")
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var baseline TelegramGroupRatioState
+				require.NoError(t, db.First(&baseline, other.Id).Error)
+				var snapshot map[string]float64
+				require.NoError(t, common.UnmarshalJsonStr(baseline.Snapshot, &snapshot))
+				assert.Equal(t, map[string]float64{"standard": 1, "discount": 0.5, "free": 0}, snapshot)
+				for range 2 {
+					require.NoError(t, db.AutoMigrate(&TelegramGroupRatioState{}))
+				}
+				var persisted TelegramGroupRatioState
+				require.NoError(t, db.Session(&gorm.Session{NewDB: true}).First(&persisted, other.Id).Error)
+				assert.Equal(t, baseline, persisted, "重复迁移和新数据库会话不能清空已保存的倍率基线")
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var count int64
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Count(&count).Error)
+				assert.Zero(t, count, "首次读取不能群发历史倍率")
+
+				// 特殊倍率覆盖普通倍率；不可用分组及 auto 的变化不应通知。
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":2,"discount":10,"free":0,"hidden":9,"auto":2}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":0,"discount":10,"free":1,"hidden":9,"auto":2}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(`{"vip":{"discount":0.25}}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(`{"vip":{"discount":0}}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(`{}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+
+				var tasks []TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Order("id").Find(&tasks).Error)
+				require.Len(t, tasks, 6)
+				changes := make(map[string][][2]float64)
+				for _, task := range tasks {
+					var event TelegramBusinessEvent
+					require.NoError(t, common.UnmarshalJsonStr(task.Payload, &event))
+					assert.Equal(t, "vip", event.UserGroup)
+					changes[event.GroupName] = append(changes[event.GroupName], [2]float64{event.OldRatio, event.NewRatio})
+				}
+				assert.Equal(t, map[string][][2]float64{
+					"standard": {{1, 2}, {2, 0}},
+					"free":     {{0, 1}},
+					"discount": {{0.5, 0.25}, {0.25, 0}, {0, 10}},
+				}, changes)
+
+				// 新增及删除分组只更新快照，不生成倍率变动通知。
+				require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"standard":"Standard","discount":"Discount","free":"Free","new":"New","auto":"Auto"}`))
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"discount":10,"free":1,"hidden":9,"auto":2,"new":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Count(&count).Error)
+				assert.EqualValues(t, 6, count)
+
+				// 陈旧节点不能把共享快照改回旧价；常规配置同步后再比较真实变化。
+				const optionKey = "group_ratio_setting.group_ratio"
+				const currentRatios = `{"discount":12,"free":1,"hidden":9,"auto":2,"new":1}`
+				const staleRatios = `{"discount":1,"free":1,"hidden":9,"auto":2,"new":1}`
+				var existingOption Option
+				require.ErrorIs(t, db.Where(&Option{Key: optionKey}).First(&existingOption).Error, gorm.ErrRecordNotFound)
+				option := Option{Key: optionKey, Value: currentRatios}
+				require.NoError(t, db.Create(&option).Error)
+				t.Cleanup(func() { require.NoError(t, db.Delete(&option).Error) })
+				common.OptionMapRWMutex.Lock()
+				previousValue, existed := common.OptionMap[optionKey]
+				if common.OptionMap == nil {
+					common.OptionMap = make(map[string]string)
+				}
+				common.OptionMap[optionKey] = staleRatios
+				common.OptionMapRWMutex.Unlock()
+				t.Cleanup(func() {
+					common.OptionMapRWMutex.Lock()
+					defer common.OptionMapRWMutex.Unlock()
+					if existed {
+						common.OptionMap[optionKey] = previousValue
+					} else {
+						delete(common.OptionMap, optionKey)
+					}
+				})
+				require.NoError(t, db.First(&baseline, other.Id).Error)
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(staleRatios))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				// 整轮检查通过后配置仍可能变化，用户事务不能复用已经过时的检查结果。
+				require.NoError(t, scanTelegramUserReminders(context.Background(), other.Id, cfg.BotID, true))
+				require.NoError(t, db.First(&persisted, other.Id).Error)
+				assert.Equal(t, baseline, persisted)
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Count(&count).Error)
+				assert.EqualValues(t, 6, count, "配置未同步时不生成反向价格消息")
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(currentRatios))
+				common.OptionMapRWMutex.Lock()
+				common.OptionMap[optionKey] = currentRatios
+				common.OptionMapRWMutex.Unlock()
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var currentTask TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Order("id desc").First(&currentTask).Error)
+				var currentEvent TelegramBusinessEvent
+				require.NoError(t, common.UnmarshalJsonStr(currentTask.Payload, &currentEvent))
+				assert.Equal(t, "discount", currentEvent.GroupName)
+				assert.Equal(t, 10.0, currentEvent.OldRatio)
+				assert.Equal(t, 12.0, currentEvent.NewRatio)
+				currentTask.Status, currentTask.LeaseOwner, currentTask.LeaseUntil = "processing", "ratio-cache-sync", time.Now().Unix()+120
+				require.NoError(t, db.Save(&currentTask).Error)
+				common.OptionMapRWMutex.Lock()
+				common.OptionMap[optionKey] = staleRatios
+				common.OptionMapRWMutex.Unlock()
+				allowed, err := AuthorizeTelegramBotSend(&currentTask)
+				require.Error(t, err, "缓存不同步应保留可重试错误，不能当作永久失效丢弃")
+				assert.False(t, allowed)
+				common.OptionMapRWMutex.Lock()
+				common.OptionMap[optionKey] = currentRatios
+				common.OptionMapRWMutex.Unlock()
+				allowed, err = AuthorizeTelegramBotSend(&currentTask)
+				require.NoError(t, err)
+				assert.True(t, allowed)
+			})
+
+			t.Run("group_ratio_visibility_preferences_and_connection_changes_only_reset_baselines", func(t *testing.T) {
+				other, connected := telegramGroupRatioReminderFixture(t, "ratio-visibility", "92")
+				visibility := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup
+				visibility.Set("vip", map[string]string{"-:standard": ""})
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":2,"discount":1,"free":0,"hidden":9,"auto":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				visibility.Set("vip", map[string]string{"-:standard": "", "+:hidden": "Hidden"})
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var count int64
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Count(&count).Error)
+				assert.Zero(t, count, "用户新获得可用分组时不能收到之前的价格变化")
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":3,"discount":1,"free":0,"hidden":10,"auto":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				visibility.Set("vip", map[string]string{"-:standard": "", "-:hidden": ""})
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				visibility.Clear()
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+
+				for _, enabled := range []bool{false, true} {
+					connected, err = GetTelegramBotConnection(other.Id)
+					require.NoError(t, err)
+					require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
+						return UpdateTelegramBotPreferencesTx(tx, other.Id, connected.PreferencesVersion, TelegramBotPreferences{Enabled: enabled})
+					}))
+					if !enabled {
+						require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":4,"discount":1,"free":0,"hidden":10,"auto":1}`))
+					}
+					require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				}
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Count(&count).Error)
+				assert.EqualValues(t, 1, count, "重新启用用户总开关仅建立当前倍率基线")
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":5,"discount":1,"free":0,"hidden":10,"auto":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, db.Model(other).Update("group", "other").Error)
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, db.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Count(&count).Error)
+				assert.EqualValues(t, 2, count, "用户组变化导致有效倍率变化时应重新建基线")
+
+				intent, err := BeginTelegramBotOAuth(other.Id, TelegramBotPreferences{Enabled: true})
+				require.NoError(t, err)
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
+					return CompleteTelegramBotOAuthTx(tx, other.Id, other.TelegramId, intent, true)
+				}))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":6,"discount":1,"free":0,"hidden":10,"auto":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var tasks []TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Order("id").Find(&tasks).Error)
+				require.Len(t, tasks, 3)
+				var latest TelegramBusinessEvent
+				require.NoError(t, common.UnmarshalJsonStr(tasks[2].Payload, &latest))
+				assert.Equal(t, "other", latest.UserGroup)
+				assert.Equal(t, "standard", latest.GroupName)
+				assert.Equal(t, 5.0, latest.OldRatio)
+				assert.Equal(t, 6.0, latest.NewRatio)
+			})
+
+			t.Run("group_ratio_final_send_rejects_disabled_settings_and_stale_prices", func(t *testing.T) {
+				other, _ := telegramGroupRatioReminderFixture(t, "ratio-send", "93")
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":2,"discount":1,"free":0,"hidden":7,"auto":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var row TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ? AND kind = ?", other.Id, "group_ratio").First(&row).Error)
+				row.Status, row.LeaseOwner, row.LeaseUntil = "processing", "group-ratio-send", time.Now().Unix()+120
+				require.NoError(t, db.Save(&row).Error)
+				allowed, err := AuthorizeTelegramBotSend(&row)
+				require.NoError(t, err)
+				assert.True(t, allowed)
+				for _, enabled := range []bool{false, true} {
+					require.NoError(t, db.Model(&cfg).Updates(map[string]any{"group_ratio_change_enabled": enabled, "reminder_version": gorm.Expr("reminder_version + 1")}).Error)
+					allowed, err = AuthorizeTelegramBotSend(&row)
+					require.NoError(t, err)
+					assert.False(t, allowed, "后台开关关闭后重新开启也不能恢复旧任务")
+				}
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":3,"discount":1,"free":0,"hidden":7,"auto":1}`))
+				require.NoError(t, ScanTelegramReminderEvents(context.Background()))
+				var newer TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ? AND kind = ?", other.Id, "group_ratio").Order("id desc").First(&newer).Error)
+				assert.NotEqual(t, row.ID, newer.ID)
+				newer.Status, newer.LeaseOwner, newer.LeaseUntil = "processing", "group-ratio-new-send", time.Now().Unix()+120
+				require.NoError(t, db.Save(&newer).Error)
+				allowed, err = AuthorizeTelegramBotSend(&newer)
+				require.NoError(t, err)
+				assert.True(t, allowed)
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":4,"discount":1,"free":0,"hidden":7,"auto":1}`))
+				allowed, err = AuthorizeTelegramBotSend(&newer)
+				require.NoError(t, err)
+				assert.False(t, allowed, "发送前已失效的倍率不能发给用户")
+				require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"standard":3,"discount":1,"free":0,"hidden":7,"auto":1}`))
+				ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.Set("vip", map[string]string{"-:standard": ""})
+				allowed, err = AuthorizeTelegramBotSend(&newer)
+				require.NoError(t, err)
+				assert.False(t, allowed, "用户已无法使用的分组不再发送价格通知")
 			})
 
 			t.Run("account_changes_reject_late_bot_checkins", func(t *testing.T) {

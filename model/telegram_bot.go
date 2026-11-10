@@ -31,17 +31,31 @@ var (
 
 // TelegramBotConfig 只在服务端读取凭据，不向管理接口序列化令牌和回调密钥。
 type TelegramBotConfig struct {
-	ID            int    `json:"-" gorm:"primaryKey;autoIncrement:false"`
-	Enabled       bool   `json:"enabled"`
-	BotID         int64  `json:"-" gorm:"type:bigint"`
-	BotUsername   string `json:"bot_username" gorm:"type:varchar(64)"`
-	Token         string `json:"-" gorm:"type:text"`
-	WebhookSecret string `json:"-" gorm:"type:varchar(128)"`
-	Version       int64  `json:"version" gorm:"type:bigint"`
-	WebhookURL    string `json:"webhook_url" gorm:"type:text"`
-	WebhookStatus string `json:"webhook_status" gorm:"type:varchar(32)"`
-	LastError     string `json:"last_error" gorm:"type:varchar(255)"`
-	UpdatedAt     int64  `json:"updated_at" gorm:"type:bigint"`
+	ID                      int    `json:"-" gorm:"primaryKey;autoIncrement:false"`
+	Enabled                 bool   `json:"enabled"`
+	LowBalanceEnabled       *bool  `json:"-"`
+	GroupRatioChangeEnabled bool   `json:"group_ratio_change_enabled"`
+	ReminderVersion         int64  `json:"-" gorm:"type:bigint;not null;default:0"`
+	BotID                   int64  `json:"-" gorm:"type:bigint"`
+	BotUsername             string `json:"bot_username" gorm:"type:varchar(64)"`
+	Token                   string `json:"-" gorm:"type:text"`
+	WebhookSecret           string `json:"-" gorm:"type:varchar(128)"`
+	Version                 int64  `json:"version" gorm:"type:bigint"`
+	WebhookURL              string `json:"webhook_url" gorm:"type:text"`
+	WebhookStatus           string `json:"webhook_status" gorm:"type:varchar(32)"`
+	LastError               string `json:"last_error" gorm:"type:varchar(255)"`
+	UpdatedAt               int64  `json:"updated_at" gorm:"type:bigint"`
+}
+
+// LowBalanceNotificationsEnabled 保留旧配置的默认开启行为，不覆盖用户已保存的通知偏好。
+func (cfg *TelegramBotConfig) LowBalanceNotificationsEnabled() bool {
+	return cfg.LowBalanceEnabled == nil || *cfg.LowBalanceEnabled
+}
+
+// TelegramBotReminderSettings 使用指针保留旧客户端未提交通知开关时的已有设置。
+type TelegramBotReminderSettings struct {
+	LowBalanceEnabled       *bool `json:"low_balance_enabled"`
+	GroupRatioChangeEnabled *bool `json:"group_ratio_change_enabled"`
 }
 
 type TelegramBotPreferences struct {
@@ -87,16 +101,21 @@ type TelegramBotOAuthIntent struct {
 
 // TelegramBusinessEvent 保存已经提交的业务事实，重试通知不重新执行资金业务。
 type TelegramBusinessEvent struct {
-	Key            string `json:"key"`
-	Kind           string `json:"kind"`
-	UserID         int    `json:"user_id"`
-	AmountQuota    int64  `json:"amount_quota"`
-	BalanceQuota   int64  `json:"balance_quota"`
-	OccurredAt     int64  `json:"occurred_at"`
-	SubscriptionID int    `json:"subscription_id"`
-	ExpiresAt      int64  `json:"expires_at"`
-	Title          string `json:"title"`
-	Source         string `json:"source"`
+	Key             string  `json:"key"`
+	Kind            string  `json:"kind"`
+	UserID          int     `json:"user_id"`
+	AmountQuota     int64   `json:"amount_quota"`
+	BalanceQuota    int64   `json:"balance_quota"`
+	OccurredAt      int64   `json:"occurred_at"`
+	SubscriptionID  int     `json:"subscription_id"`
+	ExpiresAt       int64   `json:"expires_at"`
+	Title           string  `json:"title"`
+	Source          string  `json:"source"`
+	GroupName       string  `json:"group_name"`
+	UserGroup       string  `json:"user_group"`
+	OldRatio        float64 `json:"old_ratio"`
+	NewRatio        float64 `json:"new_ratio"`
+	SettingsVersion int64   `json:"settings_version"`
 }
 
 // TelegramBotOutbox 每条任务固定机器人、接收目标和相关偏好版本。
@@ -373,6 +392,8 @@ func (conn *TelegramBotConnection) EventPreference(kind string) (bool, int64) {
 		return conn.Preferences.Subscription, conn.SubscriptionVersion
 	case "expiry":
 		return conn.Preferences.Expiry, conn.ExpiryVersion
+	case "group_ratio":
+		return true, 0
 	}
 	return false, 0
 }
@@ -393,6 +414,12 @@ func EnqueueTelegramBusinessEventTx(tx *gorm.DB, event *TelegramBusinessEvent) e
 		return err
 	}
 	if !cfg.Enabled {
+		return nil
+	}
+	if event.Kind == "low_balance" && (!cfg.LowBalanceNotificationsEnabled() || event.SettingsVersion != cfg.ReminderVersion) {
+		return nil
+	}
+	if event.Kind == "group_ratio" && (!cfg.GroupRatioChangeEnabled || event.SettingsVersion != cfg.ReminderVersion) {
 		return nil
 	}
 	var user User
