@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { GroupRatioChange } from '@/components/ratio-change-badge'
+import type { GroupLabel } from '@/lib/group-labels'
 
 // ----------------------------------------------------------------------------
 // Pricing Types
@@ -133,6 +134,7 @@ export type PricingData = {
   group_ratio_changes?: Record<string, GroupRatioChange>
   /** Platforms an administrator assigned to shown groups, as channel type ids. */
   group_platforms?: Record<string, string>
+  group_badges?: Record<string, GroupLabel[]>
   usable_group: Record<string, { desc: string; ratio: number }>
   supported_endpoint: Record<string, string>
   auto_groups: string[]

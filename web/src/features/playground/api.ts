@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
+import type { GroupLabel } from '@/lib/group-labels'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { API_ENDPOINTS } from './constants'
@@ -75,7 +76,7 @@ export async function getUserGroups(): Promise<GroupOption[]> {
 
   const groupData = data.data as Record<
     string,
-    { desc: string; ratio: number | string }
+    { desc: string; ratio: number | string; badges?: GroupLabel[] }
   >
 
   // label is for button display (name only); desc is for dropdown content
@@ -84,5 +85,6 @@ export async function getUserGroups(): Promise<GroupOption[]> {
     value: group,
     ratio: info.ratio,
     desc: info.desc,
+    badges: info.badges,
   }))
 }

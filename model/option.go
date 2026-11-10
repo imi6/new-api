@@ -155,6 +155,7 @@ func InitOptionMap() {
 	common.OptionMap["AffiliateRebateGroups"] = common.AffiliateRebateGroups
 	common.OptionMap["AffiliateRebateExcludeSpecialRatioEnabled"] = strconv.FormatBool(common.AffiliateRebateExcludeSpecialRatioEnabled)
 	common.OptionMap["GroupPlatformMap"] = common.GroupPlatformMap
+	common.OptionMap[common.GroupBadgeConfigOption] = common.GroupBadgeConfigJSONString()
 	common.OptionMap["QuotaRemindEnabled"] = strconv.FormatBool(common.QuotaRemindEnabled)
 	common.OptionMap["QuotaRemindThreshold"] = strconv.Itoa(common.QuotaRemindThreshold)
 	common.OptionMap["PreConsumedQuota"] = strconv.Itoa(common.PreConsumedQuota)
@@ -241,6 +242,10 @@ func SyncOptions(frequency int) {
 }
 
 func validateOptionValue(key string, value string) error {
+	if key == common.GroupBadgeConfigOption {
+		_, err := common.ParseGroupBadgeConfig(value)
+		return err
+	}
 	if IsUpstreamRatesOption(key) {
 		return fmt.Errorf("Upstream rate state must be managed through channel settings")
 	}
@@ -293,6 +298,9 @@ func validateOptionValue(key string, value string) error {
 }
 
 func UpdateOption(key string, value string) error {
+	if key == common.GroupBadgeConfigOption {
+		return UpdateOptionsBulk(map[string]string{key: value})
+	}
 	if IsRequestPolicyOption(key) {
 		return UpdateRequestPolicyOptions(map[string]string{key: value})
 	}
@@ -699,6 +707,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.AffiliateRebateGroups = value
 	case "GroupPlatformMap":
 		common.GroupPlatformMap = value
+	case common.GroupBadgeConfigOption:
+		err = common.UpdateGroupBadgeConfig(value)
 	case "QuotaRemindThreshold":
 		common.QuotaRemindThreshold, _ = strconv.Atoi(value)
 	case "PreConsumedQuota":
