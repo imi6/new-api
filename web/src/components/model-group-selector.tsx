@@ -448,7 +448,7 @@ export const GroupSelector: React.FC<GroupSelectorProps> = React.memo(
               >
                 <div className='flex min-w-0 flex-1 items-center gap-2 pr-4'>
                   <div className='flex min-w-0 flex-1 flex-col'>
-                    <span className='text-foreground flex min-w-0 flex-wrap items-center gap-1 text-[11px] font-medium'>
+                    <span className='text-foreground flex min-w-0 flex-nowrap items-center gap-1 text-[11px] font-medium'>
                       <GroupLabels labels={group.badges} />
                       <span className='max-w-full truncate' title={group.label}>
                         {group.label}
@@ -506,7 +506,7 @@ export const GroupSelector: React.FC<GroupSelectorProps> = React.memo(
                 >
                   <div className='flex min-w-0 flex-1 items-center gap-3'>
                     <div className='flex min-w-0 flex-1 flex-col'>
-                      <span className='text-foreground flex flex-wrap items-center gap-1 text-sm font-medium'>
+                      <span className='text-foreground flex min-w-0 flex-nowrap items-center gap-1 text-sm font-medium'>
                         <GroupLabels labels={group.badges} />
                         <span
                           className='max-w-full truncate'
@@ -730,7 +730,7 @@ export const ModelGroupSelector: React.FC<ModelGroupSelectorProps> = ({
               ref={isSelected ? selectedGroupOptionRef : undefined}
               type='button'
             >
-              <span className='flex min-w-0 flex-1 flex-col items-start gap-1 font-medium'>
+              <span className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 font-medium'>
                 <GroupLabels labels={group.badges} />
                 <span className='max-w-full truncate' title={group.label}>
                   {group.label}
