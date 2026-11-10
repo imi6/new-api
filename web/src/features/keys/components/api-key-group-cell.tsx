@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 
 import { BadgeCell, TruncatedCell } from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
+import { GroupLabels } from '@/components/group-labels'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +31,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { useMediaQuery } from '@/hooks'
+import type { GroupLabel } from '@/lib/group-labels'
 import { cn } from '@/lib/utils'
 
 import { GroupRatioBadge, type GroupRatio } from './auto-group-visuals'
@@ -38,6 +40,8 @@ type ApiKeyGroupCellProps = {
   crossGroupRetry: boolean
   group: string
   ratio?: GroupRatio
+  labels?: GroupLabel[]
+  routeLabels?: Record<string, GroupLabel[]>
   routes?: string[]
   shouldReduceMotion: boolean
   onReorderRoutes?: (next: string[]) => Promise<void>
@@ -60,6 +64,7 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
       >
         <GroupBadge
           group={group}
+          labels={props.labels}
           ratio={ratio}
           ratioLabel={group ? undefined : t('Inherited')}
           type='text'
@@ -75,6 +80,8 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
       isMobile={isMobile}
       ratio={props.ratio}
       routes={props.routes ?? []}
+      labels={props.labels}
+      routeLabels={props.routeLabels}
       shouldReduceMotion={props.shouldReduceMotion}
       onReorderRoutes={props.onReorderRoutes}
     />
@@ -84,6 +91,8 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
 function AutoRoutePopover(props: {
   isMobile: boolean
   ratio?: GroupRatio
+  labels?: GroupLabel[]
+  routeLabels?: Record<string, GroupLabel[]>
   routes: string[]
   shouldReduceMotion: boolean
   onReorderRoutes?: (next: string[]) => Promise<void>
@@ -130,6 +139,7 @@ function AutoRoutePopover(props: {
           />
         }
       >
+        <GroupLabels labels={props.labels} />
         <StatusBadge
           label={t('Cross-group')}
           variant='info'
@@ -159,7 +169,17 @@ function AutoRoutePopover(props: {
                 <span className='text-muted-foreground w-14 shrink-0 text-xs'>
                   {t('Route {{index}}', { index: index + 1 })}
                 </span>
-                <span className='min-w-0 flex-1 truncate text-sm'>{group}</span>
+                <span className='flex min-w-0 flex-1 flex-wrap items-center gap-1 text-sm'>
+                  <GroupLabels
+                    labels={
+                      props.routeLabels &&
+                      Object.hasOwn(props.routeLabels, group)
+                        ? props.routeLabels[group]
+                        : undefined
+                    }
+                  />
+                  <span className='truncate'>{group}</span>
+                </span>
                 {canReorder ? (
                   <span className='flex shrink-0'>
                     <Button

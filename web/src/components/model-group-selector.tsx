@@ -60,8 +60,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { useIsMobile } from '@/hooks/use-mobile'
+import type { GroupLabel } from '@/lib/group-labels'
 import { cn } from '@/lib/utils'
 
+import { GroupLabels } from './group-labels'
 import { formatGroupDetail } from './model-group-selector/group-detail'
 import {
   modelGroupSelectorLayoutClasses,
@@ -76,6 +78,7 @@ interface ModelOption {
 }
 
 interface GroupOption {
+  badges?: GroupLabel[]
   label: string
   value: string
   ratio?: number | string
@@ -139,10 +142,11 @@ const GroupTriggerButton = React.forwardRef<
   React.ComponentRef<typeof Button>,
   React.ComponentPropsWithoutRef<typeof Button> & {
     currentLabel: string
+    labels?: GroupLabel[]
     triggerClassName?: string
     isDisabled?: boolean
   }
->(({ currentLabel, triggerClassName, isDisabled, ...props }, ref) => (
+>(({ currentLabel, labels, triggerClassName, isDisabled, ...props }, ref) => (
   <Button
     ref={ref}
     variant='outline'
@@ -162,7 +166,15 @@ const GroupTriggerButton = React.forwardRef<
     {...props}
   >
     <LayersIcon className='text-muted-foreground block size-4 sm:hidden' />
-    <span className='text-muted-foreground sm:text-foreground hidden truncate text-xs sm:block'>
+    {labels?.length ? (
+      <span className='hidden max-w-24 min-w-0 sm:inline-flex'>
+        <GroupLabels labels={labels} compact />
+      </span>
+    ) : null}
+    <span
+      className='text-muted-foreground sm:text-foreground hidden max-w-36 min-w-0 truncate text-xs sm:block'
+      title={currentLabel}
+    >
       {currentLabel}
     </span>
     <ChevronsUpDown className='text-muted-foreground hidden h-4 w-4 opacity-50 sm:block' />
@@ -436,8 +448,11 @@ export const GroupSelector: React.FC<GroupSelectorProps> = React.memo(
               >
                 <div className='flex min-w-0 flex-1 items-center gap-2 pr-4'>
                   <div className='flex min-w-0 flex-1 flex-col'>
-                    <span className='text-foreground truncate text-[11px] font-medium'>
-                      {group.label}
+                    <span className='text-foreground flex min-w-0 flex-wrap items-center gap-1 text-[11px] font-medium'>
+                      <GroupLabels labels={group.badges} />
+                      <span className='max-w-full truncate' title={group.label}>
+                        {group.label}
+                      </span>
                     </span>
                     {(group.desc || group.description) && (
                       <div className='text-muted-foreground truncate text-[9px] leading-tight'>
@@ -464,6 +479,7 @@ export const GroupSelector: React.FC<GroupSelectorProps> = React.memo(
         <DrawerTrigger asChild>
           <GroupTriggerButton
             currentLabel={currentGroup?.label || t('Group')}
+            labels={currentGroup?.badges}
             triggerClassName={className}
             isDisabled={disabled}
             aria-expanded={open}
@@ -490,8 +506,14 @@ export const GroupSelector: React.FC<GroupSelectorProps> = React.memo(
                 >
                   <div className='flex min-w-0 flex-1 items-center gap-3'>
                     <div className='flex min-w-0 flex-1 flex-col'>
-                      <span className='text-foreground text-sm font-medium'>
-                        {group.label}
+                      <span className='text-foreground flex flex-wrap items-center gap-1 text-sm font-medium'>
+                        <GroupLabels labels={group.badges} />
+                        <span
+                          className='max-w-full truncate'
+                          title={group.label}
+                        >
+                          {group.label}
+                        </span>
                       </span>
                       {(group.desc || group.description) && (
                         <div className='text-muted-foreground mt-0.5 text-xs'>
@@ -520,6 +542,7 @@ export const GroupSelector: React.FC<GroupSelectorProps> = React.memo(
           render={
             <GroupTriggerButton
               currentLabel={currentGroup?.label || t('Group')}
+              labels={currentGroup?.badges}
               triggerClassName={className}
               isDisabled={disabled}
               aria-expanded={open}
@@ -663,8 +686,11 @@ export const ModelGroupSelector: React.FC<ModelGroupSelectorProps> = ({
       <span className='min-w-0 truncate text-xs'>
         {currentModel?.label || t('Model')}
       </span>
-      <span className='bg-muted text-muted-foreground hidden max-w-20 shrink-0 rounded px-1.5 py-0.5 text-[10px] sm:inline-flex'>
-        {currentGroup?.label || t('Group')}
+      <span className='bg-muted text-muted-foreground hidden max-w-32 min-w-0 shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] sm:inline-flex'>
+        <GroupLabels labels={currentGroup?.badges} compact />
+        <span className='max-w-20 min-w-0 truncate' title={currentGroup?.label}>
+          {currentGroup?.label || t('Group')}
+        </span>
       </span>
       <ChevronsUpDown className='text-muted-foreground ml-auto size-3.5 shrink-0 opacity-60' />
     </Button>
@@ -704,8 +730,11 @@ export const ModelGroupSelector: React.FC<ModelGroupSelectorProps> = ({
               ref={isSelected ? selectedGroupOptionRef : undefined}
               type='button'
             >
-              <span className='min-w-0 truncate font-medium'>
-                {group.label}
+              <span className='flex min-w-0 flex-1 flex-col items-start gap-1 font-medium'>
+                <GroupLabels labels={group.badges} />
+                <span className='max-w-full truncate' title={group.label}>
+                  {group.label}
+                </span>
               </span>
               <Check
                 className={cn(

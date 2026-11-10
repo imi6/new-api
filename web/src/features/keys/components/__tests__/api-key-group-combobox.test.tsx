@@ -16,7 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 
 let shouldReduceMotion = false
@@ -97,6 +103,31 @@ function getCommandItem(label: string): HTMLElement {
 }
 
 describe('API key group combobox families', () => {
+  test('shows a label while selecting the unchanged group identifier', async () => {
+    const picked: string[] = []
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ApiKeyGroupCombobox
+          options={[
+            {
+              value: 'Claude',
+              label: 'Claude',
+              badges: [
+                { id: 'self', name: '自营', icon: 'shield', color: 'teal' },
+              ],
+            },
+          ]}
+          value=''
+          onValueChange={(value) => picked.push(value)}
+        />
+      </I18nextProvider>
+    )
+    fireEvent.click(getTrigger())
+    const option = getCommandItem('Claude')
+    await waitFor(() => expect(within(option).getByText('自营')).toBeVisible())
+    fireEvent.click(option)
+    expect(picked).toEqual(['Claude'])
+  })
   test('shows a major group heading and the subgroup name, while selecting the full group', () => {
     setReducedMotion(false)
     const familyOptions = [
