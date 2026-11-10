@@ -277,6 +277,20 @@ func AdminUpdatePartnerSite(c *gin.Context) {
 	common.ApiSuccess(c, nil)
 }
 
+// AdminDeletePartnerOffer removes one group of a submission.
+func AdminDeletePartnerOffer(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	if err := model.DeletePartnerOffer(id); err != nil {
+		respondStoreError(c, err, "delete supplier quote", "Failed to delete")
+		return
+	}
+	common.ApiSuccess(c, nil)
+}
+
 // AdminDeletePartnerSite removes a submission and its offers.
 func AdminDeletePartnerSite(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
