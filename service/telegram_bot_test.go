@@ -112,11 +112,11 @@ func TestTelegramBotConfigChangesKeepOnlyTheCurrentIdentity(t *testing.T) {
 				botID = "12345"
 			}
 			login.ClientID = botID
-			saved, err := SaveTelegramBotConfig(context.Background(), true, botID+":new_test_credential_1234567890", cfg.Version, nil)
+			saved, err := SaveTelegramBotConfig(context.Background(), true, botID+":new_test_credential_1234567890", cfg.Version)
 			require.NoError(t, err)
 			if !sameBot {
 				login.ClientID = "12345"
-				_, err = SaveTelegramBotConfig(context.Background(), true, cfg.Token, saved.Version, nil)
+				_, err = SaveTelegramBotConfig(context.Background(), true, cfg.Token, saved.Version)
 				require.NoError(t, err)
 			}
 			current, err := model.GetTelegramBotConnection(conn.UserID)
@@ -136,8 +136,13 @@ func TestTelegramBotConfigChangesKeepOnlyTheCurrentIdentity(t *testing.T) {
 	}
 }
 
-func TestTelegramBotWebhookRetryPreservesNotificationSettings(t *testing.T) {
-	_, cfg, _ := setupTelegramBotServiceTest(t)
+func TestTelegramBotWebhookRetryPreservesPersonalNotificationSettings(t *testing.T) {
+	_, cfg, conn := setupTelegramBotServiceTest(t)
+	prefs := conn.Preferences
+	prefs.LowBalance, prefs.GroupRatio = false, true
+	require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+		return model.UpdateTelegramBotPreferencesTx(tx, conn.UserID, conn.PreferencesVersion, prefs)
+	}))
 	system_setting.ServerAddress = "https://example.test"
 	*system_setting.GetTelegramSettings() = system_setting.TelegramSettings{ClientID: "12345", ClientSecret: "test-client-secret"}
 	webhookRequests := 0
@@ -158,23 +163,19 @@ func TestTelegramBotWebhookRetryPreservesNotificationSettings(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	})}
-	assert.True(t, cfg.LowBalanceNotificationsEnabled())
-	assert.False(t, cfg.GroupRatioChangeEnabled)
-	lowBalance, groupRatio := false, true
-	saved, err := SaveTelegramBotConfig(context.Background(), true, "", cfg.Version, &model.TelegramBotReminderSettings{LowBalanceEnabled: &lowBalance, GroupRatioChangeEnabled: &groupRatio})
+	saved, err := SaveTelegramBotConfig(context.Background(), true, "", cfg.Version)
 	require.NoError(t, err)
 	assert.Equal(t, "error", saved.WebhookStatus)
-	assert.False(t, saved.LowBalanceNotificationsEnabled())
-	assert.True(t, saved.GroupRatioChangeEnabled)
-	assert.EqualValues(t, cfg.ReminderVersion+1, saved.ReminderVersion)
-	saved, err = SaveTelegramBotConfig(context.Background(), true, "", saved.Version, nil)
+	assert.EqualValues(t, cfg.ReminderVersion, saved.ReminderVersion)
+	saved, err = SaveTelegramBotConfig(context.Background(), true, "", saved.Version)
 	require.NoError(t, err)
 	assert.Equal(t, "ready", saved.WebhookStatus)
 	assert.Empty(t, saved.LastError)
 	assert.Equal(t, 2, webhookRequests)
-	assert.False(t, saved.LowBalanceNotificationsEnabled(), "omitted settings preserve administrator choices")
-	assert.True(t, saved.GroupRatioChangeEnabled)
-	assert.EqualValues(t, cfg.ReminderVersion+1, saved.ReminderVersion, "webhook retries do not reset reminder baselines")
+	assert.EqualValues(t, cfg.ReminderVersion, saved.ReminderVersion, "回调重试不重建通知基线")
+	current, err := model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	assert.Equal(t, prefs, current.Preferences, "后台配置保存不改变用户个人通知选择")
 }
 
 func TestTelegramBotWebhookReconcilesALateRegistration(t *testing.T) {
@@ -226,7 +227,7 @@ func TestTelegramBotWebhookReconcilesALateRegistration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	oldResult := make(chan error, 1)
 	go func() {
-		_, err := SaveTelegramBotConfig(ctx, true, "", cfg.Version, nil)
+		_, err := SaveTelegramBotConfig(ctx, true, "", cfg.Version)
 		oldResult <- err
 	}()
 	t.Cleanup(cancel)
@@ -237,10 +238,10 @@ func TestTelegramBotWebhookReconcilesALateRegistration(t *testing.T) {
 	}
 	login := system_setting.GetTelegramSettings()
 	login.ClientID = "67890"
-	saved, err := SaveTelegramBotConfig(ctx, true, "67890:new_test_credential_1234567890", cfg.Version+1, nil)
+	saved, err := SaveTelegramBotConfig(ctx, true, "67890:new_test_credential_1234567890", cfg.Version+1)
 	require.NoError(t, err)
 	login.ClientID = "12345"
-	saved, err = SaveTelegramBotConfig(ctx, true, cfg.Token, saved.Version, nil)
+	saved, err = SaveTelegramBotConfig(ctx, true, cfg.Token, saved.Version)
 	require.NoError(t, err)
 	require.NotEqual(t, cfg.WebhookSecret, saved.WebhookSecret)
 	close(releaseOld)
@@ -742,6 +743,77 @@ func TestTelegramBotNotifyButtonsBindIdentityVersionAndExpiry(t *testing.T) {
 	current, err = model.GetTelegramBotConnection(conn.UserID)
 	require.NoError(t, err)
 	assert.True(t, current.Preferences.Enabled)
+}
+
+func TestTelegramBotNotifyGroupRatioPreferenceShowsTheCurrentChoice(t *testing.T) {
+	_, cfg, conn := setupTelegramBotServiceTest(t)
+	now := time.Now().Unix()
+	row := &model.TelegramBotInbox{ID: 1, UserID: conn.UserID, BotID: cfg.BotID, TelegramID: conn.TelegramID, ChatID: conn.ChatID, ConnectionVersion: conn.Version, Command: "/notify", ReceivedAt: now, MessageAt: now, Attempts: 1}
+	require.NoError(t, telegramBotUpdateNotification(cfg, row, conn, "zh-CN"))
+	var task model.TelegramBotOutbox
+	require.NoError(t, model.DB.First(&task).Error)
+	var reply struct {
+		Text        string `json:"text"`
+		ReplyMarkup struct {
+			Keyboard [][]struct {
+				Text string `json:"text"`
+				Data string `json:"callback_data"`
+			} `json:"inline_keyboard"`
+		} `json:"reply_markup"`
+	}
+	require.NoError(t, common.UnmarshalJsonStr(task.Payload, &reply))
+	assert.Contains(t, reply.Text, "分组倍率变动：关闭")
+	var button string
+	for _, row := range reply.ReplyMarkup.Keyboard {
+		for _, candidate := range row {
+			if strings.HasPrefix(candidate.Data, "n:g:on:") {
+				button = candidate.Data
+				assert.Contains(t, candidate.Text, "分组倍率变动")
+			}
+		}
+	}
+	require.NotEmpty(t, button, "应提供默认关闭的个人倍率通知开关")
+	assert.LessOrEqual(t, len(button), 64)
+	click := *row
+	click.ID = 2
+	click.Argument = button[:len(button)-1] + "!"
+	require.NoError(t, telegramBotUpdateNotification(cfg, &click, conn, "zh-CN"))
+	current, err := model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	assert.False(t, current.Preferences.GroupRatio, "篡改回调不得开启倍率通知")
+	parts := strings.Split(button, ":")
+	parts[5] = "1"
+	body := strings.Join(parts[:6], ":")
+	parts[6] = common.GenerateHMACWithKey([]byte(cfg.WebhookSecret), fmt.Sprintf("%d:%d:%s:%s:%s", cfg.BotID, current.UserID, current.TelegramID, current.ChatID, body))[:24]
+	click.ID = 3
+	click.Argument = strings.Join(parts, ":")
+	require.NoError(t, telegramBotUpdateNotification(cfg, &click, current, "zh-CN"))
+	current, err = model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	assert.False(t, current.Preferences.GroupRatio, "过期回调不得开启倍率通知")
+	click.ID = 4
+	click.Argument = button
+	require.NoError(t, telegramBotUpdateNotification(cfg, &click, current, "zh-CN"))
+	current, err = model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	assert.True(t, current.Preferences.GroupRatio)
+	assert.True(t, current.Preferences.LowBalance, "倍率选择不改变余额提醒偏好")
+	task = model.TelegramBotOutbox{}
+	require.NoError(t, model.DB.Where("event_key = ?", model.TelegramBotMessageDigest("reply:4")).First(&task).Error)
+	require.NoError(t, common.UnmarshalJsonStr(task.Payload, &reply))
+	assert.Contains(t, reply.Text, "分组倍率变动：开启")
+	prefs := current.Preferences
+	prefs.GroupRatio = false
+	require.NoError(t, model.DB.Transaction(func(tx *gorm.DB) error {
+		return model.UpdateTelegramBotPreferencesTx(tx, current.UserID, current.PreferencesVersion, prefs)
+	}))
+	current, err = model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	click.ID = 5
+	require.NoError(t, telegramBotUpdateNotification(cfg, &click, current, "zh-CN"))
+	current, err = model.GetTelegramBotConnection(conn.UserID)
+	require.NoError(t, err)
+	assert.False(t, current.Preferences.GroupRatio, "旧按钮不能撤销网站已保存的新选择")
 }
 
 func TestTelegramBotCheckinRecoversCommittedResultWithoutAnotherReward(t *testing.T) {
