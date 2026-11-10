@@ -38,6 +38,7 @@ import {
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 
+import { PartnerDeleteDialog } from './components/partner-delete-dialog'
 import { PartnerMarkDialog } from './components/partner-mark-dialog'
 import { usePartnerOfferColumns } from './components/partner-offer-columns'
 
@@ -52,6 +53,7 @@ export function PartnerOffers() {
     { id: 'ratio', desc: false },
   ])
   const [marking, setMarking] = useState<PartnerOfferRow | null>(null)
+  const [deleting, setDeleting] = useState<PartnerOfferRow | null>(null)
 
   const {
     globalFilter,
@@ -113,7 +115,7 @@ export function PartnerOffers() {
     }
   }
 
-  const columns = usePartnerOfferColumns(setMarking)
+  const columns = usePartnerOfferColumns(setMarking, setDeleting)
   const { table } = useDataTable({
     data: query.data?.items ?? [],
     columns,
@@ -203,6 +205,13 @@ export function PartnerOffers() {
             if (!open) setMarking(null)
           }}
           onChanged={refresh}
+        />
+        <PartnerDeleteDialog
+          row={deleting}
+          onOpenChange={(open) => {
+            if (!open) setDeleting(null)
+          }}
+          onDeleted={refresh}
         />
       </SectionPageLayout.Content>
     </SectionPageLayout>

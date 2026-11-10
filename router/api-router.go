@@ -55,6 +55,7 @@ func SetApiRouter(router *gin.Engine) {
 			partnerAdminRoute.Use(middleware.AdminAuth())
 			{
 				partnerAdminRoute.GET("/offers", controller.AdminGetPartnerOffers)
+				partnerAdminRoute.DELETE("/offers/:id", controller.AdminDeletePartnerOffer)
 				partnerAdminRoute.PATCH("/sites/:id", controller.AdminUpdatePartnerSite)
 				partnerAdminRoute.DELETE("/sites/:id", controller.AdminDeletePartnerSite)
 			}
