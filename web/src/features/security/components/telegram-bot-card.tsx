@@ -39,7 +39,7 @@ import {
 } from '@/features/telegram-bot/api'
 import { TelegramNotificationFields } from '@/features/telegram-bot/notification-fields'
 import {
-  EMPTY_TELEGRAM_PREFERENCES,
+  DEFAULT_TELEGRAM_PREFERENCES,
   type TelegramBotPreferences,
   type TelegramBotRecovery,
 } from '@/features/telegram-bot/types'
@@ -69,9 +69,9 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
       state.state.data?.status === 'connecting' ? 2500 : false,
   })
   const [authorizeOpen, setAuthorizeOpen] = useState(false)
-  const [connectBot, setConnectBot] = useState(false)
+  const [connectBot, setConnectBot] = useState(true)
   const [preferences, setPreferences] = useState<TelegramBotPreferences>(
-    EMPTY_TELEGRAM_PREFERENCES
+    DEFAULT_TELEGRAM_PREFERENCES
   )
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   const [recovery, setRecovery] = useState<TelegramBotRecovery | null>(null)
@@ -126,8 +126,12 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
       props.onAuthorize()
       return
     }
-    setConnectBot(bound)
-    setPreferences(data?.preferences ?? EMPTY_TELEGRAM_PREFERENCES)
+    setConnectBot(true)
+    setPreferences(
+      data && data.preferences_version > 0
+        ? data.preferences
+        : DEFAULT_TELEGRAM_PREFERENCES
+    )
     setAuthorizeOpen(true)
   }
 
