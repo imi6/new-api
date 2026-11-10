@@ -35,6 +35,7 @@ type TelegramGroupRatioState struct {
 	BotID             int64  `gorm:"type:bigint;not null"`
 	ConnectionVersion int64  `gorm:"type:bigint;not null"`
 	EnabledVersion    int64  `gorm:"type:bigint;not null"`
+	PreferenceVersion int64  `gorm:"type:bigint;not null;default:0"`
 	SettingsVersion   int64  `gorm:"type:bigint;not null"`
 	UserGroup         string `gorm:"type:varchar(255);not null"`
 	Snapshot          string `gorm:"type:text;not null"`
@@ -121,7 +122,7 @@ func InitializeTelegramLowBalanceStateTx(tx *gorm.DB, connection *TelegramBotCon
 		}
 		return err
 	}
-	if !cfg.Enabled || cfg.BotID != connection.BotID || !cfg.LowBalanceNotificationsEnabled() {
+	if !cfg.Enabled || cfg.BotID != connection.BotID {
 		return nil
 	}
 	var user User
@@ -203,13 +204,10 @@ func ScanTelegramReminderEvents(ctx context.Context) error {
 		return err
 	}
 	var scanErr error
-	groupRatioSettingsCurrent := false
-	if config.GroupRatioChangeEnabled {
-		groupRatioSettingsCurrent, err = telegramGroupRatioSettingsCurrent(DB.WithContext(ctx))
-		if err != nil {
-			// 倍率配置读取失败时保留原快照，余额和到期提醒仍继续扫描。
-			scanErr = fmt.Errorf("telegram group ratio settings: %w", err)
-		}
+	groupRatioSettingsCurrent, err := telegramGroupRatioSettingsCurrent(DB.WithContext(ctx))
+	if err != nil {
+		// 倍率配置读取失败时保留原快照，余额和到期提醒仍继续扫描。
+		scanErr = fmt.Errorf("telegram group ratio settings: %w", err)
 	}
 	lastUserID := 0
 	for {
@@ -268,7 +266,7 @@ func scanTelegramUserReminders(ctx context.Context, userID int, botID int64, gro
 			return nil
 		}
 		now := common.GetTimestamp()
-		if connection.Preferences.LowBalance && cfg.LowBalanceNotificationsEnabled() {
+		if connection.Preferences.LowBalance {
 			threshold, err := telegramLowBalanceThreshold(&user)
 			if err != nil {
 				return err
@@ -301,7 +299,7 @@ func scanTelegramUserReminders(ctx context.Context, userID int, botID int64, gro
 				}
 			}
 		}
-		checkGroupRatios := cfg.GroupRatioChangeEnabled && groupRatioSettingsCurrent
+		checkGroupRatios := connection.Preferences.GroupRatio && groupRatioSettingsCurrent
 		if checkGroupRatios {
 			// 整轮检查后其他节点可能保存新配置；持有连接锁后复核，避免旧节点覆盖新快照。
 			var err error
@@ -317,7 +315,7 @@ func scanTelegramUserReminders(ctx context.Context, userID int, botID int64, gro
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}
-			baseline := errors.Is(err, gorm.ErrRecordNotFound) || state.BotID != cfg.BotID || state.ConnectionVersion != connection.Version || state.EnabledVersion != connection.EnabledVersion || state.SettingsVersion != cfg.ReminderVersion || state.UserGroup != user.Group
+			baseline := errors.Is(err, gorm.ErrRecordNotFound) || state.BotID != cfg.BotID || state.ConnectionVersion != connection.Version || state.EnabledVersion != connection.EnabledVersion || state.PreferenceVersion != connection.GroupRatioVersion || state.SettingsVersion != cfg.ReminderVersion || state.UserGroup != user.Group
 			previous := make(map[string]float64)
 			if !baseline {
 				if err := common.UnmarshalJsonStr(state.Snapshot, &previous); err != nil {
@@ -327,6 +325,7 @@ func scanTelegramUserReminders(ctx context.Context, userID int, botID int64, gro
 			if baseline || !maps.EqualFunc(previous, ratios, sameRatio) {
 				state.UserID, state.BotID = userID, cfg.BotID
 				state.ConnectionVersion, state.EnabledVersion = connection.Version, connection.EnabledVersion
+				state.PreferenceVersion = connection.GroupRatioVersion
 				state.SettingsVersion, state.UserGroup = cfg.ReminderVersion, user.Group
 				state.Revision++
 				state.UpdatedAt = now
@@ -404,7 +403,7 @@ func telegramBusinessEventStillValidTx(tx *gorm.DB, event *TelegramBusinessEvent
 	}
 	switch event.Kind {
 	case "low_balance":
-		if !cfg.LowBalanceNotificationsEnabled() || event.SettingsVersion != cfg.ReminderVersion {
+		if event.SettingsVersion != cfg.ReminderVersion {
 			return false, nil
 		}
 		var user User
@@ -421,7 +420,7 @@ func telegramBusinessEventStillValidTx(tx *gorm.DB, event *TelegramBusinessEvent
 		}
 		return threshold == event.AmountQuota && int64(user.Quota) < threshold && state.SettingsVersion == cfg.ReminderVersion && state.Below && telegramLowBalanceEventKey(&state) == event.Key, nil
 	case "group_ratio":
-		if !cfg.GroupRatioChangeEnabled || event.SettingsVersion != cfg.ReminderVersion {
+		if event.SettingsVersion != cfg.ReminderVersion {
 			return false, nil
 		}
 		current, err := telegramGroupRatioSettingsCurrent(tx)

@@ -275,6 +275,7 @@ it('connects the bot during the first Telegram binding without a separate recove
   const preferences = {
     enabled: true,
     low_balance: true,
+    group_ratio: false,
     topup: true,
     subscription: true,
     expiry: true,
