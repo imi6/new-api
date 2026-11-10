@@ -20,6 +20,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+import { GroupLabelsContext } from '@/components/group-labels-context'
+
 import { PricingSidebar } from '../components/pricing-sidebar'
 import {
   PricingToolbar,
@@ -61,6 +63,25 @@ function toolbarProps(): PricingToolbarProps {
 }
 
 describe('pricing controls', () => {
+  it('renders group labels in filter chips without changing filter values', async () => {
+    const props = toolbarProps()
+    const user = userEvent.setup()
+    render(
+      <GroupLabelsContext
+        value={{
+          premium: [
+            { id: 'self', name: '自营', icon: 'shield', color: 'teal' },
+          ],
+        }}
+      >
+        <PricingSidebar {...props} />
+      </GroupLabelsContext>
+    )
+    const chip = screen.getByRole('button', { name: /自营premium/ })
+    expect(within(chip).getByText('自营')).toBeVisible()
+    await user.click(chip)
+    expect(props.onGroupChange).toHaveBeenCalledWith('premium')
+  })
   it.each<{
     name: string
     pricing: Partial<PricingModel>
