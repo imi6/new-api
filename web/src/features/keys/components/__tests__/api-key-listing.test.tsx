@@ -166,7 +166,7 @@ it('shows desktop remaining and used amounts side by side without labels, with t
   ).toHaveClass('grid-cols-2')
   expect(within(trigger).getByText('80')).toHaveClass('text-left')
   expect(within(trigger).getByText('120')).toHaveClass('text-right')
-  expect(trigger.parentElement).toHaveClass('max-w-45')
+  expect(trigger.parentElement).toHaveClass('max-w-41')
   expect(trigger).not.toHaveTextContent('$')
   expect(trigger.querySelector('svg')).toBeNull()
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '40')
@@ -498,7 +498,7 @@ it('keeps mobile quota readable and opens complete model and IP restrictions by 
   })
   expect(quota).toHaveTextContent('Remaining($)UnlimitedUsed amount4,490.16')
   expect(quota.parentElement).toHaveClass('w-full')
-  expect(quota.parentElement).not.toHaveClass('max-w-45')
+  expect(quota.parentElement).not.toHaveClass('max-w-41')
   expect(quota.querySelector('[data-slot="api-key-quota-values"]')).toHaveClass(
     'grid-cols-[auto_minmax(0,1fr)]'
   )
