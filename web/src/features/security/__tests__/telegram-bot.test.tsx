@@ -201,20 +201,142 @@ it('keeps Telegram binding available without bot access when the administrator d
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
-it('keeps account commands available when proactive notifications are disabled', async () => {
-  fixture({ connected: true, status: 'connected' }, true)
+it('opens bot settings and test messaging in a dialog while keeping the security page compact', async () => {
+  const { user } = fixture({ connected: true, status: 'connected' }, true)
   expect(await screen.findByRole('button', { name: 'Open bot' })).toBeVisible()
   expect(
     screen.getByText(
       'Bot commands: /balance, /usage, /subs, /checkin, /notify and /help'
     )
   ).toBeVisible()
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   expect(
-    screen.getByRole('switch', { name: 'Telegram notifications' })
+    screen.queryByRole('button', { name: 'Send test message' })
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Bot settings' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Bot settings' })
+  for (const name of [
+    'Telegram notifications',
+    'Low platform balance',
+    'Top-up credited',
+    'Subscription activated',
+    'Subscription expiring soon',
+  ]) {
+    expect(within(dialog).getByRole('switch', { name })).not.toBeChecked()
+  }
+  expect(
+    within(dialog).getByRole('button', { name: 'Save Changes' })
+  ).toBeDisabled()
+  expect(
+    within(dialog).getByRole('button', { name: 'Send test message' })
+  ).toBeEnabled()
+})
+
+it('discards an unsaved notification draft when bot settings are closed', async () => {
+  const put = vi.spyOn(api, 'put')
+  const { user } = fixture({ connected: true, status: 'connected' }, true)
+  const settings = await screen.findByRole('button', { name: 'Bot settings' })
+  await user.click(settings)
+  const dialog = await screen.findByRole('dialog', { name: 'Bot settings' })
+  await user.click(
+    within(dialog).getByRole('switch', { name: 'Telegram notifications' })
+  )
+  expect(
+    within(dialog).getByRole('button', { name: 'Save Changes' })
+  ).toBeEnabled()
+  await user.keyboard('{Escape}')
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+  await waitFor(() => expect(settings).toHaveFocus())
+  expect(settings).toHaveAttribute('aria-expanded', 'false')
+  expect(put).not.toHaveBeenCalled()
+  await user.click(settings)
+  const reopened = await screen.findByRole('dialog', { name: 'Bot settings' })
+  expect(
+    within(reopened).getByRole('switch', { name: 'Telegram notifications' })
   ).not.toBeChecked()
   expect(
-    screen.getByRole('button', { name: 'Send test message' })
-  ).toBeEnabled()
+    within(reopened).getByRole('button', { name: 'Save Changes' })
+  ).toBeDisabled()
+})
+
+it('queues a test from bot settings without saving notification changes', async () => {
+  const post = vi
+    .spyOn(api, 'post')
+    .mockResolvedValue({ data: { success: true } })
+  const put = vi.spyOn(api, 'put')
+  const { user } = fixture({ connected: true, status: 'connected' }, true)
+  await user.click(await screen.findByRole('button', { name: 'Bot settings' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Bot settings' })
+  await user.click(
+    within(dialog).getByRole('switch', { name: 'Telegram notifications' })
+  )
+  await user.click(
+    within(dialog).getByRole('button', { name: 'Send test message' })
+  )
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith('/api/user/self/telegram-bot/test', {})
+  )
+  expect(put).not.toHaveBeenCalled()
+})
+
+it('saves notification preferences from bot settings and reopens the saved values', async () => {
+  const put = vi
+    .spyOn(api, 'put')
+    .mockResolvedValue({ data: { success: true } })
+  const { user } = fixture({ connected: true, status: 'connected' }, true)
+  await user.click(await screen.findByRole('button', { name: 'Bot settings' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Bot settings' })
+  await user.click(
+    within(dialog).getByRole('switch', { name: 'Telegram notifications' })
+  )
+  const preferences = { ...EMPTY_TELEGRAM_PREFERENCES, enabled: true }
+  vi.mocked(api.get).mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        ...status,
+        connected: true,
+        status: 'connected',
+        preferences,
+        preferences_version: 3,
+      },
+    },
+  })
+  await user.click(within(dialog).getByRole('button', { name: 'Save Changes' }))
+  await waitFor(() =>
+    expect(put).toHaveBeenCalledWith(
+      '/api/user/self/telegram-bot/preferences',
+      {
+        version: 2,
+        preferences,
+      }
+    )
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
+  )
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  const saved = await screen.findByRole('dialog', { name: 'Bot settings' })
+  await waitFor(() => expect(saved).toContainElement(document.activeElement))
+  await user.keyboard('{Escape}')
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+  await user.click(screen.getByRole('button', { name: 'Bot settings' }))
+  const reopened = await screen.findByRole('dialog', { name: 'Bot settings' })
+  expect(
+    within(reopened).getByRole('switch', { name: 'Telegram notifications' })
+  ).toBeChecked()
+})
+
+it('disables bot settings while the administrator has paused the bot', async () => {
+  fixture({ connected: true, status: 'connected', available: false }, true)
+  expect(
+    await screen.findByRole('button', { name: 'Bot settings' })
+  ).toBeDisabled()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 it('disconnects only the bot after an explicit confirmation and leaves the login binding visible', async () => {
@@ -276,6 +398,9 @@ it('allows a pending bot connection to be disconnected before verification finis
   expect(
     screen.queryByRole('button', { name: 'Send test message' })
   ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Bot settings' })
+  ).not.toBeInTheDocument()
 })
 
 it.each(['', 'Telegram bot connection failed. Please reconnect.'])(
@@ -299,6 +424,8 @@ it('reloads conflicting notification settings and requires a new review instead 
     },
   })
   const { user } = fixture({ connected: true, status: 'connected' }, true)
+  await user.click(await screen.findByRole('button', { name: 'Bot settings' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Bot settings' })
   await user.click(
     await screen.findByRole('switch', { name: 'Telegram notifications' })
   )
@@ -324,6 +451,9 @@ it('reloads conflicting notification settings and requires a new review instead 
       screen.getByRole('switch', { name: 'Telegram notifications' })
     ).not.toBeChecked()
   )
+  expect(dialog).not.toBeInTheDocument()
+  const latest = screen.getByRole('dialog', { name: 'Bot settings' })
+  await waitFor(() => expect(latest).toContainElement(document.activeElement))
   expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
   expect(put).toHaveBeenCalledTimes(1)
   await user.click(
@@ -347,6 +477,7 @@ it('keeps a conflicting draft disabled when loading the latest settings fails an
     data: { success: false, code: 'TELEGRAM_BOT_SETTINGS_CHANGED' },
   })
   const { user } = fixture({ connected: true, status: 'connected' }, true)
+  await user.click(await screen.findByRole('button', { name: 'Bot settings' }))
   await user.click(
     await screen.findByRole('switch', { name: 'Telegram notifications' })
   )
