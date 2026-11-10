@@ -643,7 +643,7 @@ func finishSubscriptionOrder(tradeNo string, providerPayload string, expectedPay
 		logPlanTitle = plan.Title
 		logMoney = order.Money
 		logPaymentMethod = order.PaymentMethod
-		return nil
+		return enqueueTelegramSubscriptionEventTx(tx, &order, subscription, plan.Title)
 	})
 	if err != nil {
 		return err
@@ -846,7 +846,7 @@ func PurchaseSubscriptionWithBalance(userId int, planId int) error {
 		if subscription.PrevUserGroup != "" {
 			upgradeGroup = strings.TrimSpace(subscription.UpgradeGroup)
 		}
-		return nil
+		return enqueueTelegramSubscriptionEventTx(tx, order, subscription, plan.Title)
 	})
 	if err != nil {
 		return err

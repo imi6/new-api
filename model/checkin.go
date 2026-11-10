@@ -38,9 +38,14 @@ func GetUserCheckinRecords(userId int, startDate, endDate string) ([]Checkin, er
 	return records, err
 }
 
-// HasCheckedInToday 检查用户今天是否已签到
+// CheckinBusinessDate 沿用站点现有时区，避免新增入口改变历史签到日期口径。
+func CheckinBusinessDate(at time.Time) string {
+	return at.In(time.Local).Format("2006-01-02")
+}
+
+// HasCheckedInToday 检查用户今天是否已签到。
 func HasCheckedInToday(userId int) (bool, error) {
-	today := time.Now().Format("2006-01-02")
+	today := CheckinBusinessDate(time.Now())
 	var count int64
 	err := DB.Model(&Checkin{}).
 		Where("user_id = ? AND checkin_date = ?", userId, today).
@@ -48,99 +53,102 @@ func HasCheckedInToday(userId int) (bool, error) {
 	return count > 0, err
 }
 
-// UserCheckin 执行用户签到
-// MySQL 和 PostgreSQL 使用事务保证原子性
-// SQLite 不支持嵌套事务，使用顺序操作 + 手动回滚
+// UserCheckin 执行网站签到，与 Bot 共用每日记录和入账事务。
 func UserCheckin(userId int) (*Checkin, error) {
-	setting := operation_setting.GetCheckinSetting()
-	if !setting.Enabled {
+	return UserCheckinForDate(userId, CheckinBusinessDate(time.Now()))
+}
+
+// UserCheckinForDate 为消息首次接收时确定的业务日期签到，不接受过期补签。
+func UserCheckinForDate(userId int, date string) (*Checkin, error) {
+	return userCheckinForDate(userId, date, nil)
+}
+
+// UserCheckinForTelegram 在发奖事务中复查连接，与断开操作按相同锁顺序串行。
+func UserCheckinForTelegram(userID int, date string, botID int64, telegramID string, connectionVersion int64) (*Checkin, error) {
+	return userCheckinForDate(userID, date, &TelegramBotConnection{
+		UserID: userID, BotID: botID, TelegramID: telegramID, Version: connectionVersion,
+	})
+}
+
+func userCheckinForDate(userId int, date string, bot *TelegramBotConnection) (*Checkin, error) {
+	now := time.Now()
+	if date != CheckinBusinessDate(now) {
+		return nil, common.NewMessage("Check-in failed, please try again later")
+	}
+	settings := *operation_setting.GetCheckinSetting()
+	if !settings.Enabled {
 		return nil, common.NewMessage("Check-in feature is not enabled")
 	}
-
-	// 检查今天是否已签到
-	hasChecked, err := HasCheckedInToday(userId)
-	if err != nil {
-		return nil, err
-	}
-	if hasChecked {
-		return nil, common.NewMessage("Already checked in today")
-	}
-
-	// 计算随机额度奖励
-	quotaAwarded := setting.MinQuota
-	if setting.MaxQuota > setting.MinQuota {
-		quotaAwarded = setting.MinQuota + rand.Intn(setting.MaxQuota-setting.MinQuota+1)
-	}
-
-	today := time.Now().Format("2006-01-02")
-	checkin := &Checkin{
-		UserId:       userId,
-		CheckinDate:  today,
-		QuotaAwarded: quotaAwarded,
-		CreatedAt:    time.Now().Unix(),
-	}
-
-	// 根据数据库类型选择不同的策略
-	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
-		// SQLite 不支持嵌套事务，使用顺序操作 + 手动回滚
-		return userCheckinWithoutTransaction(checkin, userId, quotaAwarded)
-	}
-
-	// MySQL 和 PostgreSQL 支持事务，使用事务保证原子性
-	return userCheckinWithTransaction(checkin, userId, quotaAwarded)
-}
-
-// userCheckinWithTransaction 使用事务执行签到（适用于 MySQL 和 PostgreSQL）
-func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) (*Checkin, error) {
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		// 步骤1: 创建签到记录
-		// 数据库有唯一约束 (user_id, checkin_date)，可以防止并发重复签到
-		if err := tx.Create(checkin).Error; err != nil {
-			return common.NewMessage("Check-in failed, please try again later")
-		}
-
-		// 步骤2: 在事务中增加用户额度
-		if err := tx.Model(&User{}).Where("id = ?", userId).Updates(map[string]any{
-			"quota":                gorm.Expr("quota + ?", quotaAwarded),
-			"unpaid_quota_balance": gorm.Expr("unpaid_quota_balance + ?", quotaAwarded),
-		}).Error; err != nil {
-			return common.NewMessage("Check-in failed: quota update error")
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	// 事务成功后，异步更新缓存
-	go func() {
-		_ = cacheIncrUserQuota(userId, int64(quotaAwarded))
-	}()
-
-	return checkin, nil
-}
-
-// userCheckinWithoutTransaction 不使用事务执行签到（适用于 SQLite）
-func userCheckinWithoutTransaction(checkin *Checkin, userId int, quotaAwarded int) (*Checkin, error) {
-	// 步骤1: 创建签到记录
-	// 数据库有唯一约束 (user_id, checkin_date)，可以防止并发重复签到
-	if err := DB.Create(checkin).Error; err != nil {
+	if userId <= 0 || settings.MinQuota < 0 || settings.MaxQuota < settings.MinQuota || settings.MaxQuota > common.MaxWalletQuota {
 		return nil, common.NewMessage("Check-in failed, please try again later")
 	}
 
-	// 步骤2: 增加用户额度
-	// 使用 db=true 强制直接写入数据库，不使用批量更新
-	if err := IncreaseUserQuota(userId, quotaAwarded, true); err != nil {
-		// 如果增加额度失败，需要回滚签到记录
-		DB.Delete(checkin)
-		return nil, common.NewMessage("Check-in failed: quota update error")
+	quotaAwarded := settings.MinQuota
+	if settings.MaxQuota > settings.MinQuota {
+		quotaAwarded += rand.Intn(settings.MaxQuota - settings.MinQuota + 1)
 	}
-	if err := AddUnpaidQuota(userId, quotaAwarded); err != nil {
-		return nil, common.NewMessage("Check-in failed: quota update error")
+	checkin := &Checkin{
+		UserId:       userId,
+		CheckinDate:  date,
+		QuotaAwarded: quotaAwarded,
+		CreatedAt:    now.Unix(),
 	}
-
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var user User
+		if err := lockForUpdate(tx).Where("id = ? AND status = ?", userId, common.UserStatusEnabled).First(&user).Error; err != nil {
+			return common.NewMessage("Check-in failed, please try again later")
+		}
+		if date != CheckinBusinessDate(time.Now()) {
+			return common.NewMessage("Check-in failed, please try again later")
+		}
+		if bot != nil {
+			var cfg TelegramBotConfig
+			if err := tx.First(&cfg, 1).Error; err != nil || !cfg.Enabled || cfg.BotID != bot.BotID || common.TurnstileCheckEnabled {
+				return ErrTelegramBotNotConnected
+			}
+			var connection TelegramBotConnection
+			if err := lockForUpdate(tx).First(&connection, "user_id = ?", userId).Error; err != nil {
+				return ErrTelegramBotNotConnected
+			}
+			if connection.BotID != bot.BotID || connection.TelegramID != bot.TelegramID || user.TelegramId != bot.TelegramID || connection.Version != bot.Version || connection.Status != TelegramBotConnected {
+				return ErrTelegramBotNotConnected
+			}
+		}
+		var count int64
+		if err := tx.Model(&Checkin{}).Where("user_id = ? AND checkin_date = ?", userId, date).Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 0 {
+			return common.NewMessage("Already checked in today")
+		}
+		if user.Quota > common.MaxWalletQuota-quotaAwarded || user.UnpaidQuotaBalance < 0 || user.UnpaidQuotaBalance > common.MaxWalletQuota-quotaAwarded {
+			return common.NewMessage("Check-in failed: quota update error")
+		}
+		if err := tx.Create(checkin).Error; err != nil {
+			return common.NewMessage("Check-in failed, please try again later")
+		}
+		// 零奖励也可签到成功；MySQL 对不改变数值的 UPDATE 返回零个变更行。
+		if quotaAwarded == 0 {
+			return nil
+		}
+		// 唯一签到记录、钱包余额和赠送额度在三种数据库中一同提交。
+		result := tx.Model(&User{}).
+			Where("id = ? AND status = ? AND quota <= ? AND unpaid_quota_balance >= 0 AND unpaid_quota_balance <= ?",
+				userId, common.UserStatusEnabled, common.MaxWalletQuota-quotaAwarded, common.MaxWalletQuota-quotaAwarded).
+			Updates(map[string]any{
+				"quota":                gorm.Expr("quota + ?", quotaAwarded),
+				"unpaid_quota_balance": gorm.Expr("unpaid_quota_balance + ?", quotaAwarded),
+			})
+		if result.Error != nil || result.RowsAffected != 1 {
+			return common.NewMessage("Check-in failed: quota update error")
+		}
+		return ResetTelegramLowBalanceAfterCreditTx(tx, userId)
+	})
+	if err != nil {
+		return nil, err
+	}
+	// 缓存只在事务提交后更新，不能提前对外暴露未入账奖励。
+	syncCreditUserQuotaCache(userId, quotaAwarded, "checkin")
 	return checkin, nil
 }
 
@@ -192,13 +200,20 @@ func GetUserCheckinStats(userId int, month string) (map[string]any, error) {
 	}
 
 	// 检查今天是否已签到
-	hasCheckedToday, _ := HasCheckedInToday(userId)
+	hasCheckedToday, err := HasCheckedInToday(userId)
+	if err != nil {
+		return nil, err
+	}
 
 	// 获取用户所有时间的签到统计
 	var totalCheckins int64
 	var totalQuota int64
-	DB.Model(&Checkin{}).Where("user_id = ?", userId).Count(&totalCheckins)
-	DB.Model(&Checkin{}).Where("user_id = ?", userId).Select("COALESCE(SUM(quota_awarded), 0)").Scan(&totalQuota)
+	if err := DB.Model(&Checkin{}).Where("user_id = ?", userId).Count(&totalCheckins).Error; err != nil {
+		return nil, err
+	}
+	if err := DB.Model(&Checkin{}).Where("user_id = ?", userId).Select("COALESCE(SUM(quota_awarded), 0)").Scan(&totalQuota).Error; err != nil {
+		return nil, err
+	}
 
 	return map[string]any{
 		"total_quota":      totalQuota,      // 所有时间累计获得的额度
