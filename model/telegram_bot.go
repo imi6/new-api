@@ -568,7 +568,32 @@ func AuthorizeTelegramBotSend(row *TelegramBotOutbox) (bool, error) {
 		if !cfg.Enabled || cfg.BotID != row.BotID {
 			return nil
 		}
-		if row.Kind != "help" {
+		obsoleteHelp := false
+		if row.Kind == "help" {
+			// 公共提示未绑定用户；发送前按当前身份复核，避免旧提示与新连接矛盾。
+			var recipient User
+			err := tx.Select("id").Where("telegram_id = ?", row.ChatID).First(&recipient).Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+			if err == nil {
+				// 先定位再按主键加锁，避免未绑定身份的空范围锁影响并发绑定。
+				err = lockForUpdate(tx).First(&recipient, recipient.Id).Error
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+					return err
+				}
+				if err == nil && recipient.TelegramId == row.ChatID {
+					var conn TelegramBotConnection
+					err = lockForUpdate(tx).First(&conn, "user_id = ?", recipient.Id).Error
+					if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+						return err
+					}
+					if err == nil && conn.BotID == row.BotID && conn.TelegramID == recipient.TelegramId && conn.ChatID == row.ChatID && (conn.Status == TelegramBotConnected || conn.Status == TelegramBotConnecting) {
+						obsoleteHelp = true
+					}
+				}
+			}
+		} else {
 			var user User
 			if err := lockForUpdate(tx).First(&user, row.UserID).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil
@@ -615,6 +640,10 @@ func AuthorizeTelegramBotSend(row *TelegramBotOutbox) (bool, error) {
 		now := time.Now().Unix()
 		if task.Status != "processing" || task.LeaseOwner != row.LeaseOwner || task.LeaseUntil < now || task.ExpiresAt <= now {
 			return nil
+		}
+		if obsoleteHelp {
+			// 与连接状态复核原子结束旧提示，暂停再恢复也不能使其重新发送。
+			return tx.Model(&task).Updates(map[string]any{"status": "discarded", "lease_owner": "", "lease_until": 0, "last_error": "recipient already authorized"}).Error
 		}
 		// 任务已被当前事务锁定；MySQL 对同值更新返回零行，不能据此否认有效发送许可。
 		if err := tx.Model(&task).Update("lease_until", now+120).Error; err != nil {

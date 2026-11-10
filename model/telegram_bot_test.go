@@ -75,6 +75,13 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 			initCol()
 			sqlDB, err := db.DB()
 			require.NoError(t, err)
+			var databaseVersion string
+			versionQuery := "SELECT version()"
+			if dialect == "sqlite" {
+				versionQuery = "SELECT sqlite_version()"
+			}
+			require.NoError(t, db.Raw(versionQuery).Scan(&databaseVersion).Error)
+			t.Logf("%s database version: %s", dialect, databaseVersion)
 			if dialect == "sqlite" {
 				sqlDB.SetMaxOpenConns(1)
 			}
@@ -458,6 +465,111 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
 					return UpdateTelegramBotPreferencesTx(tx, connected.UserID, connected.PreferencesVersion, TelegramBotPreferences{Enabled: true, LowBalance: true})
 				}))
+			})
+
+			t.Run("authorized_private_start_confirms_only_the_current_connection", func(t *testing.T) {
+				other, connecting := telegramBotConnectionFixture(t, "private-start", "53", prefs, false)
+				now := time.Now().Unix()
+				connecting.LastStateEventAt, connecting.LastStateUpdateID = now-600, 0
+				connecting.LastError = "temporary welcome failure"
+				base := TelegramBotInbox{BotID: cfg.BotID, UserID: other.Id, TelegramID: "53", ChatID: "53", Command: "/start", ConnectionVersion: connecting.Version, AuthorizationVersion: connecting.AuthorizationVersion, MessageAt: now, UpdateID: 2000}
+				for _, test := range []struct {
+					name   string
+					change func(*TelegramBotInbox, *TelegramBotConnection)
+				}{
+					{"old_connection", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.ConnectionVersion-- }},
+					{"old_authorization", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.AuthorizationVersion-- }},
+					{"different_bot", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.BotID++ }},
+					{"different_identity", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.TelegramID = "54" }},
+					{"different_chat", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.ChatID = "54" }},
+					{"expired_message", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.MessageAt = now - 301 }},
+					{"future_message", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.MessageAt = now + 60 }},
+					{"recovery_needs_browser", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.FlowHash = "recovery-flow" }},
+					{"other_command", func(row *TelegramBotInbox, _ *TelegramBotConnection) { row.Command = "/help" }},
+					{"explicit_disconnect", func(_ *TelegramBotInbox, conn *TelegramBotConnection) { conn.Status = TelegramBotDisconnected }},
+					{"no_active_grant", func(_ *TelegramBotInbox, conn *TelegramBotConnection) { conn.Status = TelegramBotUnconnected }},
+				} {
+					t.Run(test.name, func(t *testing.T) {
+						row, current := base, *connecting
+						test.change(&row, &current)
+						require.NoError(t, db.Save(&current).Error)
+						restored, err := ApplyTelegramBotStateEvent(&row, false)
+						require.NoError(t, err)
+						assert.False(t, restored)
+						saved, err := GetTelegramBotConnection(other.Id)
+						require.NoError(t, err)
+						assert.Equal(t, current.Status, saved.Status)
+						assert.Zero(t, saved.ConnectedAt)
+					})
+				}
+				require.NoError(t, db.Save(connecting).Error)
+				require.NoError(t, db.Model(&cfg).Update("enabled", false).Error)
+				_, err := ApplyTelegramBotStateEvent(&base, false)
+				require.NoError(t, err)
+				current, err := GetTelegramBotConnection(other.Id)
+				require.NoError(t, err)
+				assert.Equal(t, TelegramBotConnecting, current.Status)
+				require.NoError(t, db.Model(&cfg).Update("enabled", true).Error)
+				require.NoError(t, db.Model(other).Update("status", common.UserStatusDisabled).Error)
+				_, err = ApplyTelegramBotStateEvent(&base, false)
+				require.NoError(t, err)
+				current, err = GetTelegramBotConnection(other.Id)
+				require.NoError(t, err)
+				assert.Equal(t, TelegramBotConnecting, current.Status)
+				require.NoError(t, db.Model(other).Update("status", common.UserStatusEnabled).Error)
+				restored, err := ApplyTelegramBotStateEvent(&base, false)
+				require.NoError(t, err)
+				assert.False(t, restored, "direct confirmation continues to the normal command reply")
+				current, err = GetTelegramBotConnection(other.Id)
+				require.NoError(t, err)
+				assert.Equal(t, TelegramBotConnected, current.Status)
+				assert.Empty(t, current.LastError)
+				assert.Positive(t, current.ConnectedAt)
+				assert.Equal(t, connecting.Version, current.Version)
+				assert.Equal(t, connecting.AuthorizationVersion, current.AuthorizationVersion)
+				assert.Equal(t, connecting.Preferences, current.Preferences)
+				assert.Equal(t, connecting.PreferencesVersion, current.PreferencesVersion)
+				var baseline TelegramLowBalanceState
+				require.NoError(t, db.First(&baseline, other.Id).Error)
+				base.MessageAt, base.UpdateID = now+1, base.UpdateID+1
+				_, err = ApplyTelegramBotStateEvent(&base, false)
+				require.NoError(t, err)
+				var after TelegramLowBalanceState
+				require.NoError(t, db.First(&after, other.Id).Error)
+				assert.Equal(t, baseline, after, "another start must not reset the low balance baseline")
+			})
+
+			t.Run("public_help_is_not_authorized_after_the_recipient_connects", func(t *testing.T) {
+				other := User{Username: "telegram-help", AffCode: "tg-help", Status: common.UserStatusEnabled, TelegramId: "54"}
+				require.NoError(t, db.Create(&other).Error)
+				row := TelegramBotOutbox{EventKey: TelegramBotMessageDigest("stale-public-help"), Kind: "help", BotID: cfg.BotID, ChatID: "54", Status: "processing", LeaseOwner: "help-contract", LeaseUntil: time.Now().Unix() + 120, ExpiresAt: time.Now().Unix() + 300}
+				require.NoError(t, db.Create(&row).Error)
+				allowed, err := AuthorizeTelegramBotSend(&row)
+				require.NoError(t, err)
+				assert.True(t, allowed, "login identity alone does not authorize a bot connection")
+				intent, err := BeginTelegramBotOAuth(other.Id, prefs)
+				require.NoError(t, err)
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "54", intent) }))
+				allowed, err = AuthorizeTelegramBotSend(&row)
+				require.NoError(t, err)
+				assert.False(t, allowed, "a queued not-active hint is obsolete while connecting")
+				var discarded TelegramBotOutbox
+				require.NoError(t, db.First(&discarded, row.ID).Error)
+				assert.Equal(t, "discarded", discarded.Status)
+				assert.Empty(t, discarded.LeaseOwner)
+				assert.Zero(t, discarded.LeaseUntil)
+				connecting, err := GetTelegramBotConnection(other.Id)
+				require.NoError(t, err)
+				require.NoError(t, ConfirmTelegramBotConnection(connecting, 54))
+				require.NoError(t, db.Save(&row).Error)
+				allowed, err = AuthorizeTelegramBotSend(&row)
+				require.NoError(t, err)
+				assert.False(t, allowed, "a queued not-active hint must not contradict a connected account")
+				row.ChatID = "999999"
+				require.NoError(t, db.Save(&row).Error)
+				allowed, err = AuthorizeTelegramBotSend(&row)
+				require.NoError(t, err)
+				assert.True(t, allowed, "an unrelated recipient can still receive public help")
 			})
 
 			t.Run("command_admission_uses_original_time_and_is_retryable", func(t *testing.T) {
