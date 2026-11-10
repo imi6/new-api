@@ -61,6 +61,8 @@ export interface TelegramBotStatus {
 
 export interface TelegramBotConfig {
   enabled: boolean
+  low_balance_enabled: boolean
+  group_ratio_change_enabled: boolean
   token_configured: boolean
   bot_id: string
   bot_username: string
