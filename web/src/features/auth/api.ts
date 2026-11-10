@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import axios from 'axios'
 
+import type { TelegramBotPreferences } from '@/features/telegram-bot/types'
 import { api, refreshAuthentication, type RefreshOutcome } from '@/lib/api'
 import { AuthOperationError } from '@/lib/secure-verification'
 import {
@@ -172,10 +173,11 @@ export async function githubOAuthStart(clientId: string, state: string) {
 // Get OAuth state for CSRF protection
 export async function createOAuthAuthorization(
   provider: string,
-  intent: 'login' | 'bind' | 'verify',
+  intent: 'login' | 'bind' | 'verify' | 'telegram_bot',
   operation?: VerificationOperation,
   signal?: AbortSignal,
-  proofToken?: string
+  proofToken?: string,
+  telegramBot?: TelegramBotPreferences
 ): Promise<{ state: string; authorizationUrl?: string }> {
   const aff = intent === 'login' ? getAffiliateCode() : ''
   const res = await api.post(
@@ -186,11 +188,12 @@ export async function createOAuthAuthorization(
       aff: aff || undefined,
       scope: operation?.scope,
       ...(operation?.context ? { context: operation.context } : {}),
+      ...(telegramBot ? { telegram_bot: telegramBot } : {}),
     },
     {
       skipAuthRefresh: intent === 'login',
       ...(proofToken ? { headers: { 'X-Security-Proof': proofToken } } : {}),
-      singleUseAuthorization: intent === 'bind',
+      singleUseAuthorization: intent === 'bind' || intent === 'telegram_bot',
       signal,
       skipBusinessError: true,
       skipErrorHandler: true,
