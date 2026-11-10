@@ -130,3 +130,4 @@ telegram.bot.event.low_balance: "平台餘額不足，目前餘額：{{.Balance}
 telegram.bot.event.topup: "儲值已到帳：{{.Amount}}\n本次到帳後餘額：{{.Balance}}\n來源：{{.Source}}\n業務時間：{{.Time}}"
 telegram.bot.event.subscription: "訂閱購買成功：{{.Title}}\n到期時間：{{.End}}\n業務時間：{{.Time}}"
 telegram.bot.event.expiry: "訂閱 {{.Title}} 即將到期。\n到期時間：{{.End}}"
+telegram.bot.event.group_ratio: "分組倍率已更新\n分組：{{.Group}}\n原倍率：{{.OldRatio}}\n現倍率：{{.NewRatio}}\n檢查時間：{{.Time}}"

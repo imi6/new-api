@@ -129,3 +129,4 @@ telegram.bot.event.low_balance: "Low wallet balance: {{.Balance}}. Please top up
 telegram.bot.event.topup: "Top-up received: {{.Amount}}\nBalance after this top-up: {{.Balance}}\nSource: {{.Source}}\nEvent time: {{.Time}}"
 telegram.bot.event.subscription: "Subscription purchase successful: {{.Title}}\nExpires: {{.End}}\nEvent time: {{.Time}}"
 telegram.bot.event.expiry: "Your subscription {{.Title}} is expiring soon.\nExpires: {{.End}}"
+telegram.bot.event.group_ratio: "Group ratio updated\nGroup: {{.Group}}\nPrevious ratio: {{.OldRatio}}\nCurrent ratio: {{.NewRatio}}\nChecked at: {{.Time}}"
