@@ -121,6 +121,11 @@ it.each([
   ['token.delete_batch', '批量删除 API 令牌'],
   ['token.key_view', '查看 API 令牌「1」的密钥（ID: 11）'],
   ['token.key_view_batch', '批量查看 API 令牌密钥'],
+  ['user.telegram_bot_preferences', '修改 Telegram 机器人通知设置'],
+  ['user.telegram_bot_disconnect', '断开 Telegram 机器人连接'],
+  ['user.telegram_bot_recovery_start', '发起 Telegram 机器人重新连接'],
+  ['user.telegram_bot_recovery_confirm', '确认 Telegram 机器人重新连接'],
+  ['telegram_bot.config_update', '更新 Telegram 机器人配置'],
 ])('localizes the neutral event summary for %s', async (action, summary) => {
   const i18n = createInstance()
   await i18n.init({ lng: 'zh', resources: { zh } })

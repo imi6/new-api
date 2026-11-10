@@ -692,7 +692,7 @@ func creditInvoiceTaxRefund(tx *gorm.DB, userId int, quota int, giftQuota int) e
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
-	return nil
+	return ResetTelegramLowBalanceAfterCreditTx(tx, userId)
 }
 
 // chargeInvoiceTaxFromBalance takes the tax from the wallet and returns the
