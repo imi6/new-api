@@ -40,7 +40,8 @@ import {
  * as plain text; a site address becomes a link only when it is http(s).
  */
 export function usePartnerOfferColumns(
-  onMark: (row: PartnerOfferRow) => void
+  onMark: (row: PartnerOfferRow) => void,
+  onDelete: (row: PartnerOfferRow) => void
 ): ColumnDef<PartnerOfferRow>[] {
   const { t } = useTranslation()
   return [
@@ -218,16 +219,30 @@ export function usePartnerOfferColumns(
       header: '',
       enableSorting: false,
       cell: ({ row }) => (
-        <Button
-          type='button'
-          variant='ghost'
-          size='sm'
-          onClick={() => onMark(row.original)}
-        >
-          {t('Mark')}
-        </Button>
+        <span className='flex items-center justify-end gap-1'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={() => onMark(row.original)}
+          >
+            {t('Mark')}
+          </Button>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            className='text-destructive hover:text-destructive'
+            onClick={() => onDelete(row.original)}
+          >
+            {t('Delete')}
+          </Button>
+        </span>
       ),
-      size: 80,
+      // The table is wider than most screens, so the actions stay in view.
+      // Delete removes this row only; the mark covers the whole site.
+      meta: { pinned: 'right' as const },
+      size: 170,
     },
   ]
 }
