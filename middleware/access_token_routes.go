@@ -55,9 +55,10 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/partner/config":             accessTokenAnyRule,
 	"POST /api/partner/sites":             accessTokenSessionRule,
 	"GET /api/partner/sites":              accessTokenScopeRule("profile:read"),
-	"GET /api/partner/admin/offers":       accessTokenScopeRule("user:read"),
-	"PATCH /api/partner/admin/sites/:id":  accessTokenScopeRule("user:write"),
-	"DELETE /api/partner/admin/sites/:id": accessTokenScopeRule("user:write"),
+	"GET /api/partner/admin/offers":        accessTokenScopeRule("user:read"),
+	"DELETE /api/partner/admin/offers/:id": accessTokenScopeRule("user:write"),
+	"PATCH /api/partner/admin/sites/:id":   accessTokenScopeRule("user:write"),
+	"DELETE /api/partner/admin/sites/:id":  accessTokenScopeRule("user:write"),
 	// Announcements that pop up. Reading them is public; a read is the
 	// caller's own.
 	"GET /api/announcements":               accessTokenAnyRule,
