@@ -128,12 +128,12 @@ export function GroupBadge(props: GroupBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex max-w-full min-w-0 flex-wrap items-center gap-2 text-sm',
+        'inline-flex max-w-full min-w-0 flex-nowrap items-center gap-1.5 whitespace-nowrap text-sm',
         containerClassName
       )}
     >
-      <GroupLabels labels={labels} />
-      <span className='max-w-full min-w-0 overflow-hidden'>{badge}</span>
+      <GroupLabels labels={labels} className='max-w-1/2 shrink-0' />
+      <span className='max-w-full min-w-0 shrink overflow-hidden'>{badge}</span>
       {(ratio != null || ratioLabel) && (
         <GroupMultiplierBadge ratio={ratio} label={ratioLabel} />
       )}
