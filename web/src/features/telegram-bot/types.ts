@@ -32,6 +32,14 @@ export const EMPTY_TELEGRAM_PREFERENCES: TelegramBotPreferences = {
   expiry: false,
 }
 
+export const DEFAULT_TELEGRAM_PREFERENCES: TelegramBotPreferences = {
+  enabled: true,
+  low_balance: true,
+  topup: true,
+  subscription: true,
+  expiry: true,
+}
+
 export interface TelegramBotStatus {
   available: boolean
   bot_username: string
