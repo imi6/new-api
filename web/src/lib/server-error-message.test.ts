@@ -44,6 +44,12 @@ describe('server error message mapping', () => {
 
   test('maps stable Telegram bind errors without exposing server text', () => {
     const expected = {
+      TELEGRAM_BOT_AUTH_EXPIRED:
+        'Telegram bot authorization expired. Please try again.',
+      TELEGRAM_BOT_SETTINGS_CHANGED:
+        'Telegram bot settings changed. Please reload and try again.',
+      TELEGRAM_BOT_UNAVAILABLE: 'Telegram bot is not configured',
+      TELEGRAM_BOT_NOT_CONNECTED: 'Telegram bot is not connected',
       TELEGRAM_BIND_DISABLED: 'Telegram binding is disabled.',
       TELEGRAM_BIND_INVALID_REQUEST:
         'The Telegram authorization request is invalid or expired.',
