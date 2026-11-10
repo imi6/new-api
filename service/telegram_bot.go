@@ -888,7 +888,19 @@ func sendTelegramBotOutbox(ctx context.Context, snapshot *model.TelegramBotConfi
 		return
 	}
 	owned, err := model.AuthorizeTelegramBotSend(row)
-	if err != nil || !owned {
+	if err != nil {
+		finish("pending", "authorization unavailable", 30)
+		return
+	}
+	if !owned {
+		current, err := model.GetTelegramBotConfig()
+		if err != nil {
+			finish("pending", "configuration unavailable", 30)
+		} else if current.BotID == row.BotID && !current.Enabled {
+			finish("pending", "bot paused", 300)
+		} else {
+			finish("discarded", "delivery authorization changed", 0)
+		}
 		return
 	}
 	err = TelegramBotCall(ctx, cfg, "sendMessage", request, &sent)
