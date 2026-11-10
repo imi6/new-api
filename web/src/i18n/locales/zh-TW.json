@@ -1069,6 +1069,7 @@
     "Bot ID": "機器人 ID",
     "Bot Name": "機械人名稱",
     "Bot Protection": "機械人保護",
+    "Bot settings": "機器人設定",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "暫時無法讀取機器人狀態，可重試，不影響 Telegram 登入。",
     "Bot Token": "機械人令牌",
     "Bot:": "機械人：",
