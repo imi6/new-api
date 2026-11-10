@@ -430,15 +430,22 @@ it('connects the bot during the first Telegram binding without a separate recove
     await screen.findByRole('button', { name: 'Open bot' })
   ).toHaveAttribute('href', 'https://t.me/test_bot')
   expect(
-    screen.getByRole('button', { name: 'Send test message' })
-  ).toBeEnabled()
-  expect(
     screen.queryByRole('button', { name: 'Recover through bot' })
   ).not.toBeInTheDocument()
   expect(post.mock.calls.map(([url]) => url)).toEqual([
     '/api/verify',
     '/api/oauth/state',
   ])
+  expect(
+    screen.queryByRole('button', { name: 'Send test message' })
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Bot settings' }))
+  const botSettings = await screen.findByRole('dialog', {
+    name: 'Bot settings',
+  })
+  expect(
+    within(botSettings).getByRole('button', { name: 'Send test message' })
+  ).toBeEnabled()
 })
 
 it('shows a retry when the 2FA status query fails instead of offering enrollment', async () => {
