@@ -88,6 +88,16 @@ func GetPricing(c *gin.Context) {
 		}
 	}
 
+	groupBadges := make(map[string][]common.GroupLabel)
+	for name := range usableGroup {
+		if _, exists := groupRatio[name]; !exists && name != "auto" {
+			continue
+		}
+		if badges := common.GetGroupBadges(name); len(badges) > 0 {
+			groupBadges[name] = badges
+		}
+	}
+
 	c.JSON(200, gin.H{
 		"success":             true,
 		"data":                pricing,
@@ -95,6 +105,7 @@ func GetPricing(c *gin.Context) {
 		"group_ratio":         groupRatio,
 		"group_ratio_changes": groupRatioChanges,
 		"group_platforms":     groupPlatforms,
+		"group_badges":        groupBadges,
 		"usable_group":        usableGroup,
 		"supported_endpoint":  model.GetSupportedEndpointMap(),
 		"auto_groups":         service.GetUserAutoGroup(group),
