@@ -69,9 +69,10 @@ export function AffiliateRewards() {
         </Button>
       </SectionPageLayout.Actions>
       <SectionPageLayout.Content>
-        {/* The content area does not scroll, so each tab's table needs a
-            bounded height to scroll its own rows, as on the plugins page. */}
-        <div className='flex h-full min-h-0 flex-col gap-4'>
+        {/* Each tab's table needs a bounded height to scroll its own rows.
+            The tabs keep room for about ten rows, so this wrapper scrolls
+            when the summary cards leave less than that. */}
+        <div className='flex h-full min-h-0 flex-col gap-4 overflow-y-auto'>
           <AffiliateSummaryCards
             summary={summary.data}
             loading={summary.isLoading}
@@ -98,7 +99,7 @@ export function AffiliateRewards() {
                 replace: true,
               })
             }
-            className='flex min-h-0 flex-1 flex-col gap-3'
+            className='flex min-h-112 flex-1 flex-col gap-3 sm:min-h-188'
           >
             <TabsList>
               <TabsTrigger value='ranking'>{t('Invite ranking')}</TabsTrigger>
