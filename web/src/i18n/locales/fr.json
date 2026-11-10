@@ -52,6 +52,7 @@
     "Bot connection status": "État de connexion du bot",
     "Bot delivery blocked": "Envoi du bot bloqué",
     "Bot ID": "ID du bot",
+    "Bot settings": "Paramètres du bot",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "Le statut du bot est indisponible. Réessayez sans modifier votre connexion Telegram.",
     "Cancel withdrawal": "Annuler le retrait",
     "Cancellation fee policy": "Frais en cas d’annulation",

@@ -52,6 +52,7 @@
     "Bot connection status": "Состояние подключения бота",
     "Bot delivery blocked": "Доставка сообщений бота заблокирована",
     "Bot ID": "ID бота",
+    "Bot settings": "Настройки бота",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "Статус бота недоступен. Повторите запрос, привязка Telegram не изменится.",
     "Cancel withdrawal": "Отменить вывод",
     "Cancellation fee policy": "Комиссия при отмене",
