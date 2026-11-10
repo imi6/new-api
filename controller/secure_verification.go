@@ -65,6 +65,15 @@ func writeSecurityOperationError(c *gin.Context, err error) {
 		code, message = "ACCOUNT_SECURITY_STATE_CHANGED", err.Error()
 	case errors.Is(err, model.ErrLastLoginMethod):
 		code, message = "LAST_LOGIN_METHOD", err.Error()
+	case errors.Is(err, model.ErrTelegramBotExpired):
+		code, message = "TELEGRAM_BOT_AUTH_EXPIRED", model.ErrTelegramBotExpired.Error()
+	case errors.Is(err, model.ErrTelegramBotChanged):
+		status = http.StatusConflict
+		code, message = "TELEGRAM_BOT_SETTINGS_CHANGED", model.ErrTelegramBotChanged.Error()
+	case errors.Is(err, model.ErrTelegramBotUnavailable):
+		code, message = "TELEGRAM_BOT_UNAVAILABLE", model.ErrTelegramBotUnavailable.Error()
+	case errors.Is(err, model.ErrTelegramBotNotConnected):
+		code, message = "TELEGRAM_BOT_NOT_CONNECTED", model.ErrTelegramBotNotConnected.Error()
 	case errors.Is(err, oauth.ErrTelegramOAuthNotConfigured):
 		code, message = "TELEGRAM_OAUTH_NOT_CONFIGURED", oauth.ErrTelegramOAuthNotConfigured.Error()
 	case errors.Is(err, oauth.ErrTelegramOAuthConflict):

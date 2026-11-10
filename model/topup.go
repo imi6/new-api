@@ -268,7 +268,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, paidMoney string, 
 		if err := tx.Save(topUp).Error; err != nil {
 			return err
 		}
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil)
+		return creditTopUpAndNotifyTx(tx, topUp, quotaToAdd, paidQuota, nil, topUp.PaymentProvider)
 	})
 	if err != nil {
 		if !errors.Is(err, ErrTopUpNotFound) && !errors.Is(err, ErrPaymentMethodMismatch) && !errors.Is(err, ErrTopUpStatusInvalid) && !errors.Is(err, ErrEpayCallbackMismatch) {
@@ -328,9 +328,9 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		if err != nil {
 			return err
 		}
-		return creditTopUpQuota(tx, topUp.UserId, quota, paidQuota, map[string]any{
+		return creditTopUpAndNotifyTx(tx, topUp, quota, paidQuota, map[string]any{
 			"stripe_customer": customerId,
-		})
+		}, topUp.PaymentProvider)
 	})
 
 	if err != nil {
@@ -561,7 +561,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		}
 
 		// 增加用户额度（立即写库，保持一致性）
-		if err := creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil); err != nil {
+		if err := creditTopUpAndNotifyTx(tx, topUp, quotaToAdd, paidQuota, nil, "admin_completion"); err != nil {
 			return err
 		}
 
@@ -638,7 +638,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 			}
 		}
 
-		return creditTopUpQuota(tx, topUp.UserId, quota, quota, updateFields)
+		return creditTopUpAndNotifyTx(tx, topUp, quota, quota, updateFields, topUp.PaymentProvider)
 	})
 
 	if err != nil {
@@ -698,7 +698,7 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 			return err
 		}
 
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil)
+		return creditTopUpAndNotifyTx(tx, topUp, quotaToAdd, paidQuota, nil, topUp.PaymentProvider)
 	})
 
 	if err != nil {
@@ -760,7 +760,7 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 			return err
 		}
 
-		return creditTopUpQuota(tx, topUp.UserId, quotaToAdd, paidQuota, nil)
+		return creditTopUpAndNotifyTx(tx, topUp, quotaToAdd, paidQuota, nil, topUp.PaymentProvider)
 	})
 
 	if err != nil {
