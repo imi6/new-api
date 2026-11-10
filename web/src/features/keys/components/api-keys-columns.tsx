@@ -21,6 +21,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { TruncatedCell } from '@/components/data-table'
 import { StatusBadge } from '@/components/status-badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useMediaQuery } from '@/hooks'
@@ -116,9 +117,11 @@ export function useApiKeysColumns(
         accessorKey: 'name',
         header: t('Name'),
         cell: ({ row }) => (
-          <span className='font-medium'>{row.getValue('name')}</span>
+          <TruncatedCell className='max-w-26 font-medium' tabIndex={0}>
+            {row.getValue<string>('name')}
+          </TruncatedCell>
         ),
-        size: 180,
+        size: 120,
         meta: { mobileTitle: true },
       },
       {
@@ -154,8 +157,8 @@ export function useApiKeysColumns(
         accessorKey: 'remain_quota',
         header: `${t('Quota')} (${quotaUnit})`,
         cell: ({ row }) => <ApiKeyQuotaCell apiKey={row.original} now={now} />,
-        size: 260,
-        minSize: 260,
+        size: 180,
+        minSize: 180,
       },
       {
         accessorKey: 'group',
@@ -184,7 +187,7 @@ export function useApiKeysColumns(
             />
           )
         },
-        size: 220,
+        size: 360,
         meta: { mobileHidden: true },
       },
       {
