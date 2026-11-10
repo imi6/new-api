@@ -263,6 +263,184 @@ it('refreshes Telegram bindings from the server result after the callback popup 
   await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1))
 })
 
+it('connects the bot during the first Telegram binding without a separate recovery flow', async () => {
+  const popup = {
+    closed: false,
+    location: { replace: vi.fn() },
+    sessionStorage: window.sessionStorage,
+    close: vi.fn(),
+    postMessage: vi.fn(),
+  }
+  vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
+  const preferences = {
+    enabled: true,
+    low_balance: true,
+    topup: true,
+    subscription: true,
+    expiry: true,
+  }
+  let connected = false
+  vi.spyOn(api, 'get').mockImplementation(async (url) => {
+    if (url === '/api/status') {
+      return {
+        data: {
+          success: true,
+          data: { telegram_oauth: true, telegram_oauth_configured: true },
+        },
+      }
+    }
+    if (url === '/api/verify/methods') {
+      return {
+        data: {
+          success: true,
+          data: {
+            scope: 'account.binding.bind',
+            methods: [{ method: 'password', available: true }],
+            oauth_providers: [],
+            password_encryption_enabled: false,
+          },
+        },
+      }
+    }
+    if (url === '/api/oauth/telegram') {
+      connected = true
+      return {
+        data: {
+          success: true,
+          data: { action: 'bind', telegram_bot: true },
+        },
+      }
+    }
+    if (url === '/api/user/self/telegram-bot') {
+      return {
+        data: {
+          success: true,
+          data: {
+            available: true,
+            bot_username: 'test_bot',
+            connected,
+            status: connected ? 'connected' : 'unconnected',
+            telegram_id: connected ? '42' : '',
+            version: connected ? 1 : 0,
+            preferences_version: connected ? 1 : 0,
+            preferences,
+            last_error: '',
+            last_connected_at: connected ? 1 : 0,
+            deep_link: 'https://t.me/test_bot',
+          },
+        },
+      }
+    }
+    throw new Error(`Unexpected GET ${url}`)
+  })
+  const post = vi.spyOn(api, 'post').mockImplementation(async (url) => ({
+    data: {
+      success: true,
+      data:
+        url === '/api/verify'
+          ? {
+              proof_token: 'binding-proof',
+              method: 'password',
+              scope: 'account.binding.bind',
+              expires_at: expiresAt(),
+            }
+          : {
+              flow_token: 'binding-state',
+              authorization_url: 'https://oauth.telegram.org/auth?server=pkce',
+            },
+    },
+  }))
+  const onUpdate = vi.fn()
+  const user = userEvent.setup()
+  const profile = { id: 7, email: 'bound@example.com' } as UserProfile
+  const view = render(
+    <QueryClientProvider client={client}>
+      <AccountBindings profile={profile} onUpdate={onUpdate} />
+    </QueryClientProvider>
+  )
+  const telegram = (await screen.findByText('Telegram')).closest('li')
+  if (!telegram) throw new Error('Telegram binding entry is missing')
+  const bind = within(telegram).getByRole('button', { name: 'Bind' })
+  await waitFor(() => expect(bind).toBeEnabled())
+  await user.click(bind)
+  const authorization = await screen.findByRole('dialog', {
+    name: 'Bind Telegram Account',
+  })
+  for (const name of [
+    'Connect bot with this authorization',
+    'Telegram notifications',
+    'Low platform balance',
+    'Top-up credited',
+    'Subscription activated',
+    'Subscription expiring soon',
+  ]) {
+    expect(within(authorization).getByRole('switch', { name })).toBeChecked()
+  }
+  await user.click(
+    within(authorization).getByRole('button', { name: 'Continue' })
+  )
+  const verification = await screen.findByRole('dialog', {
+    name: 'Security verification',
+  })
+  await user.type(
+    within(verification).getByLabelText('Password', { selector: 'input' }),
+    'current-password'
+  )
+  await user.click(within(verification).getByRole('button', { name: 'Verify' }))
+  const continuation = await screen.findByRole('alertdialog', {
+    name: 'Continue account binding',
+  })
+  expect(post).toHaveBeenCalledWith(
+    '/api/oauth/state',
+    expect.objectContaining({
+      provider: 'telegram',
+      intent: 'bind',
+      telegram_bot: preferences,
+    }),
+    expect.objectContaining({
+      headers: { 'X-Security-Proof': 'binding-proof' },
+    })
+  )
+  await user.click(
+    within(continuation).getByRole('button', { name: 'Continue' })
+  )
+  await waitFor(() => expect(popup.location.replace).toHaveBeenCalled())
+  const message = new MessageEvent('message', {
+    origin: window.location.origin,
+    data: {
+      type: OAUTH_POPUP_CALLBACK_MESSAGE,
+      provider: 'telegram',
+      intent: 'bind',
+      state: 'binding-state',
+      code: 'code',
+    },
+  })
+  Object.defineProperty(message, 'source', { value: popup })
+  act(() => window.dispatchEvent(message))
+  await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1))
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <AccountBindings
+        profile={{ ...profile, telegram_id: '42' }}
+        onUpdate={onUpdate}
+      />
+    </QueryClientProvider>
+  )
+  expect(
+    await screen.findByRole('button', { name: 'Open bot' })
+  ).toHaveAttribute('href', 'https://t.me/test_bot')
+  expect(
+    screen.getByRole('button', { name: 'Send test message' })
+  ).toBeEnabled()
+  expect(
+    screen.queryByRole('button', { name: 'Recover through bot' })
+  ).not.toBeInTheDocument()
+  expect(post.mock.calls.map(([url]) => url)).toEqual([
+    '/api/verify',
+    '/api/oauth/state',
+  ])
+})
+
 it('shows a retry when the 2FA status query fails instead of offering enrollment', async () => {
   const get = vi
     .spyOn(api, 'get')
