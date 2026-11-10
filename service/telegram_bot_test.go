@@ -112,11 +112,11 @@ func TestTelegramBotConfigChangesKeepOnlyTheCurrentIdentity(t *testing.T) {
 				botID = "12345"
 			}
 			login.ClientID = botID
-			saved, err := SaveTelegramBotConfig(context.Background(), true, botID+":new_test_credential_1234567890", cfg.Version)
+			saved, err := SaveTelegramBotConfig(context.Background(), true, botID+":new_test_credential_1234567890", cfg.Version, nil)
 			require.NoError(t, err)
 			if !sameBot {
 				login.ClientID = "12345"
-				_, err = SaveTelegramBotConfig(context.Background(), true, cfg.Token, saved.Version)
+				_, err = SaveTelegramBotConfig(context.Background(), true, cfg.Token, saved.Version, nil)
 				require.NoError(t, err)
 			}
 			current, err := model.GetTelegramBotConnection(conn.UserID)
@@ -136,7 +136,7 @@ func TestTelegramBotConfigChangesKeepOnlyTheCurrentIdentity(t *testing.T) {
 	}
 }
 
-func TestTelegramBotWebhookCanRetryAnUnchangedConfiguration(t *testing.T) {
+func TestTelegramBotWebhookRetryPreservesNotificationSettings(t *testing.T) {
 	_, cfg, _ := setupTelegramBotServiceTest(t)
 	system_setting.ServerAddress = "https://example.test"
 	*system_setting.GetTelegramSettings() = system_setting.TelegramSettings{ClientID: "12345", ClientSecret: "test-client-secret"}
@@ -158,14 +158,23 @@ func TestTelegramBotWebhookCanRetryAnUnchangedConfiguration(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	})}
-	saved, err := SaveTelegramBotConfig(context.Background(), true, "", cfg.Version)
+	assert.True(t, cfg.LowBalanceNotificationsEnabled())
+	assert.False(t, cfg.GroupRatioChangeEnabled)
+	lowBalance, groupRatio := false, true
+	saved, err := SaveTelegramBotConfig(context.Background(), true, "", cfg.Version, &model.TelegramBotReminderSettings{LowBalanceEnabled: &lowBalance, GroupRatioChangeEnabled: &groupRatio})
 	require.NoError(t, err)
 	assert.Equal(t, "error", saved.WebhookStatus)
-	saved, err = SaveTelegramBotConfig(context.Background(), true, "", saved.Version)
+	assert.False(t, saved.LowBalanceNotificationsEnabled())
+	assert.True(t, saved.GroupRatioChangeEnabled)
+	assert.EqualValues(t, cfg.ReminderVersion+1, saved.ReminderVersion)
+	saved, err = SaveTelegramBotConfig(context.Background(), true, "", saved.Version, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "ready", saved.WebhookStatus)
 	assert.Empty(t, saved.LastError)
 	assert.Equal(t, 2, webhookRequests)
+	assert.False(t, saved.LowBalanceNotificationsEnabled(), "omitted settings preserve administrator choices")
+	assert.True(t, saved.GroupRatioChangeEnabled)
+	assert.EqualValues(t, cfg.ReminderVersion+1, saved.ReminderVersion, "webhook retries do not reset reminder baselines")
 }
 
 func TestTelegramBotWebhookReconcilesALateRegistration(t *testing.T) {
@@ -217,7 +226,7 @@ func TestTelegramBotWebhookReconcilesALateRegistration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	oldResult := make(chan error, 1)
 	go func() {
-		_, err := SaveTelegramBotConfig(ctx, true, "", cfg.Version)
+		_, err := SaveTelegramBotConfig(ctx, true, "", cfg.Version, nil)
 		oldResult <- err
 	}()
 	t.Cleanup(cancel)
@@ -228,10 +237,10 @@ func TestTelegramBotWebhookReconcilesALateRegistration(t *testing.T) {
 	}
 	login := system_setting.GetTelegramSettings()
 	login.ClientID = "67890"
-	saved, err := SaveTelegramBotConfig(ctx, true, "67890:new_test_credential_1234567890", cfg.Version+1)
+	saved, err := SaveTelegramBotConfig(ctx, true, "67890:new_test_credential_1234567890", cfg.Version+1, nil)
 	require.NoError(t, err)
 	login.ClientID = "12345"
-	saved, err = SaveTelegramBotConfig(ctx, true, cfg.Token, saved.Version)
+	saved, err = SaveTelegramBotConfig(ctx, true, cfg.Token, saved.Version, nil)
 	require.NoError(t, err)
 	require.NotEqual(t, cfg.WebhookSecret, saved.WebhookSecret)
 	close(releaseOld)
