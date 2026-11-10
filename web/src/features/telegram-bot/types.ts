@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 export interface TelegramBotPreferences {
   enabled: boolean
   low_balance: boolean
+  group_ratio: boolean
   topup: boolean
   subscription: boolean
   expiry: boolean
@@ -27,6 +28,7 @@ export interface TelegramBotPreferences {
 export const EMPTY_TELEGRAM_PREFERENCES: TelegramBotPreferences = {
   enabled: false,
   low_balance: false,
+  group_ratio: false,
   topup: false,
   subscription: false,
   expiry: false,
@@ -35,6 +37,7 @@ export const EMPTY_TELEGRAM_PREFERENCES: TelegramBotPreferences = {
 export const DEFAULT_TELEGRAM_PREFERENCES: TelegramBotPreferences = {
   enabled: true,
   low_balance: true,
+  group_ratio: false,
   topup: true,
   subscription: true,
   expiry: true,
@@ -61,8 +64,6 @@ export interface TelegramBotStatus {
 
 export interface TelegramBotConfig {
   enabled: boolean
-  low_balance_enabled: boolean
-  group_ratio_change_enabled: boolean
   token_configured: boolean
   bot_id: string
   bot_username: string
