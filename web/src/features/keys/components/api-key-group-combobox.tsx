@@ -162,9 +162,12 @@ export function ApiKeyGroupCombobox({
         )}
         <span className='flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-3'>
           <span className='min-w-0'>
-            <span className='flex min-w-0 flex-wrap items-center gap-1.5 font-medium'>
+            <span className='flex min-w-0 flex-nowrap items-center gap-1.5 font-medium'>
               <GroupLabels labels={selectedOption?.badges} />
-              <span className='truncate'>
+              <span
+                className='min-w-0 truncate'
+                title={selectedDisplay || placeholder || t('Select a group')}
+              >
                 {selectedDisplay || placeholder || t('Select a group')}
               </span>
             </span>
@@ -239,9 +242,14 @@ export function ApiKeyGroupCombobox({
                         )}
                       />
                       <span className='min-w-0 flex-1'>
-                        <span className='flex min-w-0 flex-wrap items-center gap-1.5 font-medium'>
+                        <span className='flex min-w-0 flex-nowrap items-center gap-1.5 font-medium'>
                           <GroupLabels labels={option.badges} />
-                          <span className='truncate'>{option.itemLabel}</span>
+                          <span
+                            className='min-w-0 truncate'
+                            title={option.itemLabel}
+                          >
+                            {option.itemLabel}
+                          </span>
                         </span>
                         {option.desc && option.desc !== option.label && (
                           <span className='text-muted-foreground block truncate text-xs'>
