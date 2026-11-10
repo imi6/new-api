@@ -17,12 +17,20 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, ChevronDown, Search, Settings2, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  Search,
+  Settings2,
+  X,
+} from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Dialog } from '@/components/dialog'
+import { GroupLabels } from '@/components/group-labels'
 import { MultiSelect } from '@/components/multi-select'
 import {
   type GroupRatioChange,
@@ -47,10 +55,11 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { ChannelTypeLogo } from '@/features/channels/components/channel-type-badge'
 import { getUserGroups, getUserModels } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { quotaUnitsToEditableAmount } from '@/lib/format'
-import { ChannelTypeLogo } from '@/features/channels/components/channel-type-badge'
+import type { GroupLabel } from '@/lib/group-labels'
 import { handleServerError } from '@/lib/handle-server-error'
 import {
   requireServerSuccess,
@@ -58,7 +67,12 @@ import {
 } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
-import { createApiKey, getApiKey, getTokenAutoGroups, updateApiKey } from '../api'
+import {
+  createApiKey,
+  getApiKey,
+  getTokenAutoGroups,
+  updateApiKey,
+} from '../api'
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
   getApiKeyFormDefaultValues,
@@ -66,13 +80,13 @@ import {
   transformApiKeyToFormDefaults,
   transformFormDataToPayload,
 } from '../lib'
-import type { ApiKey } from '../types'
 import {
   OTHER_PLATFORM,
   apiKeyGroupPlatform,
   apiKeyPlatformLabel,
   formatApiKeyGroupRatio,
 } from '../lib/api-key-group-platforms'
+import type { ApiKey } from '../types'
 import type { ApiKeyGroupOption } from './api-key-group-combobox'
 import { useApiKeys } from './api-keys-provider'
 
@@ -104,7 +118,10 @@ function platformLabel(
 function PlatformIcon(props: { name: string }) {
   if (props.name === OTHER_PLATFORM) return null
   return (
-    <span aria-hidden='true' className='flex size-4 shrink-0 items-center justify-center'>
+    <span
+      aria-hidden='true'
+      className='flex size-4 shrink-0 items-center justify-center'
+    >
       <ChannelTypeLogo type={Number(props.name)} size={16} />
     </span>
   )
@@ -171,7 +188,8 @@ export function ApiKeyCreateDialog({
 
   const { data: apiKeyData } = useQuery({
     queryKey: ['api-key', currentRow?.id],
-    queryFn: async () => requireServerSuccess(await getApiKey(currentRow?.id ?? 0)),
+    queryFn: async () =>
+      requireServerSuccess(await getApiKey(currentRow?.id ?? 0)),
     enabled: open && isUpdate,
     staleTime: 0,
   })
@@ -193,7 +211,9 @@ export function ApiKeyCreateDialog({
     return map
   }, [groupsData])
 
-  const groups = useMemo<ApiKeyGroupOption[]>(() => {
+  const groups = useMemo<
+    Array<ApiKeyGroupOption & { ratio: number | string }>
+  >(() => {
     const entries = Object.entries(groupsData?.data || {}) as Array<
       [
         string,
@@ -201,6 +221,7 @@ export function ApiKeyCreateDialog({
           desc?: string
           ratio: number | string
           ratio_change?: GroupRatioChange
+          badges?: GroupLabel[]
         },
       ]
     >
@@ -212,6 +233,7 @@ export function ApiKeyCreateDialog({
         desc: info.desc ? translateServerText(t, info.desc) : '',
         ratio: info.ratio,
         ratioChange: info.ratio_change,
+        badges: info.badges,
       }))
   }, [groupsData, t])
   const groupsByValue = useMemo(
@@ -263,7 +285,7 @@ export function ApiKeyCreateDialog({
         ? leftRatio - rightRatio
         : rightRatio - leftRatio
     })
-  }, [groups, platform, search, sortOrder, t])
+  }, [groups, platform, platformMap, search, sortOrder, t])
 
   useEffect(() => {
     if (open) return
@@ -331,7 +353,7 @@ export function ApiKeyCreateDialog({
     ) {
       return
     }
-    setName(defaults.name)
+    setName(defaults.name ?? '')
     setQuota(
       defaults.unlimited_quota
         ? ''
@@ -357,7 +379,7 @@ export function ApiKeyCreateDialog({
       setLoadedExpiry(undefined)
     }
     setModelLimits(defaults.model_limits)
-    setAllowIps(defaults.allow_ips)
+    setAllowIps(defaults.allow_ips ?? '')
     setAllowUserQuotaQuery(defaults.allow_user_quota_query)
     // A non-Auto key has no stored retry choice; keep the default for when it
     // is switched to smart routing.
@@ -381,7 +403,15 @@ export function ApiKeyCreateDialog({
       setRoutes([])
     }
     setLoadedKeyId(currentRow.id)
-  }, [apiKeyData, autoGroupsData, currentRow, groups, loadedKeyId, maxRoutes, open])
+  }, [
+    apiKeyData,
+    autoGroupsData,
+    currentRow,
+    groups,
+    loadedKeyId,
+    maxRoutes,
+    open,
+  ])
 
   const previewGroup = preview ? groupsByValue.get(preview) : undefined
   const { meta: currencyMeta } = getCurrencyDisplay()
@@ -450,20 +480,17 @@ export function ApiKeyCreateDialog({
 
     const daysText = validDays.trim()
     const days = daysText === '' ? undefined : Number(daysText)
-    if (
-      days !== undefined &&
-      (!Number.isInteger(days) || days <= 0)
-    ) {
+    if (days !== undefined && (!Number.isInteger(days) || days <= 0)) {
       toast.error(t('Valid days must be a whole number greater than zero'))
       return
     }
 
-    const expiredTime =
-      isUpdate && daysText === loadedDays
-        ? loadedExpiry
-        : days === undefined
-          ? undefined
-          : new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    let expiredTime: Date | null = null
+    if (isUpdate && daysText === loadedDays) {
+      expiredTime = loadedExpiry ?? null
+    } else if (days !== undefined) {
+      expiredTime = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    }
     const defaults = getApiKeyFormDefaultValues(false)
     const routeFields = routeGroupsToApiKeyFields(
       channelMode === 'smart' ? routes : [group]
@@ -496,7 +523,11 @@ export function ApiKeyCreateDialog({
       if (!result.success) {
         handleServerError(
           result,
-          t(isUpdate ? ERROR_MESSAGES.UPDATE_FAILED : ERROR_MESSAGES.CREATE_FAILED)
+          t(
+            isUpdate
+              ? ERROR_MESSAGES.UPDATE_FAILED
+              : ERROR_MESSAGES.CREATE_FAILED
+          )
         )
         return
       }
@@ -671,7 +702,9 @@ export function ApiKeyCreateDialog({
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false}>
                   <SelectGroup>
-                    <SelectItem value='default'>{t('Default order')}</SelectItem>
+                    <SelectItem value='default'>
+                      {t('Default order')}
+                    </SelectItem>
                     <SelectItem value='ratio-asc'>
                       {t('Ratio, low to high')}
                     </SelectItem>
@@ -715,10 +748,14 @@ export function ApiKeyCreateDialog({
                         )}
                       >
                         <span className='min-w-0 flex-1'>
-                          <span className='flex min-w-0 items-center gap-1.5'>
+                          <span className='flex min-w-0 flex-wrap items-center gap-1.5'>
                             <PlatformIcon
-                              name={apiKeyGroupPlatform(group.label, platformMap)}
+                              name={apiKeyGroupPlatform(
+                                group.label,
+                                platformMap
+                              )}
                             />
+                            <GroupLabels labels={group.badges} />
                             <span className='truncate text-sm font-medium'>
                               {group.label}
                             </span>
@@ -758,9 +795,13 @@ export function ApiKeyCreateDialog({
               <>
                 <div>
                   <p className='text-muted-foreground text-xs'>
-                    {platformLabel(apiKeyGroupPlatform(previewGroup.label, platformMap), t)}
+                    {platformLabel(
+                      apiKeyGroupPlatform(previewGroup.label, platformMap),
+                      t
+                    )}
                   </p>
-                  <h3 className='mt-1 text-base font-semibold'>
+                  <h3 className='mt-1 flex flex-wrap items-center gap-1.5 text-base font-semibold'>
+                    <GroupLabels labels={previewGroup.badges} />
                     {previewGroup.label}
                   </h3>
                   {previewGroup.desc &&
@@ -925,8 +966,9 @@ function SmartRouteOrder(props: {
                   <p className='text-muted-foreground text-xs'>
                     {t('Route {{index}}', { index: index + 1 })}
                   </p>
-                  <p className='truncate text-sm font-medium'>
-                    {option?.label ?? group}
+                  <p className='flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-medium'>
+                    <GroupLabels labels={option?.badges} />
+                    <span className='truncate'>{option?.label ?? group}</span>
                   </p>
                   {option?.desc && option.desc !== option.label ? (
                     <p className='text-muted-foreground line-clamp-2 text-xs'>
@@ -1001,19 +1043,20 @@ function PlatformButton(props: {
       onClick={props.onClick}
       className={cn(
         'flex items-center justify-between rounded-lg px-2 py-1.5 text-start text-sm',
-        props.active ? 'bg-background font-medium shadow-sm' : 'hover:bg-background/70'
+        props.active
+          ? 'bg-background font-medium shadow-sm'
+          : 'hover:bg-background/70'
       )}
     >
-      <span className='flex items-center gap-1.5 truncate min-w-0'>
+      <span className='flex min-w-0 items-center gap-1.5 truncate'>
         {props.platform && props.platform !== '__all__' && (
           <PlatformIcon name={props.platform} />
         )}
         <span className='truncate'>{props.label}</span>
       </span>
-      <span className='text-muted-foreground ms-2 text-xs tabular-nums shrink-0'>
+      <span className='text-muted-foreground ms-2 shrink-0 text-xs tabular-nums'>
         {props.count}
       </span>
     </button>
   )
 }
-

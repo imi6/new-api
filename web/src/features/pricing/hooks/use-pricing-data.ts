@@ -70,6 +70,7 @@ export function usePricingData(enabled = true) {
     groupRatio: data?.group_ratio ?? {},
     groupRatioChanges: data?.group_ratio_changes ?? {},
     groupPlatforms: data?.group_platforms ?? {},
+    groupBadges: data?.group_badges ?? {},
     usableGroup: data?.usable_group ?? {},
     endpointMap: data?.supported_endpoint ?? {},
     autoGroups: data?.auto_groups ?? [],

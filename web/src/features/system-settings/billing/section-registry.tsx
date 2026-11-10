@@ -54,6 +54,7 @@ const getGroupDefaults = (settings: BillingSettings) => ({
   GroupSpecialUsableGroup:
     settings['group_ratio_setting.group_special_usable_group'],
   GroupPlatformMap: settings.GroupPlatformMap ?? '',
+  GroupBadgeConfig: settings.GroupBadgeConfig ?? '{"labels":[],"groups":{}}',
 })
 
 const BILLING_SECTIONS = [
@@ -67,7 +68,8 @@ const BILLING_SECTIONS = [
           QuotaForInviter: settings.QuotaForInviter,
           QuotaForInvitee: settings.QuotaForInvitee,
           AffiliateRebatePercent: settings.AffiliateRebatePercent,
-          AffiliateRebateDownstreamQuota: settings.AffiliateRebateDownstreamQuota,
+          AffiliateRebateDownstreamQuota:
+            settings.AffiliateRebateDownstreamQuota,
           AffiliateRebateUpstreamQuota: settings.AffiliateRebateUpstreamQuota,
           AffiliateRebateGroups: settings.AffiliateRebateGroups ?? '',
           AffiliateRebateExcludeSpecialRatioEnabled:
