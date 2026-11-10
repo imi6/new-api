@@ -92,11 +92,18 @@ export async function getTelegramBotConfig(signal?: AbortSignal) {
     '/api/telegram-bot/config',
     { signal }
   )
-  return requireServerSuccess(response.data).data
+  const config = requireServerSuccess(response.data).data
+  return {
+    ...config,
+    low_balance_enabled: config.low_balance_enabled ?? true,
+    group_ratio_change_enabled: config.group_ratio_change_enabled ?? false,
+  }
 }
 
 export async function updateTelegramBotConfig(payload: {
   enabled: boolean
+  low_balance_enabled?: boolean
+  group_ratio_change_enabled?: boolean
   version: number
   bot_token?: string
 }) {
@@ -104,5 +111,10 @@ export async function updateTelegramBotConfig(payload: {
     '/api/telegram-bot/config',
     payload
   )
-  return requireServerSuccess(response.data).data
+  const config = requireServerSuccess(response.data).data
+  return {
+    ...config,
+    low_balance_enabled: config.low_balance_enabled ?? true,
+    group_ratio_change_enabled: config.group_ratio_change_enabled ?? false,
+  }
 }
