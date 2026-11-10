@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
@@ -174,7 +175,11 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if result.RowsAffected == 0 {
 			return errors.New("redemption code already used")
 		}
-		return creditTopUpQuota(tx, userId, redemption.Quota, redemption.Quota, nil)
+		if err := creditTopUpQuota(tx, userId, redemption.Quota, redemption.Quota, nil); err != nil {
+			return err
+		}
+		return enqueueTelegramWalletCreditTx(tx, userId, redemption.Quota,
+			fmt.Sprintf("redemption:%d", redemption.Id), "redemption", common.GetTimestamp())
 	})
 	if err != nil {
 		common.SysError(common.LogText("redemption failed: %s", err.Error()))
