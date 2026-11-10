@@ -161,9 +161,11 @@ export function GroupLabelEditor(props: GroupLabelEditorProps) {
         </>
       }
     >
-      <div className='bg-muted/30 flex min-h-10 flex-wrap items-center gap-2 rounded-lg border p-3'>
+      <div className='bg-muted/30 flex min-h-10 min-w-0 flex-nowrap items-center gap-2 rounded-lg border p-3'>
         <GroupLabels labels={selectedLabels} />
-        <span className='min-w-0 text-sm break-all'>{props.group}</span>
+        <span className='min-w-0 truncate text-sm' title={props.group}>
+          {props.group}
+        </span>
       </div>
       <div className='space-y-2'>
         <p className='text-sm font-medium'>{t('Quick labels')}</p>
