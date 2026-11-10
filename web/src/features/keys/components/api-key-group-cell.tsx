@@ -69,7 +69,10 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
           ratioLabel={group ? undefined : t('Inherited')}
           type='text'
           className='px-0'
-          containerClassName={cn('gap-3', isMobile && 'w-full justify-between')}
+          containerClassName={cn(
+            'gap-1.5',
+            isMobile && 'w-full justify-between'
+          )}
         />
       </TruncatedCell>
     )
@@ -133,13 +136,13 @@ function AutoRoutePopover(props: {
             onMouseEnter={show}
             onMouseLeave={hide}
             className={cn(
-              'ml-0 gap-3 overflow-visible text-xs',
+              'ml-0 gap-1.5 overflow-visible text-xs',
               props.isMobile ? 'w-full justify-between' : 'max-w-84'
             )}
           />
         }
       >
-        <GroupLabels labels={props.labels} />
+        <GroupLabels labels={props.labels} className='max-w-1/2 shrink-0' />
         <StatusBadge
           label={t('Cross-group')}
           variant='info'
@@ -169,7 +172,7 @@ function AutoRoutePopover(props: {
                 <span className='text-muted-foreground w-14 shrink-0 text-xs'>
                   {t('Route {{index}}', { index: index + 1 })}
                 </span>
-                <span className='flex min-w-0 flex-1 flex-wrap items-center gap-1 text-sm'>
+                <span className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 text-sm'>
                   <GroupLabels
                     labels={
                       props.routeLabels &&
@@ -178,7 +181,9 @@ function AutoRoutePopover(props: {
                         : undefined
                     }
                   />
-                  <span className='truncate'>{group}</span>
+                  <span className='min-w-0 truncate' title={group}>
+                    {group}
+                  </span>
                 </span>
                 {canReorder ? (
                   <span className='flex shrink-0'>
