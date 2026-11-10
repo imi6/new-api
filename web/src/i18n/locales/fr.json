@@ -1122,6 +1122,7 @@
     "Bot ID": "ID du bot",
     "Bot Name": "Nom du bot",
     "Bot Protection": "Protection des bots",
+    "Bot settings": "Paramètres du bot",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "Le statut du bot est indisponible. Réessayez sans modifier votre connexion Telegram.",
     "Bot Token": "Jeton du bot",
     "Bot:": "Bot :",

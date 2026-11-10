@@ -1122,6 +1122,7 @@
     "Bot ID": "机器人 ID",
     "Bot Name": "机器人名称",
     "Bot Protection": "机器人保护",
+    "Bot settings": "机器人设置",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "暂时无法读取机器人状态，可重试，不影响 Telegram 登录。",
     "Bot Token": "机器人令牌",
     "Bot:": "机器人：",
