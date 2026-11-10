@@ -362,7 +362,7 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
                 <dt className='text-muted-foreground shrink-0'>
                   {t('Groups')}
                 </dt>
-                <dd className='flex min-w-0 flex-1 flex-col gap-1'>
+                <dd className='flex min-w-0 flex-1 flex-nowrap items-center gap-1'>
                   <GroupLabels labels={groupLabels} />
                   <span className='flex max-w-full min-w-0 items-baseline gap-1'>
                     <span className='truncate' title={groups.join(', ')}>
