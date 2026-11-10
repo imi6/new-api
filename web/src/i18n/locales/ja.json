@@ -1069,6 +1069,7 @@
     "Bot ID": "ボット ID",
     "Bot Name": "ボット名",
     "Bot Protection": "ボット保護",
+    "Bot settings": "ボット設定",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "ボットの状態を取得できません。Telegram ログインを変更せずに再試行できます。",
     "Bot Token": "ボットトークン",
     "Bot:": "ボット:",
