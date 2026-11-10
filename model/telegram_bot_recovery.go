@@ -96,7 +96,7 @@ func ConfirmTelegramBotRecovery(token string, identity AuthSessionIdentity) erro
 		if err := ValidateAuthSessionWithTx(tx, identity); err != nil {
 			return err
 		}
-		if err := CompleteTelegramBotOAuthTx(tx, identity.UserID, payload.VerifiedTelegramID, &payload.Intent); err != nil {
+		if err := CompleteTelegramBotOAuthTx(tx, identity.UserID, payload.VerifiedTelegramID, &payload.Intent, true); err != nil {
 			return err
 		}
 		var conn TelegramBotConnection
