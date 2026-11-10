@@ -44,6 +44,7 @@ const defaults = {
   DefaultUseAutoGroup: false,
   GroupSpecialUsableGroup: '{}',
   GroupPlatformMap: '',
+  GroupBadgeConfig: '{"labels":[],"groups":{}}',
 }
 
 const schema = z.object({
@@ -56,6 +57,7 @@ const schema = z.object({
   DefaultUseAutoGroup: z.boolean(),
   GroupSpecialUsableGroup: z.string(),
   GroupPlatformMap: z.string(),
+  GroupBadgeConfig: z.string(),
 })
 
 function Fixture(props: {
@@ -81,6 +83,402 @@ function Fixture(props: {
 }
 
 describe('group settings workspace', () => {
+  it.each([
+    ['a', 'b'],
+    ['b', 'a'],
+  ])(
+    'preserves both groups when renaming through a duplicate name in %s/%s order',
+    async (first, second) => {
+      const user = userEvent.setup()
+      const onSave = vi.fn(async (_values: typeof defaults) => {})
+      render(
+        <Fixture
+          onSave={onSave}
+          initial={{
+            GroupRatio: JSON.stringify(
+              Object.fromEntries(
+                [first, second].map((name) => [name, name === 'a' ? 1 : 0.8])
+              )
+            ),
+            UserUsableGroups: '{"a":"First","b":"Second"}',
+            TopupGroupRatio: '{"b":1.2}',
+            GroupBadgeConfig:
+              '{"labels":[{"id":"first","name":"First","icon":"shield","color":"teal"},{"id":"second","name":"Second","icon":"star","color":"amber"}],"groups":{"a":["first"],"b":["second"],"auto":["first"]}}',
+          }}
+        />
+      )
+      const input = screen.getByDisplayValue('b')
+      const row = input.closest('tr')
+      if (!row) throw new Error('Group row was not found')
+      await user.clear(input)
+      expect(
+        screen.getByRole('button', { name: 'Save group settings' })
+      ).toBeDisabled()
+      await user.type(input, 'a')
+      expect(
+        screen.getAllByRole('textbox', { name: 'Group name' })
+      ).toHaveLength(2)
+      expect(
+        screen.getByRole('button', { name: 'Save group settings' })
+      ).toBeDisabled()
+      expect(
+        within(row).getByRole('button', { name: 'Edit labels for a' })
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'Switch to JSON' })
+      ).toBeDisabled()
+      await user.type(input, 'bc')
+      expect(input).toHaveValue('abc')
+      await user.click(
+        screen.getByRole('button', { name: 'Save group settings' })
+      )
+      await waitFor(() => expect(onSave).toHaveBeenCalled())
+      const saved = onSave.mock.calls[0][0]
+      expect(JSON.parse(saved.GroupRatio)).toEqual({ a: 1, abc: 0.8 })
+      expect(JSON.parse(saved.TopupGroupRatio)).toEqual({ abc: 1.2 })
+      expect(JSON.parse(saved.UserUsableGroups)).toEqual({
+        a: 'First',
+        abc: 'Second',
+      })
+      expect(JSON.parse(saved.GroupBadgeConfig).groups).toEqual({
+        a: ['first'],
+        abc: ['second'],
+        auto: ['first'],
+      })
+    }
+  )
+
+  it('restores saving and editor switching after cancelling an invalid name draft', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    render(<Fixture onSave={onSave} />)
+    const input = screen.getByDisplayValue('vip')
+    await user.clear(input)
+    await user.type(input, 'default')
+    const save = screen.getByRole('button', { name: 'Save group settings' })
+    expect(save).toBeDisabled()
+    await user.click(save)
+    expect(onSave).not.toHaveBeenCalled()
+    await user.clear(input)
+    await user.type(input, 'vip')
+    expect(save).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Switch to JSON' })).toBeEnabled()
+    await user.click(save)
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupRatio)).toEqual({
+      default: 1,
+      vip: 0.8,
+    })
+  })
+
+  it('deletes only the committed group when its name draft duplicates another group', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    render(
+      <Fixture
+        onSave={onSave}
+        initial={{
+          GroupRatio: '{"a":1,"b":0.8}',
+          UserUsableGroups: '{"a":"First","b":"Second"}',
+          TopupGroupRatio: '{}',
+          GroupBadgeConfig:
+            '{"labels":[{"id":"first","name":"First","icon":"shield","color":"teal"},{"id":"second","name":"Second","icon":"star","color":"amber"}],"groups":{"a":["first"],"b":["second"],"auto":["first"]}}',
+        }}
+      />
+    )
+    const input = screen.getByDisplayValue('b')
+    const row = input.closest('tr')
+    if (!row) throw new Error('Group row was not found')
+    await user.clear(input)
+    await user.type(input, 'a')
+    await user.click(within(row).getByRole('button', { name: 'Delete' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupRatio)).toEqual({ a: 1 })
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig).groups).toEqual(
+      { a: ['first'], auto: ['first'] }
+    )
+  })
+
+  it('creates and applies a custom label without crypto.randomUUID', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    const originalCrypto = globalThis.crypto
+    vi.stubGlobal('crypto', {
+      getRandomValues: originalCrypto.getRandomValues.bind(originalCrypto),
+      randomUUID: undefined,
+    })
+    try {
+      render(<Fixture onSave={onSave} />)
+      await user.click(
+        screen.getByRole('button', { name: 'Edit labels for default' })
+      )
+      const dialog = screen.getByRole('dialog', { name: 'Group labels' })
+      await user.type(
+        within(dialog).getByRole('textbox', { name: 'Label name' }),
+        'Custom'
+      )
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Create label' })
+      )
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Apply labels' })
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'Save group settings' })
+      )
+      await waitFor(() => expect(onSave).toHaveBeenCalled())
+      const config = JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig)
+      expect(config.labels).toHaveLength(1)
+      expect(config.labels[0]).toEqual(
+        expect.objectContaining({
+          name: 'Custom',
+          id: expect.stringMatching(/^[a-zA-Z0-9_-]{1,64}$/),
+        })
+      )
+      expect(config.groups).toEqual({ default: [config.labels[0].id] })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('chooses presets, creates reusable labels, orders them and follows group renaming', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    render(<Fixture onSave={onSave} />)
+    await user.click(
+      screen.getByRole('button', { name: 'Edit labels for default' })
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Group labels' })
+    await user.click(within(dialog).getByRole('button', { name: 'Self-run' }))
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Label name' }),
+      'Premium'
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Create label' })
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Move Premium up' })
+    )
+    const selected = within(dialog).getByRole('list', {
+      name: 'Selected labels',
+    })
+    expect(within(selected).getAllByRole('listitem')[0]).toHaveTextContent(
+      'Premium'
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Apply labels' })
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Edit labels for vip' })
+    )
+    await user.click(screen.getByRole('button', { name: 'Premium' }))
+    await user.click(screen.getByRole('button', { name: 'Apply labels' }))
+    await user.clear(screen.getAllByRole('textbox', { name: 'Group name' })[0])
+    await user.type(
+      screen.getAllByRole('textbox', { name: 'Group name' })[0],
+      'standard'
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    const config = JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig)
+    const premium = config.labels.find(
+      (label: { name: string }) => label.name === 'Premium'
+    )
+    expect(config.groups).toEqual({
+      standard: [premium.id, 'self'],
+      vip: [premium.id],
+    })
+    expect(config.labels).toHaveLength(2)
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupRatio)).toEqual({
+      standard: 1,
+      vip: 0.8,
+    })
+  })
+
+  it('cancels pending label edits without saving a reusable label', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    render(<Fixture onSave={onSave} />)
+    await user.click(
+      screen.getByRole('button', { name: 'Edit labels for default' })
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Group labels' })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Label name' }),
+      'Discarded'
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Create label' })
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig)).toEqual({
+      labels: [],
+      groups: {},
+    })
+  })
+
+  it('keeps pricing and visibility JSON unchanged when only applying labels', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    const initial = {
+      GroupRatio: '{ "default": 1, "vip": 0.8 }',
+      TopupGroupRatio: '{ "vip": 1.2 }',
+      UserUsableGroups:
+        '{ "default": "Standard", "vip": "Premium", "extra": "Extra" }',
+      GroupPlatformMap: '{ "default": "1" }',
+    }
+    render(<Fixture onSave={onSave} initial={initial} />)
+    await user.click(
+      screen.getByRole('button', { name: 'Edit labels for default' })
+    )
+    await user.click(screen.getByRole('button', { name: 'Self-run' }))
+    await user.click(screen.getByRole('button', { name: 'Apply labels' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(onSave.mock.calls[0][0]).toEqual(expect.objectContaining(initial))
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig).groups).toEqual(
+      { default: ['self'] }
+    )
+  })
+
+  it('preserves an unchanged group identifier with surrounding spaces when applying labels', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    const initial = {
+      GroupRatio: '{ " padded ": 1 }',
+      UserUsableGroups: '{ " padded ": "Legacy group" }',
+      TopupGroupRatio: '{}',
+    }
+    render(<Fixture onSave={onSave} initial={initial} />)
+    expect(
+      screen.getByRole('button', { name: 'Save group settings' })
+    ).toBeEnabled()
+    const edit = screen.getByRole('button', { name: /Edit labels for.*padded/ })
+    expect(edit).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'Group name' })).toHaveValue(
+      ' padded '
+    )
+    expect(screen.getByRole('textbox', { name: 'Group name' })).toHaveAttribute(
+      'aria-invalid',
+      'false'
+    )
+    await user.click(edit)
+    await user.click(screen.getByRole('button', { name: 'Self-run' }))
+    await user.click(screen.getByRole('button', { name: 'Apply labels' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(onSave.mock.calls[0][0]).toEqual(expect.objectContaining(initial))
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig).groups).toEqual(
+      { ' padded ': ['self'] }
+    )
+  })
+
+  it('preserves labels for groups outside the pricing table during ordinary pricing edits', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    const config =
+      '{"labels":[{"id":"self","name":"Self-run","icon":"shield","color":"teal"}],"groups":{"default":["self"],"auto":["self"],"constructor":["self"]}}'
+    render(<Fixture onSave={onSave} initial={{ GroupBadgeConfig: config }} />)
+    fireEvent.change(screen.getAllByRole('spinbutton', { name: 'Ratio' })[0], {
+      target: { value: '0.9' },
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(onSave.mock.calls[0][0].GroupBadgeConfig).toBe(config)
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupRatio).default).toBe(0.9)
+  })
+
+  it('rejects invalid label names and enforces the selection limit', async () => {
+    const user = userEvent.setup()
+    render(<Fixture />)
+    await user.click(
+      screen.getByRole('button', { name: 'Edit labels for default' })
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Group labels' })
+    const name = within(dialog).getByRole('textbox', { name: 'Label name' })
+    fireEvent.change(name, { target: { value: 'bad\u007fname' } })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Create label' })
+    )
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(
+      within(dialog).queryByRole('list', { name: 'Selected labels' })
+    ).not.toBeInTheDocument()
+    await user.clear(name)
+    await user.type(name, 'Premium')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Create label' })
+    )
+    for (const label of ['Self-run', 'Authentic', 'Guarantee']) {
+      await user.click(within(dialog).getByRole('button', { name: label }))
+    }
+    expect(
+      within(dialog).getByRole('button', { name: 'Create label' })
+    ).toBeDisabled()
+    expect(
+      within(
+        within(dialog).getByRole('list', { name: 'Selected labels' })
+      ).getAllByRole('listitem')
+    ).toHaveLength(4)
+  })
+
+  it('removes the deleted group mapping while retaining reusable labels', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    render(
+      <Fixture
+        onSave={onSave}
+        initial={{
+          GroupBadgeConfig:
+            '{"labels":[{"id":"self","name":"Self-run","icon":"shield","color":"teal"}],"groups":{"default":["self"],"vip":["self"],"auto":["self"]}}',
+        }}
+      />
+    )
+    const row = screen.getByDisplayValue('default').closest('tr')
+    if (!row) throw new Error('Default group row was not found')
+    await user.click(within(row).getByRole('button', { name: 'Delete' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    const config = JSON.parse(onSave.mock.calls[0][0].GroupBadgeConfig)
+    expect(config.groups).toEqual({ vip: ['self'], auto: ['self'] })
+    expect(config.labels).toHaveLength(1)
+  })
+
+  it('blocks visual edits when the label config contains an unknown reference', () => {
+    render(
+      <Fixture
+        initial={{
+          GroupBadgeConfig: '{"labels":[],"groups":{"default":["missing"]}}',
+        }}
+      />
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Group label configuration is invalid.'
+    )
+    expect(screen.getByRole('button', { name: 'Add group' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Edit labels for default' })
+    ).toBeDisabled()
+  })
+
   it('filters by description and clears search without discarding edits', async () => {
     const user = userEvent.setup()
     render(<Fixture />)
@@ -130,7 +528,9 @@ describe('group settings workspace', () => {
         .map((input) => input.value)
     ).toEqual(['group_2', 'group_1', 'default', 'vip'])
 
-    await user.click(screen.getByRole('button', { name: 'Save group settings' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
     await waitFor(() => expect(onSave).toHaveBeenCalled())
     const saved = onSave.mock.calls[0][0]
     expect(JSON.parse(saved.GroupRatio)).toEqual({
@@ -203,7 +603,9 @@ describe('group settings workspace', () => {
     expect(screen.getByRole('button', { name: 'Move vip up' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Move vip down' })).toBeDisabled()
     await user.click(screen.getByRole('tab', { name: 'Pricing groups' }))
-    await user.click(screen.getByRole('button', { name: 'Save group settings' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
     await waitFor(() => expect(onSave).toHaveBeenCalled())
     expect(onSave.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
@@ -246,7 +648,9 @@ describe('group settings workspace', () => {
     )
     expect(screen.getByText('Not in pricing table')).toBeVisible()
     await user.click(screen.getByRole('tab', { name: 'Pricing groups' }))
-    await user.click(screen.getByRole('button', { name: 'Save group settings' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
     await waitFor(() => expect(onSave).toHaveBeenCalled())
     expect(JSON.parse(onSave.mock.calls[0][0].AutoGroups)).toEqual([
       'vip',
@@ -288,7 +692,9 @@ describe('group settings workspace', () => {
       { target: { value: '0' } }
     )
     await user.click(screen.getByRole('tab', { name: 'Pricing groups' }))
-    await user.click(screen.getByRole('button', { name: 'Save group settings' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
     await waitFor(() =>
       expect(
         screen.getByRole('tab', { name: 'Auto group order' })

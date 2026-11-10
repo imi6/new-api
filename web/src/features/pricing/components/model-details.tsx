@@ -37,6 +37,7 @@ import { CopyButton } from '@/components/copy-button'
 import { StaticDataTable } from '@/components/data-table'
 import { sideDrawerContentClassName } from '@/components/drawer-layout'
 import { GroupBadge } from '@/components/group-badge'
+import { GroupLabelsContext } from '@/components/group-labels-context'
 import { PublicLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import {
@@ -1604,6 +1605,7 @@ export function ModelDetails() {
   const {
     models,
     groupRatio,
+    groupBadges,
     usableGroup,
     endpointMap,
     autoGroups,
@@ -1668,35 +1670,37 @@ export function ModelDetails() {
   }
 
   return (
-    <PublicLayout>
-      <div className='mx-auto max-w-5xl px-4 sm:px-6'>
-        <Button
-          variant='ghost'
-          size='sm'
-          onClick={handleBack}
-          className='text-muted-foreground hover:text-foreground mb-4 h-auto gap-1 px-0 py-1 text-xs'
-        >
-          <ArrowLeft className='size-3.5' />
-          {t('Back')}
-        </Button>
+    <GroupLabelsContext value={groupBadges}>
+      <PublicLayout>
+        <div className='mx-auto max-w-5xl px-4 sm:px-6'>
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={handleBack}
+            className='text-muted-foreground hover:text-foreground mb-4 h-auto gap-1 px-0 py-1 text-xs'
+          >
+            <ArrowLeft className='size-3.5' />
+            {t('Back')}
+          </Button>
 
-        <ModelDetailsContent
-          model={model}
-          groupRatio={groupRatio || {}}
-          usableGroup={usableGroup || {}}
-          autoGroups={autoGroups || []}
-          priceRate={priceRate ?? 1}
-          usdExchangeRate={usdExchangeRate ?? 1}
-          tokenUnit={tokenUnit}
-          showRechargePrice={search.rechargePrice ?? false}
-          endpointMap={
-            (endpointMap as Record<
-              string,
-              { path?: string; method?: string }
-            >) || {}
-          }
-        />
-      </div>
-    </PublicLayout>
+          <ModelDetailsContent
+            model={model}
+            groupRatio={groupRatio || {}}
+            usableGroup={usableGroup || {}}
+            autoGroups={autoGroups || []}
+            priceRate={priceRate ?? 1}
+            usdExchangeRate={usdExchangeRate ?? 1}
+            tokenUnit={tokenUnit}
+            showRechargePrice={search.rechargePrice ?? false}
+            endpointMap={
+              (endpointMap as Record<
+                string,
+                { path?: string; method?: string }
+              >) || {}
+            }
+          />
+        </div>
+      </PublicLayout>
+    </GroupLabelsContext>
   )
 }
