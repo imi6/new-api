@@ -75,6 +75,7 @@ type GroupFormValues = {
   DefaultUseAutoGroup: boolean
   GroupSpecialUsableGroup: string
   GroupPlatformMap: string
+  GroupBadgeConfig: string
 }
 
 type GroupRatioFormProps = {
@@ -93,6 +94,7 @@ export const GroupRatioForm = memo(function GroupRatioForm({
   const [editMode, setEditMode] = useState<'visual' | 'json'>('visual')
   const [guideOpen, setGuideOpen] = useState(false)
   const [section, setSection] = useState<GroupSettingsSection>('pricing')
+  const [groupNamesValid, setGroupNamesValid] = useState(true)
 
   const handleFieldChange = useCallback(
     (field: keyof GroupFormValues, value: string) => {
@@ -129,7 +131,12 @@ export const GroupRatioForm = memo(function GroupRatioForm({
             <HelpCircle className='mr-2 h-4 w-4' />
             {t('Usage guide')}
           </Button>
-          <Button variant='outline' size='sm' onClick={toggleEditMode}>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={toggleEditMode}
+            disabled={!groupNamesValid}
+          >
             {editMode === 'visual' ? (
               <>
                 <Code2 className='mr-2 h-4 w-4' />
@@ -159,7 +166,7 @@ export const GroupRatioForm = memo(function GroupRatioForm({
                 requestAnimationFrame(() => form.setFocus('MaxTokenAutoGroups'))
               }
             })}
-            disabled={isSaving}
+            disabled={isSaving || !groupNamesValid}
           >
             {isSaving ? t('Saving...') : t('Save group settings')}
           </Button>
@@ -227,6 +234,8 @@ export const GroupRatioForm = memo(function GroupRatioForm({
             }
             groupSpecialUsableGroup={values.GroupSpecialUsableGroup ?? ''}
             groupPlatformMap={values.GroupPlatformMap ?? ''}
+            groupBadgeConfig={values.GroupBadgeConfig ?? ''}
+            onGroupNamesValidityChange={setGroupNamesValid}
             onChange={(field, value) =>
               handleFieldChange(field as keyof GroupFormValues, value)
             }
@@ -306,6 +315,26 @@ export const GroupRatioForm = memo(function GroupRatioForm({
                       'JSON map of group → description exposed when users create API keys.'
                     )}
                   </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='GroupBadgeConfig'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Group labels')}</FormLabel>
+                  <FormControl>
+                    <JsonCodeEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      textareaRef={field.ref}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

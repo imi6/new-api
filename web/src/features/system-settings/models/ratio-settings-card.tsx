@@ -37,6 +37,7 @@ import {
 } from '@/features/model-pricing/api'
 import { pricingOptions } from '@/features/model-pricing/pricing'
 import { useMediaQuery } from '@/hooks'
+import { isGroupLabelConfig } from '@/lib/group-labels'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { SettingsPageTitleStatusPortal } from '../components/settings-page-context'
@@ -147,6 +148,9 @@ const createGroupSchema = (t: Translate) =>
     DefaultUseAutoGroup: z.boolean(),
     GroupSpecialUsableGroup: createJsonStringField(t),
     GroupPlatformMap: createJsonStringField(t),
+    GroupBadgeConfig: createJsonStringField(t, {
+      predicate: isGroupLabelConfig,
+    }),
   })
 
 type ModelFormValues = z.infer<ReturnType<typeof createModelSchema>>
@@ -256,6 +260,7 @@ export function RatioSettingsCard({
       groupDefaults.GroupSpecialUsableGroup
     ),
     GroupPlatformMap: normalizeJsonString(groupDefaults.GroupPlatformMap),
+    GroupBadgeConfig: normalizeJsonString(groupDefaults.GroupBadgeConfig),
   })
   const modelSchema = useMemo(() => createModelSchema(t), [t])
   const groupSchema = useMemo(() => createGroupSchema(t), [t])
@@ -295,6 +300,7 @@ export function RatioSettingsCard({
         groupDefaults.GroupSpecialUsableGroup
       ),
       GroupPlatformMap: formatJsonForTextarea(groupDefaults.GroupPlatformMap),
+      GroupBadgeConfig: formatJsonForTextarea(groupDefaults.GroupBadgeConfig),
     },
   })
 
@@ -348,6 +354,7 @@ export function RatioSettingsCard({
         groupDefaults.GroupSpecialUsableGroup
       ),
       GroupPlatformMap: normalizeJsonString(groupDefaults.GroupPlatformMap),
+      GroupBadgeConfig: normalizeJsonString(groupDefaults.GroupBadgeConfig),
     }
 
     groupForm.reset({
@@ -361,6 +368,7 @@ export function RatioSettingsCard({
         groupDefaults.GroupSpecialUsableGroup
       ),
       GroupPlatformMap: formatJsonForTextarea(groupDefaults.GroupPlatformMap),
+      GroupBadgeConfig: formatJsonForTextarea(groupDefaults.GroupBadgeConfig),
     })
   }, [groupDefaults, groupForm])
 
@@ -428,6 +436,7 @@ export function RatioSettingsCard({
           values.GroupSpecialUsableGroup
         ),
         GroupPlatformMap: normalizeJsonString(values.GroupPlatformMap),
+        GroupBadgeConfig: normalizeJsonString(values.GroupBadgeConfig),
       }
 
       // Map form field names to API keys (most are 1:1, except GroupSpecialUsableGroup)
