@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, RefreshCw, Send } from 'lucide-react'
+import { ExternalLink, RefreshCw, Send, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -74,6 +74,7 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
     DEFAULT_TELEGRAM_PREFERENCES
   )
   const [disconnectOpen, setDisconnectOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [recovery, setRecovery] = useState<TelegramBotRecovery | null>(null)
   const [preferencesConflict, setPreferencesConflict] = useState(false)
   const refresh = () => queryClient.invalidateQueries({ queryKey })
@@ -198,9 +199,15 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
               variant='outline'
               size='sm'
               disabled={busy || !data.available}
-              onClick={() => test.mutate()}
+              aria-haspopup='dialog'
+              aria-expanded={settingsOpen}
+              onClick={() => {
+                setPreferencesConflict(false)
+                setSettingsOpen(true)
+              }}
             >
-              {t('Send test message')}
+              <Settings aria-hidden='true' />
+              {t('Bot settings')}
             </Button>
           )}
           {canDisconnect && (
@@ -233,7 +240,7 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
           {t('Loading...')}
         </p>
       )}
-      {query.isError && (
+      {query.isError && (!settingsOpen || !data?.connected) && (
         <Alert>
           <AlertDescription className='flex flex-wrap items-center justify-between gap-2'>
             {t(
@@ -265,36 +272,33 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
         </Alert>
       )}
       {data?.connected && (
-        <>
-          <p className='text-muted-foreground text-xs'>
-            {t(
-              'Bot commands: /balance, /usage, /subs, /checkin, /notify and /help'
-            )}
-          </p>
-          {preferencesConflict && (
-            <Alert>
-              <AlertDescription>
-                {t(
-                  'Notification settings changed elsewhere. Review the latest settings before saving.'
-                )}
-              </AlertDescription>
-            </Alert>
+        <p className='text-muted-foreground text-xs'>
+          {t(
+            'Bot commands: /balance, /usage, /subs, /checkin, /notify and /help'
           )}
-          <TelegramPreferencesEditor
-            key={data.preferences_version}
-            initial={data.preferences}
-            version={data.preferences_version}
-            disabled={busy || !data.available}
-            onSaved={async () => {
-              setPreferencesConflict(false)
-              await refresh()
-            }}
-            onConflict={async () => {
-              setPreferencesConflict(true)
-              await query.refetch({ throwOnError: true })
-            }}
-          />
-        </>
+        </p>
+      )}
+      {data?.connected && settingsOpen && (
+        <TelegramBotSettingsDialog
+          key={data.preferences_version}
+          initial={data.preferences}
+          version={data.preferences_version}
+          disabled={busy || !data.available}
+          conflict={preferencesConflict}
+          statusError={query.isError}
+          refreshing={query.isFetching}
+          onClose={() => setSettingsOpen(false)}
+          onTest={() => test.mutate()}
+          onRefresh={() => void query.refetch()}
+          onSaved={async () => {
+            setPreferencesConflict(false)
+            await refresh()
+          }}
+          onConflict={async () => {
+            setPreferencesConflict(true)
+            await query.refetch({ throwOnError: true })
+          }}
+        />
       )}
       {data?.status === 'connecting' && (
         <p
@@ -391,10 +395,16 @@ export function TelegramBotCard(props: TelegramBotCardProps) {
   )
 }
 
-function TelegramPreferencesEditor(props: {
+function TelegramBotSettingsDialog(props: {
   initial: TelegramBotPreferences
   version: number
   disabled: boolean
+  conflict: boolean
+  statusError: boolean
+  refreshing: boolean
+  onClose: () => void
+  onTest: () => void
+  onRefresh: () => void
   onSaved: () => Promise<unknown>
   onConflict: () => Promise<unknown>
 }) {
@@ -434,21 +444,73 @@ function TelegramPreferencesEditor(props: {
       props.initial[key as keyof TelegramBotPreferences]
   )
   return (
-    <div className='border-t pt-2'>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !save.isPending) props.onClose()
+      }}
+      title={t('Bot settings')}
+      contentClassName='sm:max-w-xl'
+      bodyClassName='space-y-4'
+      showCloseButton={!save.isPending}
+      footer={
+        <>
+          <Button
+            variant='outline'
+            className='sm:mr-auto'
+            disabled={props.disabled || save.isPending}
+            onClick={props.onTest}
+          >
+            <Send aria-hidden='true' />
+            {t('Send test message')}
+          </Button>
+          <Button
+            variant='ghost'
+            disabled={save.isPending}
+            onClick={props.onClose}
+          >
+            {t('Close')}
+          </Button>
+          <Button
+            disabled={!changed || props.disabled || save.isPending || stale}
+            onClick={() => save.mutate()}
+          >
+            {save.isPending ? t('Saving...') : t('Save Changes')}
+          </Button>
+        </>
+      }
+    >
+      {props.statusError && (
+        <Alert>
+          <AlertDescription className='flex flex-wrap items-center justify-between gap-2'>
+            {t(
+              'Bot status is unavailable. You can retry without changing your Telegram login.'
+            )}
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={props.onRefresh}
+              disabled={props.refreshing}
+            >
+              {t('Retry')}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {props.conflict && (
+        <Alert>
+          <AlertDescription>
+            {t(
+              'Notification settings changed elsewhere. Review the latest settings before saving.'
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       <TelegramNotificationFields
         value={preferences}
         onChange={setPreferences}
         disabled={props.disabled || save.isPending || stale}
       />
-      <div className='mt-2 flex justify-end'>
-        <Button
-          size='sm'
-          disabled={!changed || props.disabled || save.isPending || stale}
-          onClick={() => save.mutate()}
-        >
-          {save.isPending ? t('Saving...') : t('Save Changes')}
-        </Button>
-      </div>
-    </div>
+    </Dialog>
   )
 }
