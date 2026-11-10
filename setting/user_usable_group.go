@@ -1,11 +1,12 @@
 package setting
 
 import (
-	"encoding/json"
 	"maps"
+	"strings"
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 )
 
 // The default descriptions are English source keys that the web console
@@ -25,11 +26,34 @@ func GetUserUsableGroupsCopy() map[string]string {
 	return copyUserUsableGroups
 }
 
+// GetUserUsableGroupsForUser 统一解析用户组可见分组，供接口与后台通知共同使用。
+func GetUserUsableGroupsForUser(userGroup string) map[string]string {
+	groups := GetUserUsableGroupsCopy()
+	if userGroup == "" {
+		return groups
+	}
+	if specialGroups, ok := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.Get(userGroup); ok {
+		for group, description := range specialGroups {
+			if name, ok := strings.CutPrefix(group, "-:"); ok {
+				delete(groups, name)
+			} else if name, ok := strings.CutPrefix(group, "+:"); ok {
+				groups[name] = description
+			} else {
+				groups[group] = description
+			}
+		}
+	}
+	if _, ok := groups[userGroup]; !ok {
+		groups[userGroup] = "User group"
+	}
+	return groups
+}
+
 func UserUsableGroups2JSONString() string {
 	userUsableGroupsMutex.RLock()
 	defer userUsableGroupsMutex.RUnlock()
 
-	jsonBytes, err := json.Marshal(userUsableGroups)
+	jsonBytes, err := common.Marshal(userUsableGroups)
 	if err != nil {
 		common.SysLog(common.LogText("error marshalling user groups: %s", err.Error()))
 	}
@@ -41,7 +65,7 @@ func UpdateUserUsableGroupsByJSONString(jsonStr string) error {
 	defer userUsableGroupsMutex.Unlock()
 
 	userUsableGroups = make(map[string]string)
-	return json.Unmarshal([]byte(jsonStr), &userUsableGroups)
+	return common.UnmarshalJsonStr(jsonStr, &userUsableGroups)
 }
 
 func GetUsableGroupDescription(groupName string) string {
