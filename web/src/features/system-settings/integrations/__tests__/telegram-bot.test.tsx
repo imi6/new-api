@@ -36,6 +36,8 @@ vi.mock('../../components/form-navigation-guard', () => ({
 
 const config: TelegramBotConfig = {
   enabled: true,
+  low_balance_enabled: true,
+  group_ratio_change_enabled: false,
   token_configured: true,
   bot_id: '12345678',
   bot_username: 'site_example_bot',
@@ -97,10 +99,73 @@ it('keeps the saved token hidden and preserves it when saving only the enabled s
   await waitFor(() =>
     expect(put).toHaveBeenCalledWith('/api/telegram-bot/config', {
       enabled: false,
+      low_balance_enabled: true,
+      group_ratio_change_enabled: false,
       version: 4,
     })
   )
   expect(token).toHaveValue('')
+})
+
+it('defaults missing notification settings to low balance on and ratio changes off', async () => {
+  fixture(100, {
+    low_balance_enabled: undefined,
+    group_ratio_change_enabled: undefined,
+  })
+  expect(
+    await screen.findByRole('switch', {
+      name: 'Telegram low balance notifications',
+    })
+  ).toBeChecked()
+  expect(
+    screen.getByRole('switch', {
+      name: 'Telegram group ratio change notifications',
+    })
+  ).not.toBeChecked()
+  expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
+})
+
+it('saves independent notification choices and resets later edits to the saved settings', async () => {
+  const put = vi.spyOn(api, 'put').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        ...config,
+        low_balance_enabled: false,
+        group_ratio_change_enabled: true,
+        version: 5,
+      },
+    },
+  })
+  const user = fixture()
+  const lowBalance = await screen.findByRole('switch', {
+    name: 'Telegram low balance notifications',
+  })
+  const ratioChanges = screen.getByRole('switch', {
+    name: 'Telegram group ratio change notifications',
+  })
+  await user.click(lowBalance)
+  await user.click(ratioChanges)
+  await user.click(screen.getByRole('button', { name: 'Save Changes' }))
+  await waitFor(() =>
+    expect(put).toHaveBeenCalledWith('/api/telegram-bot/config', {
+      enabled: true,
+      low_balance_enabled: false,
+      group_ratio_change_enabled: true,
+      version: 4,
+    })
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
+  )
+  expect(lowBalance).not.toBeChecked()
+  expect(ratioChanges).toBeChecked()
+  await user.click(lowBalance)
+  await user.click(ratioChanges)
+  await user.click(screen.getByRole('button', { name: 'Reset' }))
+  expect(lowBalance).not.toBeChecked()
+  expect(ratioChanges).toBeChecked()
+  expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
 })
 
 it('lets administrators read diagnostics while restricting token changes to the root account', async () => {
@@ -111,6 +176,14 @@ it('lets administrators read diagnostics while restricting token changes to the 
   expect(
     screen.getByRole('switch', { name: 'Enable Telegram bot' })
   ).toHaveAttribute('aria-disabled', 'true')
+  expect(
+    screen.getByRole('switch', { name: 'Telegram low balance notifications' })
+  ).toHaveAttribute('aria-disabled', 'true')
+  expect(
+    screen.getByRole('switch', {
+      name: 'Telegram group ratio change notifications',
+    })
+  ).toHaveAttribute('aria-disabled', 'true')
   expect(screen.getByText('Connected')).toBeVisible()
   expect(screen.getByText('Pending incoming messages')).toBeVisible()
 })
@@ -119,9 +192,21 @@ it.each(['error', 'pending'])(
   'retries a %s webhook without changing the saved form or resending the token',
   async (webhook_status) => {
     const put = vi.spyOn(api, 'put').mockResolvedValue({
-      data: { success: true, data: { ...config, version: 5 } },
+      data: {
+        success: true,
+        data: {
+          ...config,
+          low_balance_enabled: false,
+          group_ratio_change_enabled: true,
+          version: 5,
+        },
+      },
     })
-    const user = fixture(100, { webhook_status })
+    const user = fixture(100, {
+      webhook_status,
+      low_balance_enabled: false,
+      group_ratio_change_enabled: true,
+    })
     const retry = await screen.findByRole('button', {
       name: 'Retry webhook registration',
     })
@@ -130,6 +215,8 @@ it.each(['error', 'pending'])(
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith('/api/telegram-bot/config', {
         enabled: true,
+        low_balance_enabled: false,
+        group_ratio_change_enabled: true,
         version: 4,
       })
     )
