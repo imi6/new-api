@@ -370,6 +370,7 @@ func migrateDB() error {
 		&TelegramBotInbox{},
 		&TelegramBotOutbox{},
 		&TelegramLowBalanceState{},
+		&TelegramGroupRatioState{},
 		&SubscriptionOrder{},
 		&UserSubscription{},
 		&SubscriptionPreConsumeRecord{},
