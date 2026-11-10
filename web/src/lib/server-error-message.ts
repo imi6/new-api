@@ -28,6 +28,12 @@ const serverErrorMessageKeys = {
   TELEGRAM_OAUTH_CONFLICT:
     'The telegram OAuth provider name is reserved. Ask your administrator to rename the conflicting custom provider.',
   TELEGRAM_OAUTH_FAILED: 'Telegram authorization failed. Please try again.',
+  TELEGRAM_BOT_AUTH_EXPIRED:
+    'Telegram bot authorization expired. Please try again.',
+  TELEGRAM_BOT_SETTINGS_CHANGED:
+    'Telegram bot settings changed. Please reload and try again.',
+  TELEGRAM_BOT_UNAVAILABLE: 'Telegram bot is not configured',
+  TELEGRAM_BOT_NOT_CONNECTED: 'Telegram bot is not connected',
   TELEGRAM_ACCOUNT_NOT_BOUND:
     'This Telegram account is not linked. Sign in using another method and link it first.',
   TELEGRAM_LEGACY_AUTH_REMOVED:

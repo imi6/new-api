@@ -9,6 +9,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -399,7 +400,21 @@ func applyUserQuotaUsage(db *gorm.DB, id int, usedDelta int, walletDelta int, qu
 		args = append(args, requestDelta)
 	}
 	args = append(args, id)
-	return db.Exec("UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = ?", args...).Error
+	if quotaDelta <= 0 || !system_setting.TelegramBotEnabled() {
+		return db.Exec("UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = ?", args...).Error
+	}
+	applyRefund := func(tx *gorm.DB) error {
+		result := tx.Exec("UPDATE users SET "+strings.Join(sets, ", ")+" WHERE id = ?", args...)
+		if result.Error != nil || result.RowsAffected == 0 {
+			return result.Error
+		}
+		return ResetTelegramLowBalanceAfterCreditTx(tx, id)
+	}
+	// 退款结算已有事务时直接复用，批量净额落库时才创建外层事务。
+	if committer, ok := db.Statement.ConnPool.(gorm.TxCommitter); ok && committer != nil {
+		return applyRefund(db)
+	}
+	return db.Transaction(applyRefund)
 }
 
 func paidConsumptionSet(delta int) ([]string, []any) {

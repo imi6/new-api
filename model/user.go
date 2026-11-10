@@ -11,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"gorm.io/gorm"
@@ -893,7 +894,8 @@ func (user *User) UpdateWithTx(tx *gorm.DB, updatePassword bool) error {
 	}
 	newUser := *user
 	current := User{}
-	if err = tx.First(&current, user.Id).Error; err != nil {
+	// 与 Bot 签到及身份失效保持用户行在前、连接行在后的锁顺序。
+	if err = lockForUpdate(tx).First(&current, user.Id).Error; err != nil {
 		return err
 	}
 	// Updates(struct) ignores zero values. Match that behavior when deciding
@@ -906,6 +908,11 @@ func (user *User) UpdateWithTx(tx *gorm.DB, updatePassword bool) error {
 	if authChanged {
 		newUser.AuthVersion, err = IncrementUserAuthVersionWithTx(tx, user.Id)
 		if err != nil {
+			return err
+		}
+	}
+	if (newUser.Status != 0 && newUser.Status != current.Status) || (newUser.TelegramId != "" && newUser.TelegramId != current.TelegramId) {
+		if err := InvalidateTelegramBotTx(tx, user.Id); err != nil {
 			return err
 		}
 	}
@@ -1011,6 +1018,9 @@ func (user *User) ClearBinding(bindingType string) error {
 			return err
 		}
 		if bindingType == ExternalIdentityProviderTelegram {
+			if err := InvalidateTelegramBotTx(tx, user.Id); err != nil {
+				return err
+			}
 			return ReleaseExternalIdentityWithTx(tx, ExternalIdentityProviderTelegram, user.Id)
 		}
 		return nil
@@ -1069,6 +1079,9 @@ func (user *User) delete(identity *AuthSessionIdentity) (int64, error) {
 		if err != nil {
 			return err
 		}
+		if err := InvalidateTelegramBotTx(tx, user.Id); err != nil {
+			return err
+		}
 		return tx.Delete(user).Error
 	}); err != nil {
 		return 0, err
@@ -1115,6 +1128,9 @@ func (user *User) HardDelete() (int64, error) {
 			}
 		}
 		if err := deleteUserAuthenticationData(tx, user.Id); err != nil {
+			return err
+		}
+		if err := InvalidateTelegramBotTx(tx, user.Id); err != nil {
 			return err
 		}
 		return tx.Unscoped().Delete(user).Error
@@ -1464,23 +1480,32 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 }
 
 func increaseUserQuota(id int, quota int) (err error) {
-	result := DB.Model(&User{}).
-		Where("id = ? AND quota <= ?", id, common.MaxWalletQuota-quota).
-		Update("quota", gorm.Expr("quota + ?", quota))
-	if result.Error != nil {
-		return result.Error
+	applyCredit := func(tx *gorm.DB) error {
+		result := tx.Model(&User{}).
+			Where("id = ? AND quota <= ?", id, common.MaxWalletQuota-quota).
+			Update("quota", gorm.Expr("quota + ?", quota))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 1 {
+			if quota > 0 {
+				return ResetTelegramLowBalanceAfterCreditTx(tx, id)
+			}
+			return nil
+		}
+		var count int64
+		if err := tx.Model(&User{}).Where("id = ?", id).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return ErrWalletQuotaLimitExceeded
 	}
-	if result.RowsAffected == 1 {
-		return nil
+	if quota > 0 && system_setting.TelegramBotEnabled() {
+		return DB.Transaction(applyCredit)
 	}
-	var count int64
-	if err := DB.Model(&User{}).Where("id = ?", id).Count(&count).Error; err != nil {
-		return err
-	}
-	if count == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return ErrWalletQuotaLimitExceeded
+	return applyCredit(DB)
 }
 
 func DecreaseUserQuota(id int, quota int, db bool) (err error) {
