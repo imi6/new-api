@@ -31,36 +31,24 @@ var (
 
 // TelegramBotConfig 只在服务端读取凭据，不向管理接口序列化令牌和回调密钥。
 type TelegramBotConfig struct {
-	ID                      int    `json:"-" gorm:"primaryKey;autoIncrement:false"`
-	Enabled                 bool   `json:"enabled"`
-	LowBalanceEnabled       *bool  `json:"-"`
-	GroupRatioChangeEnabled bool   `json:"group_ratio_change_enabled"`
-	ReminderVersion         int64  `json:"-" gorm:"type:bigint;not null;default:0"`
-	BotID                   int64  `json:"-" gorm:"type:bigint"`
-	BotUsername             string `json:"bot_username" gorm:"type:varchar(64)"`
-	Token                   string `json:"-" gorm:"type:text"`
-	WebhookSecret           string `json:"-" gorm:"type:varchar(128)"`
-	Version                 int64  `json:"version" gorm:"type:bigint"`
-	WebhookURL              string `json:"webhook_url" gorm:"type:text"`
-	WebhookStatus           string `json:"webhook_status" gorm:"type:varchar(32)"`
-	LastError               string `json:"last_error" gorm:"type:varchar(255)"`
-	UpdatedAt               int64  `json:"updated_at" gorm:"type:bigint"`
-}
-
-// LowBalanceNotificationsEnabled 保留旧配置的默认开启行为，不覆盖用户已保存的通知偏好。
-func (cfg *TelegramBotConfig) LowBalanceNotificationsEnabled() bool {
-	return cfg.LowBalanceEnabled == nil || *cfg.LowBalanceEnabled
-}
-
-// TelegramBotReminderSettings 使用指针保留旧客户端未提交通知开关时的已有设置。
-type TelegramBotReminderSettings struct {
-	LowBalanceEnabled       *bool `json:"low_balance_enabled"`
-	GroupRatioChangeEnabled *bool `json:"group_ratio_change_enabled"`
+	ID              int    `json:"-" gorm:"primaryKey;autoIncrement:false"`
+	Enabled         bool   `json:"enabled"`
+	ReminderVersion int64  `json:"-" gorm:"type:bigint;not null;default:0"`
+	BotID           int64  `json:"-" gorm:"type:bigint"`
+	BotUsername     string `json:"bot_username" gorm:"type:varchar(64)"`
+	Token           string `json:"-" gorm:"type:text"`
+	WebhookSecret   string `json:"-" gorm:"type:varchar(128)"`
+	Version         int64  `json:"version" gorm:"type:bigint"`
+	WebhookURL      string `json:"webhook_url" gorm:"type:text"`
+	WebhookStatus   string `json:"webhook_status" gorm:"type:varchar(32)"`
+	LastError       string `json:"last_error" gorm:"type:varchar(255)"`
+	UpdatedAt       int64  `json:"updated_at" gorm:"type:bigint"`
 }
 
 type TelegramBotPreferences struct {
 	Enabled      bool `json:"enabled"`
 	LowBalance   bool `json:"low_balance"`
+	GroupRatio   bool `json:"group_ratio" gorm:"not null;default:false"`
 	TopUp        bool `json:"topup"`
 	Subscription bool `json:"subscription"`
 	Expiry       bool `json:"expiry"`
@@ -80,6 +68,7 @@ type TelegramBotConnection struct {
 	Preferences          TelegramBotPreferences `json:"preferences" gorm:"embedded;embeddedPrefix:notify_"`
 	EnabledVersion       int64                  `json:"-" gorm:"type:bigint"`
 	LowBalanceVersion    int64                  `json:"-" gorm:"type:bigint"`
+	GroupRatioVersion    int64                  `json:"-" gorm:"type:bigint;not null;default:0"`
 	TopUpVersion         int64                  `json:"-" gorm:"type:bigint"`
 	SubscriptionVersion  int64                  `json:"-" gorm:"type:bigint"`
 	ExpiryVersion        int64                  `json:"-" gorm:"type:bigint"`
@@ -288,6 +277,9 @@ func applyTelegramPreferences(conn *TelegramBotConnection, prefs TelegramBotPref
 	if conn.Preferences.LowBalance != prefs.LowBalance {
 		conn.LowBalanceVersion++
 	}
+	if conn.Preferences.GroupRatio != prefs.GroupRatio {
+		conn.GroupRatioVersion++
+	}
 	if conn.Preferences.TopUp != prefs.TopUp {
 		conn.TopUpVersion++
 	}
@@ -393,7 +385,7 @@ func (conn *TelegramBotConnection) EventPreference(kind string) (bool, int64) {
 	case "expiry":
 		return conn.Preferences.Expiry, conn.ExpiryVersion
 	case "group_ratio":
-		return true, 0
+		return conn.Preferences.GroupRatio, conn.GroupRatioVersion
 	}
 	return false, 0
 }
@@ -416,10 +408,7 @@ func EnqueueTelegramBusinessEventTx(tx *gorm.DB, event *TelegramBusinessEvent) e
 	if !cfg.Enabled {
 		return nil
 	}
-	if event.Kind == "low_balance" && (!cfg.LowBalanceNotificationsEnabled() || event.SettingsVersion != cfg.ReminderVersion) {
-		return nil
-	}
-	if event.Kind == "group_ratio" && (!cfg.GroupRatioChangeEnabled || event.SettingsVersion != cfg.ReminderVersion) {
+	if (event.Kind == "low_balance" || event.Kind == "group_ratio") && event.SettingsVersion != cfg.ReminderVersion {
 		return nil
 	}
 	var user User

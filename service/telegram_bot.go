@@ -119,7 +119,7 @@ func TelegramBotWebhookURL() (string, error) {
 }
 
 // SaveTelegramBotConfig 验证身份后保存配置；回调注册失败保留可诊断状态，不假装启用成功。
-func SaveTelegramBotConfig(ctx context.Context, enabled bool, token string, version int64, reminders *model.TelegramBotReminderSettings) (*model.TelegramBotConfig, error) {
+func SaveTelegramBotConfig(ctx context.Context, enabled bool, token string, version int64) (*model.TelegramBotConfig, error) {
 	previous, err := model.GetTelegramBotConfig()
 	if err != nil {
 		return nil, err
@@ -132,15 +132,7 @@ func SaveTelegramBotConfig(ctx context.Context, enabled bool, token string, vers
 	}
 	cfg := *previous
 	cfg.Enabled = enabled
-	if reminders != nil {
-		if reminders.LowBalanceEnabled != nil {
-			cfg.LowBalanceEnabled = reminders.LowBalanceEnabled
-		}
-		if reminders.GroupRatioChangeEnabled != nil {
-			cfg.GroupRatioChangeEnabled = *reminders.GroupRatioChangeEnabled
-		}
-	}
-	if cfg.Enabled != previous.Enabled || cfg.LowBalanceNotificationsEnabled() != previous.LowBalanceNotificationsEnabled() || cfg.GroupRatioChangeEnabled != previous.GroupRatioChangeEnabled {
+	if cfg.Enabled != previous.Enabled {
 		cfg.ReminderVersion++
 	}
 	cfg.Token = strings.TrimSpace(token)
@@ -708,7 +700,7 @@ func telegramBotUpdateNotification(cfg *model.TelegramBotConfig, row *model.Tele
 				if subtle.ConstantTimeCompare([]byte(parts[6]), []byte(mac)) != 1 {
 					return nil
 				}
-				field := map[string]string{"e": "enabled", "l": "low_balance", "t": "topup", "s": "subscription", "x": "expiry"}[parts[1]]
+				field := map[string]string{"e": "enabled", "l": "low_balance", "t": "topup", "s": "subscription", "x": "expiry", "g": "group_ratio"}[parts[1]]
 				if field == "" {
 					return nil
 				}
@@ -733,6 +725,8 @@ func telegramBotUpdateNotification(cfg *model.TelegramBotConfig, row *model.Tele
 				prefs.Subscription = value
 			case "expiry":
 				prefs.Expiry = value
+			case "group_ratio":
+				prefs.GroupRatio = value
 			default:
 				return nil
 			}
@@ -746,26 +740,26 @@ func telegramBotUpdateNotification(cfg *model.TelegramBotConfig, row *model.Tele
 		on := i18n.Translate(lang, "telegram.bot.on")
 		off := i18n.Translate(lang, "telegram.bot.off")
 		values := map[string]any{}
-		for key, value := range map[string]bool{"Enabled": prefs.Enabled, "LowBalance": prefs.LowBalance, "TopUp": prefs.TopUp, "Subscription": prefs.Subscription, "Expiry": prefs.Expiry} {
+		for key, value := range map[string]bool{"Enabled": prefs.Enabled, "LowBalance": prefs.LowBalance, "TopUp": prefs.TopUp, "Subscription": prefs.Subscription, "Expiry": prefs.Expiry, "GroupRatio": prefs.GroupRatio} {
 			values[key] = off
 			if value {
 				values[key] = on
 			}
 		}
 		text := i18n.Translate(lang, "telegram.bot.notify", values)
-		buttons := make([][]map[string]string, 0, 5)
+		buttons := make([][]map[string]string, 0, 6)
 		for _, setting := range []struct {
 			Field string
 			Label string
 			Value bool
-		}{{"enabled", "telegram.bot.notify_enabled", prefs.Enabled}, {"low_balance", "telegram.bot.notify_low_balance", prefs.LowBalance}, {"topup", "telegram.bot.notify_topup", prefs.TopUp}, {"subscription", "telegram.bot.notify_subscription", prefs.Subscription}, {"expiry", "telegram.bot.notify_expiry", prefs.Expiry}} {
+		}{{"enabled", "telegram.bot.notify_enabled", prefs.Enabled}, {"low_balance", "telegram.bot.notify_low_balance", prefs.LowBalance}, {"topup", "telegram.bot.notify_topup", prefs.TopUp}, {"subscription", "telegram.bot.notify_subscription", prefs.Subscription}, {"expiry", "telegram.bot.notify_expiry", prefs.Expiry}, {"group_ratio", "telegram.bot.notify_group_ratio", prefs.GroupRatio}} {
 			target := "on"
 			action := on
 			if setting.Value {
 				target = "off"
 				action = off
 			}
-			field := map[string]string{"enabled": "e", "low_balance": "l", "topup": "t", "subscription": "s", "expiry": "x"}[setting.Field]
+			field := map[string]string{"enabled": "e", "low_balance": "l", "topup": "t", "subscription": "s", "expiry": "x", "group_ratio": "g"}[setting.Field]
 			body := fmt.Sprintf("n:%s:%s:%s:%s:%s", field, target, strconv.FormatInt(conn.PreferencesVersion, 36), strconv.FormatInt(conn.Version, 36), strconv.FormatInt(time.Now().Unix()+300, 36))
 			mac := common.GenerateHMACWithKey([]byte(cfg.WebhookSecret), fmt.Sprintf("%d:%d:%s:%s:%s", cfg.BotID, conn.UserID, conn.TelegramID, conn.ChatID, body))[:24]
 			buttons = append(buttons, []map[string]string{{"text": i18n.Translate(lang, setting.Label) + ": " + action, "callback_data": body + ":" + mac}})
