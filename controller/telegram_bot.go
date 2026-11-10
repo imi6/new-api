@@ -226,7 +226,7 @@ func telegramBotConfigResponse(cfg *model.TelegramBotConfig) gin.H {
 	var inbox, outbox int64
 	model.DB.Model(&model.TelegramBotInbox{}).Where("status IN ?", []string{"pending", "processing"}).Count(&inbox)
 	model.DB.Model(&model.TelegramBotOutbox{}).Where("status IN ?", []string{"pending", "processing"}).Count(&outbox)
-	return gin.H{"enabled": cfg.Enabled, "token_configured": cfg.Token != "", "bot_id": strconv.FormatInt(cfg.BotID, 10), "bot_username": cfg.BotUsername, "version": cfg.Version, "webhook_url": cfg.WebhookURL, "webhook_status": cfg.WebhookStatus, "last_error": cfg.LastError, "pending_inbox": inbox, "pending_outbox": outbox}
+	return gin.H{"enabled": cfg.Enabled, "low_balance_enabled": cfg.LowBalanceNotificationsEnabled(), "group_ratio_change_enabled": cfg.GroupRatioChangeEnabled, "token_configured": cfg.Token != "", "bot_id": strconv.FormatInt(cfg.BotID, 10), "bot_username": cfg.BotUsername, "version": cfg.Version, "webhook_url": cfg.WebhookURL, "webhook_status": cfg.WebhookStatus, "last_error": cfg.LastError, "pending_inbox": inbox, "pending_outbox": outbox}
 }
 
 func GetTelegramBotConfig(c *gin.Context) {
@@ -252,12 +252,13 @@ func SaveTelegramBotConfig(c *gin.Context) {
 		Enabled  bool   `json:"enabled"`
 		BotToken string `json:"bot_token"`
 		Version  int64  `json:"version"`
+		model.TelegramBotReminderSettings
 	}
 	if err := c.ShouldBindJSON(&input); err != nil || len(input.BotToken) > 256 {
 		common.ApiErrorT(c, "Invalid request")
 		return
 	}
-	cfg, err := service.SaveTelegramBotConfig(c.Request.Context(), input.Enabled, strings.TrimSpace(input.BotToken), input.Version)
+	cfg, err := service.SaveTelegramBotConfig(c.Request.Context(), input.Enabled, strings.TrimSpace(input.BotToken), input.Version, &input.TelegramBotReminderSettings)
 	if err != nil {
 		telegramBotError(c, err)
 		return
