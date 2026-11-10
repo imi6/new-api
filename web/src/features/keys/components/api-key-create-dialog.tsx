@@ -717,15 +717,17 @@ export function ApiKeyCreateDialog({
               </Select>
             </div>
             <div className='min-h-0 flex-1 overflow-y-auto [overflow-anchor:none]'>
-              {groupsLoading ? (
+              {groupsLoading && (
                 <p className='text-muted-foreground px-3 py-6 text-sm'>
                   {t('Loading...')}
                 </p>
-              ) : visibleGroups.length === 0 ? (
+              )}
+              {!groupsLoading && visibleGroups.length === 0 && (
                 <p className='text-muted-foreground px-3 py-6 text-sm'>
                   {t('No group found.')}
                 </p>
-              ) : (
+              )}
+              {!groupsLoading && visibleGroups.length > 0 && (
                 <div className='flex flex-col gap-2 px-3 py-3'>
                   {visibleGroups.map((group) => {
                     const selected =
@@ -748,7 +750,7 @@ export function ApiKeyCreateDialog({
                         )}
                       >
                         <span className='min-w-0 flex-1'>
-                          <span className='flex min-w-0 flex-wrap items-center gap-1.5'>
+                          <span className='flex min-w-0 flex-nowrap items-center gap-1.5'>
                             <PlatformIcon
                               name={apiKeyGroupPlatform(
                                 group.label,
@@ -756,7 +758,10 @@ export function ApiKeyCreateDialog({
                               )}
                             />
                             <GroupLabels labels={group.badges} />
-                            <span className='truncate text-sm font-medium'>
+                            <span
+                              className='min-w-0 truncate text-sm font-medium'
+                              title={group.label}
+                            >
                               {group.label}
                             </span>
                           </span>
@@ -777,7 +782,7 @@ export function ApiKeyCreateDialog({
           </div>
 
           <div className='flex min-h-0 flex-col gap-4 overflow-y-auto p-4'>
-            {channelMode === 'smart' ? (
+            {channelMode === 'smart' && (
               <SmartRouteOrder
                 routes={routes}
                 groupsByValue={groupsByValue}
@@ -791,7 +796,8 @@ export function ApiKeyCreateDialog({
                 onCreate={() => void submit('')}
                 actionLabel={isUpdate ? t('Save changes') : t('Create')}
               />
-            ) : previewGroup ? (
+            )}
+            {channelMode !== 'smart' && previewGroup && (
               <>
                 <div>
                   <p className='text-muted-foreground text-xs'>
@@ -800,9 +806,14 @@ export function ApiKeyCreateDialog({
                       t
                     )}
                   </p>
-                  <h3 className='mt-1 flex flex-wrap items-center gap-1.5 text-base font-semibold'>
+                  <h3 className='mt-1 flex min-w-0 flex-nowrap items-center gap-1.5 text-base font-semibold'>
                     <GroupLabels labels={previewGroup.badges} />
-                    {previewGroup.label}
+                    <span
+                      className='min-w-0 truncate'
+                      title={previewGroup.label}
+                    >
+                      {previewGroup.label}
+                    </span>
                   </h3>
                   {previewGroup.desc &&
                   previewGroup.desc !== previewGroup.label ? (
@@ -835,7 +846,8 @@ export function ApiKeyCreateDialog({
                   {isUpdate ? t('Save changes') : t('Set as primary channel')}
                 </Button>
               </>
-            ) : (
+            )}
+            {channelMode !== 'smart' && !previewGroup && (
               <p className='text-muted-foreground text-sm'>
                 {t('Select a group to see its ratio and description.')}
               </p>
@@ -966,9 +978,14 @@ function SmartRouteOrder(props: {
                   <p className='text-muted-foreground text-xs'>
                     {t('Route {{index}}', { index: index + 1 })}
                   </p>
-                  <p className='flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-medium'>
+                  <p className='flex min-w-0 flex-nowrap items-center gap-1.5 text-sm font-medium'>
                     <GroupLabels labels={option?.badges} />
-                    <span className='truncate'>{option?.label ?? group}</span>
+                    <span
+                      className='min-w-0 truncate'
+                      title={option?.label ?? group}
+                    >
+                      {option?.label ?? group}
+                    </span>
                   </p>
                   {option?.desc && option.desc !== option.label ? (
                     <p className='text-muted-foreground line-clamp-2 text-xs'>
