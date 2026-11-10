@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -11,7 +12,8 @@ import (
 // A supplier submits one site at a time with the groups it can provide and
 // the ratio it offers each at. Nothing here holds an upstream key or makes
 // the server reach the supplier's address; the site address is text. A
-// submission cannot be changed afterwards, only removed by an administrator.
+// submission cannot be changed afterwards. An administrator can remove it,
+// whole or one group at a time.
 
 const (
 	PartnerStatusPending   = "pending"
@@ -248,6 +250,47 @@ func ClearPartnerSubmitIpsBefore(beforeTs int64) (int64, error) {
 		Where("created_at < ? AND submit_ip <> ?", beforeTs, "").
 		Update("submit_ip", "")
 	return result.RowsAffected, result.Error
+}
+
+// DeletePartnerOffer removes one group of a site. A site left without a group
+// is removed with it: the administrator's table lists a site by its groups,
+// so such a site would never be shown again and would still count toward its
+// submitter's limit.
+func DeletePartnerOffer(offerID int) error {
+	return DB.Transaction(func(tx *gorm.DB) error {
+		missing := common.NewMessage("The quote does not exist")
+		var offer PartnerOffer
+		if err := tx.Select("id", "site_id").First(&offer, offerID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return missing
+			}
+			return err
+		}
+		// Lock the site, so two deletions of its last two groups cannot each
+		// count the other's group and leave the site behind.
+		var site PartnerSite
+		if err := lockForUpdate(tx).Select("id").First(&site, offer.SiteId).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return missing
+			}
+			return err
+		}
+		result := tx.Where("id = ?", offerID).Delete(&PartnerOffer{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return missing
+		}
+		var remaining int64
+		if err := tx.Model(&PartnerOffer{}).Where("site_id = ?", site.Id).Count(&remaining).Error; err != nil {
+			return err
+		}
+		if remaining > 0 {
+			return nil
+		}
+		return tx.Where("id = ?", site.Id).Delete(&PartnerSite{}).Error
+	})
 }
 
 // DeletePartnerSite removes a site and its offers.
