@@ -47,6 +47,9 @@ func GetUserGroups(c *gin.Context) {
 			if platform := groupPlatforms[groupName]; platform != "" {
 				info["platform"] = platform
 			}
+			if badges := common.GetGroupBadges(groupName); len(badges) > 0 {
+				info["badges"] = badges
+			}
 			// A user with a special ratio for the group does not pay the
 			// group ratio, so its change would mislead them.
 			if change, ok := ratioChanges[groupName]; ok {
@@ -61,6 +64,9 @@ func GetUserGroups(c *gin.Context) {
 		usableGroups["auto"] = map[string]any{
 			"ratio": "auto",
 			"desc":  setting.GetUsableGroupDescription("auto"),
+		}
+		if badges := common.GetGroupBadges("auto"); len(badges) > 0 {
+			usableGroups["auto"]["badges"] = badges
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
