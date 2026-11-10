@@ -1122,6 +1122,7 @@
     "Bot ID": "ID бота",
     "Bot Name": "Имя бота",
     "Bot Protection": "Защита от ботов",
+    "Bot settings": "Настройки бота",
     "Bot status is unavailable. You can retry without changing your Telegram login.": "Статус бота недоступен. Повторите запрос, привязка Telegram не изменится.",
     "Bot Token": "Токен бота",
     "Bot:": "Бот:",
