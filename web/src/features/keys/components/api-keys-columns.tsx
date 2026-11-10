@@ -27,6 +27,7 @@ import { useMediaQuery } from '@/hooks'
 import { toIntlLocale } from '@/i18n/languages'
 import { getUserGroups } from '@/lib/api'
 import { getCurrencyDisplay } from '@/lib/currency'
+import type { GroupLabel } from '@/lib/group-labels'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { useSystemConfigStore } from '@/stores/system-config-store'
 
@@ -45,26 +46,31 @@ import {
 } from './api-keys-cells'
 import { DataTableRowActions } from './data-table-row-actions'
 
-const EMPTY_GROUP_RATIOS: Record<string, number | string> = {}
+const EMPTY_GROUP_DATA: {
+  ratios: Record<string, number | string>
+  labels: Record<string, GroupLabel[]>
+} = { ratios: {}, labels: {} }
 
-function useGroupRatios(): Record<string, number | string> {
+function useGroupData() {
   const { data } = useQuery({
     queryKey: ['user-groups'],
     queryFn: async () => requireServerSuccess(await getUserGroups()),
     staleTime: 0,
     select: (res) => {
-      if (!res.success || !res.data) return {}
-      const ratios: Record<string, number | string> = {}
+      if (!res.success || !res.data) return EMPTY_GROUP_DATA
+      const ratios: Record<string, number | string> = Object.create(null)
+      const labels: Record<string, GroupLabel[]> = Object.create(null)
       for (const [group, info] of Object.entries(res.data)) {
         if (typeof info.ratio === 'number' || typeof info.ratio === 'string') {
           ratios[group] = info.ratio
         }
+        if (info.badges?.length) labels[group] = info.badges
       }
-      return ratios
+      return { ratios, labels }
     },
   })
 
-  return data ?? EMPTY_GROUP_RATIOS
+  return data ?? EMPTY_GROUP_DATA
 }
 
 export function useApiKeysColumns(
@@ -75,7 +81,7 @@ export function useApiKeysColumns(
   useSystemConfigStore((state) => state.config.currency)
   const { meta: currency } = getCurrencyDisplay()
   const quotaUnit = currency.kind === 'tokens' ? t('Tokens') : currency.symbol
-  const groupRatios = useGroupRatios()
+  const groupData = useGroupData()
   const shouldReduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const justNowLabel = t('Just now')
@@ -160,11 +166,15 @@ export function useApiKeysColumns(
           return (
             <ApiKeyGroupCell
               group={group}
-              ratio={groupRatios[group]}
-              crossGroupRetry={apiKey.cross_group_retry}
-              routes={
-                group === 'auto' ? (apiKey.auto_groups ?? []) : undefined
+              ratio={groupData.ratios[group]}
+              labels={
+                Object.hasOwn(groupData.labels, group)
+                  ? groupData.labels[group]
+                  : undefined
               }
+              routeLabels={groupData.labels}
+              crossGroupRetry={apiKey.cross_group_retry}
+              routes={group === 'auto' ? (apiKey.auto_groups ?? []) : undefined}
               shouldReduceMotion={shouldReduceMotion}
               onReorderRoutes={
                 onReorderRoutes
@@ -248,7 +258,7 @@ export function useApiKeysColumns(
       t,
       quotaUnit,
       now,
-      groupRatios,
+      groupData,
       shouldReduceMotion,
       locale,
       justNowLabel,

@@ -19,8 +19,11 @@ For commercial licensing, please contact support@quantumnous.com
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import type { GroupLabel } from '@/lib/group-labels'
 import { cn } from '@/lib/utils'
 
+import { GroupLabels } from './group-labels'
+import { useGroupLabels } from './group-labels-context'
 import { StatusBadge, type StatusBadgeProps } from './status-badge'
 import { Badge } from './ui/badge'
 
@@ -63,6 +66,7 @@ type GroupBadgeProps = Omit<
   ratio?: number | null
   ratioLabel?: string
   containerClassName?: string
+  labels?: GroupLabel[]
 }
 
 function getGroupLabel(params: {
@@ -80,12 +84,14 @@ function getGroupLabel(params: {
 
 export function GroupBadge(props: GroupBadgeProps) {
   const { t } = useTranslation()
+  const pageLabels = useGroupLabels(props.group)
   const {
     group,
     label: labelOverride,
     ratio,
     ratioLabel,
     containerClassName,
+    labels = pageLabels,
     copyable = false,
     showDot,
     className,
@@ -115,19 +121,22 @@ export function GroupBadge(props: GroupBadgeProps) {
     />
   )
 
-  if (ratio == null && !ratioLabel) {
+  if (ratio == null && !ratioLabel && !labels?.length) {
     return badge
   }
 
   return (
     <span
       className={cn(
-        'inline-flex max-w-full min-w-0 items-center gap-2 text-sm',
+        'inline-flex max-w-full min-w-0 flex-wrap items-center gap-2 text-sm',
         containerClassName
       )}
     >
+      <GroupLabels labels={labels} />
       <span className='max-w-full min-w-0 overflow-hidden'>{badge}</span>
-      <GroupMultiplierBadge ratio={ratio} label={ratioLabel} />
+      {(ratio != null || ratioLabel) && (
+        <GroupMultiplierBadge ratio={ratio} label={ratioLabel} />
+      )}
     </span>
   )
 }
