@@ -163,6 +163,14 @@ it('refreshes Telegram bindings from the server result after the callback popup 
     resolve = done
   })
   const get = vi.spyOn(api, 'get').mockImplementation((url) => {
+    if (url === '/api/user/self/telegram-bot') {
+      return Promise.resolve({
+        data: {
+          success: true,
+          data: { available: false, status: 'unconnected', connected: false },
+        },
+      })
+    }
     if (url === '/api/verify/methods') {
       return Promise.resolve({
         data: {

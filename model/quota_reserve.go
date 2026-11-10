@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 	"gorm.io/gorm"
 )
 
@@ -109,14 +110,23 @@ func persistUserQuotaDelta(id int, delta int) error {
 		addNewRecord(BatchUpdateTypeUserQuota, id, delta)
 		return nil
 	}
-	result := DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", delta))
-	if result.Error != nil {
-		return result.Error
+	applyDelta := func(tx *gorm.DB) error {
+		result := tx.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", delta))
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		if delta > 0 {
+			return ResetTelegramLowBalanceAfterCreditTx(tx, id)
+		}
+		return nil
 	}
-	if result.RowsAffected != 1 {
-		return gorm.ErrRecordNotFound
+	if delta > 0 && system_setting.TelegramBotEnabled() {
+		return DB.Transaction(applyDelta)
 	}
-	return nil
+	return applyDelta(DB)
 }
 
 func persistTokenQuotaDelta(id int, delta int) error {
