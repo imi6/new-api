@@ -837,13 +837,13 @@ func sendTelegramBotOutbox(ctx context.Context, snapshot *model.TelegramBotConfi
 		text = reply.Text
 		replyMarkup = reply.ReplyMarkup
 	}
-	if row.Kind == "connect" {
+	if row.Kind == "connect" || row.Kind == "welcome" {
 		text = i18n.Translate(lang, "telegram.bot.connected")
 	}
 	if row.Kind == "test" {
 		text = i18n.Translate(lang, "telegram.bot.test")
 	}
-	if row.Kind != "connect" && row.Kind != "reply" && row.Kind != "test" && row.Kind != "help" {
+	if row.Kind != "connect" && row.Kind != "welcome" && row.Kind != "reply" && row.Kind != "test" && row.Kind != "help" {
 		selected, version := conn.EventPreference(row.Kind)
 		if !conn.Preferences.Enabled || !selected || conn.EnabledVersion != row.EnabledVersion || version != row.PreferenceVersion {
 			finish("discarded", "notification disabled", 0)

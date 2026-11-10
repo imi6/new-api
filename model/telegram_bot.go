@@ -238,15 +238,22 @@ func CompleteTelegramBotOAuthTx(tx *gorm.DB, userID int, telegramID string, inte
 	conn.BotID = cfg.BotID
 	conn.TelegramID = telegramID
 	conn.ChatID = telegramID
-	conn.Status = TelegramBotConnecting
-	conn.LastStateEventAt, conn.LastStateUpdateID = time.Now().Unix(), 0
+	// 已通过本次明确的消息授权，连接立即可用；欢迎消息只负责异步投递。
+	conn.Status = TelegramBotConnected
+	conn.ConnectedAt = time.Now().Unix()
+	conn.LastStateEventAt, conn.LastStateUpdateID = conn.ConnectedAt, 0
 	conn.LastError = ""
-	conn.UpdatedAt = time.Now().Unix()
+	conn.UpdatedAt = conn.ConnectedAt
 	applyTelegramPreferences(&conn, intent.Preferences)
 	if err := tx.Save(&conn).Error; err != nil {
 		return err
 	}
-	return EnqueueTelegramBotMessageTx(tx, &conn, "connect", fmt.Sprintf("connect:%d:%d", userID, conn.Version), "", time.Now().Unix()+86400)
+	if conn.Preferences.Enabled && conn.Preferences.LowBalance {
+		if err := InitializeTelegramLowBalanceStateTx(tx, &conn); err != nil {
+			return err
+		}
+	}
+	return EnqueueTelegramBotMessageTx(tx, &conn, "welcome", fmt.Sprintf("welcome:%d:%d", userID, conn.Version), "", time.Now().Unix()+86400)
 }
 
 func applyTelegramPreferences(conn *TelegramBotConnection, prefs TelegramBotPreferences) {
@@ -616,7 +623,7 @@ func AuthorizeTelegramBotSend(row *TelegramBotOutbox) (bool, error) {
 			} else if conn.Status != TelegramBotConnected {
 				return nil
 			}
-			if row.Kind != "connect" && row.Kind != "reply" && row.Kind != "test" {
+			if row.Kind != "connect" && row.Kind != "welcome" && row.Kind != "reply" && row.Kind != "test" {
 				selected, version := conn.EventPreference(row.Kind)
 				if !conn.Preferences.Enabled || !selected || conn.EnabledVersion != row.EnabledVersion || version != row.PreferenceVersion {
 					return nil
