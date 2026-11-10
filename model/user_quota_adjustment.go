@@ -82,6 +82,9 @@ func AdjustUserQuota(userID, operatorRole int, mode string, value int) (*UserQuo
 			}
 		}
 		adjustment = UserQuotaAdjustment{UserID: user.Id, Username: user.Username, Before: user.Quota, After: after}
+		if after > user.Quota {
+			return ResetTelegramLowBalanceAfterCreditTx(tx, userID)
+		}
 		return nil
 	})
 	if err != nil {
@@ -157,6 +160,11 @@ func AdjustAffiliateRebate(userID, operatorRole int, mode string, value int, ope
 		}
 		if result.RowsAffected != 1 {
 			return gorm.ErrRecordNotFound
+		}
+		if mode == "grant" {
+			if err := ResetTelegramLowBalanceAfterCreditTx(tx, userID); err != nil {
+				return err
+			}
 		}
 		account.Claimed += value
 		account.UpdatedAt = common.GetTimestamp()

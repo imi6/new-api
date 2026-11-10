@@ -22,17 +22,19 @@ import (
 const oauthAuthFlowTTL = 10 * time.Minute
 
 type oauthStateRequest struct {
-	Provider string          `json:"provider"`
-	Intent   string          `json:"intent"`
-	Aff      string          `json:"aff,omitempty"`
-	Scope    string          `json:"scope,omitempty"`
-	Context  json.RawMessage `json:"context,omitempty"`
+	Provider    string                        `json:"provider"`
+	Intent      string                        `json:"intent"`
+	Aff         string                        `json:"aff,omitempty"`
+	Scope       string                        `json:"scope,omitempty"`
+	Context     json.RawMessage               `json:"context,omitempty"`
+	TelegramBot *model.TelegramBotPreferences `json:"telegram_bot,omitempty"`
 }
 
 type oauthFlowPayload struct {
 	AffiliateCode   string                         `json:"affiliate_code,omitempty"`
 	Verification    *service.OAuthVerificationFlow `json:"verification,omitempty"`
 	Telegram        *oauth.TelegramOAuthFlow       `json:"telegram,omitempty"`
+	TelegramBot     *model.TelegramBotOAuthIntent  `json:"telegram_bot,omitempty"`
 	SessionIdentity *service.AuthIdentity          `json:"session_identity,omitempty"`
 	Authorization   *model.AuthFlowAuthorization   `json:"authorization,omitempty"`
 }
@@ -52,11 +54,14 @@ func GenerateOAuthCode(c *gin.Context) {
 	request.Provider = strings.TrimSpace(request.Provider)
 	request.Intent = strings.TrimSpace(request.Intent)
 	request.Aff = strings.TrimSpace(request.Aff)
+	botOnly := request.Provider == "telegram" && request.Intent == model.AuthFlowIntentTelegramBot
 	if oauth.GetProvider(request.Provider) == nil ||
-		(request.Intent != model.AuthFlowIntentLogin && request.Intent != model.AuthFlowIntentBind && request.Intent != model.AuthFlowIntentVerify) ||
+		(request.Intent != model.AuthFlowIntentLogin && request.Intent != model.AuthFlowIntentBind && request.Intent != model.AuthFlowIntentVerify && !botOnly) ||
 		len(request.Aff) > 32 ||
 		(request.Intent != model.AuthFlowIntentLogin && request.Aff != "") ||
-		(request.Intent != model.AuthFlowIntentVerify && (request.Scope != "" || len(request.Context) != 0)) {
+		(request.Intent != model.AuthFlowIntentVerify && (request.Scope != "" || len(request.Context) != 0)) ||
+		(request.TelegramBot != nil && (request.Provider != "telegram" || (request.Intent != model.AuthFlowIntentBind && !botOnly))) ||
+		(botOnly && request.TelegramBot == nil) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
@@ -72,7 +77,7 @@ func GenerateOAuthCode(c *gin.Context) {
 		}
 		flowPayload.Telegram = telegramFlow
 	}
-	if request.Intent == model.AuthFlowIntentBind || request.Intent == model.AuthFlowIntentVerify {
+	if request.Intent == model.AuthFlowIntentBind || request.Intent == model.AuthFlowIntentVerify || botOnly {
 		identity, ok := middleware.GetSessionAuthIdentity(c)
 		if !ok {
 			writeAccountStatusError(c, http.StatusUnauthorized, "Sign in to bind an account")
@@ -80,9 +85,9 @@ func GenerateOAuthCode(c *gin.Context) {
 		}
 		userID = identity.UserID
 		sessionID = identity.SessionID
-		if request.Intent == model.AuthFlowIntentBind {
+		if request.Intent == model.AuthFlowIntentBind || botOnly {
 			defer func() {
-				recordUserSecurityAudit(c, userID, "user.binding_start", map[string]any{"provider": request.Provider, "success": bindingStarted})
+				recordUserSecurityAudit(c, userID, "user.binding_start", map[string]any{"provider": request.Provider, "success": bindingStarted, "bot_connection_only": botOnly})
 			}()
 			context, err := common.Marshal(service.AccountBindingContext{Provider: request.Provider})
 			if err != nil {
@@ -110,6 +115,30 @@ func GenerateOAuthCode(c *gin.Context) {
 			}
 			flowPayload.Verification = verification
 		}
+		if request.TelegramBot != nil {
+			if botOnly {
+				user, err := model.GetUserById(userID, false)
+				if err != nil {
+					writeSecurityOperationError(c, err)
+					return
+				}
+				if user.TelegramId == "" {
+					writeSecurityOperationError(c, oauth.ErrTelegramAccountNotBound)
+					return
+				}
+			}
+			intent, err := model.BeginTelegramBotOAuth(userID, *request.TelegramBot)
+			if err != nil {
+				writeSecurityOperationError(c, err)
+				return
+			}
+			if flowPayload.Telegram.ClientID != strconv.FormatInt(intent.BotID, 10) {
+				writeSecurityOperationError(c, model.ErrTelegramBotUnavailable)
+				return
+			}
+			flowPayload.TelegramBot = intent
+			flowPayload.Telegram.BotAccess = true
+		}
 	}
 	payload, err := common.Marshal(flowPayload)
 	if err != nil {
@@ -130,7 +159,7 @@ func GenerateOAuthCode(c *gin.Context) {
 		writeSecurityOperationError(c, err)
 		return
 	}
-	bindingStarted = request.Intent == model.AuthFlowIntentBind
+	bindingStarted = request.Intent == model.AuthFlowIntentBind || botOnly
 	data := gin.H{"flow_token": state, "expires_at": expiresAt.Unix()}
 	if flowPayload.Telegram != nil {
 		data["authorization_url"] = flowPayload.Telegram.AuthorizationURL(state)
@@ -168,13 +197,14 @@ func HandleOAuth(c *gin.Context) {
 		Intent:   pendingFlow.Intent,
 	}
 	bindSucceeded, notificationFailed := false, false
-	if pendingFlow.Intent == model.AuthFlowIntentBind {
+	botOnly := providerName == "telegram" && pendingFlow.Intent == model.AuthFlowIntentTelegramBot
+	if pendingFlow.Intent == model.AuthFlowIntentBind || botOnly {
 		defer func() {
-			recordUserSecurityAudit(c, pendingFlow.UserId, "user.binding_bind", map[string]any{"provider": providerName, "success": bindSucceeded, "notification_failed": notificationFailed})
+			recordUserSecurityAudit(c, pendingFlow.UserId, "user.binding_bind", map[string]any{"provider": providerName, "success": bindSucceeded, "notification_failed": notificationFailed, "bot_connection_only": botOnly})
 		}()
 	}
 	// Bind and verification callbacks must use the dashboard session that started them.
-	if pendingFlow.Intent == model.AuthFlowIntentBind || pendingFlow.Intent == model.AuthFlowIntentVerify {
+	if pendingFlow.Intent == model.AuthFlowIntentBind || pendingFlow.Intent == model.AuthFlowIntentVerify || botOnly {
 		identity, ok := middleware.GetSessionAuthIdentity(c)
 		if !ok || identity.UserID != pendingFlow.UserId || identity.SessionID != pendingFlow.SessionId {
 			writeAccountStatusError(c, http.StatusForbidden, "State parameter is empty or mismatched")
@@ -182,7 +212,7 @@ func HandleOAuth(c *gin.Context) {
 		}
 		consumeMatch.UserId = identity.UserID
 		consumeMatch.SessionId = identity.SessionID
-		if pendingFlow.Intent == model.AuthFlowIntentBind {
+		if pendingFlow.Intent == model.AuthFlowIntentBind || botOnly {
 			var payload oauthFlowPayload
 			if err := common.UnmarshalJsonStr(pendingFlow.Payload, &payload); err != nil {
 				writeSecurityOperationError(c, model.ErrAuthFlowInvalid)
@@ -211,6 +241,12 @@ func HandleOAuth(c *gin.Context) {
 			return
 		}
 		if err := common.UnmarshalJsonStr(pendingFlow.Payload, &telegramPayload); err != nil || telegramPayload.Telegram == nil {
+			writeSecurityOperationError(c, model.ErrAuthFlowInvalid)
+			return
+		}
+		if telegramPayload.Telegram.BotAccess != (telegramPayload.TelegramBot != nil) ||
+			(telegramPayload.TelegramBot != nil && pendingFlow.Intent != model.AuthFlowIntentBind && !botOnly) ||
+			(botOnly && telegramPayload.TelegramBot == nil) {
 			writeSecurityOperationError(c, model.ErrAuthFlowInvalid)
 			return
 		}
@@ -271,8 +307,10 @@ func HandleOAuth(c *gin.Context) {
 		handleOAuthError(c, err)
 		return
 	}
-	if pendingFlow.Intent == model.AuthFlowIntentBind {
-		bindSucceeded, notificationFailed = handleOAuthBind(c, providerName, provider, oauthUser, pendingFlow, state, consumeMatch)
+	if pendingFlow.Intent == model.AuthFlowIntentBind || botOnly {
+		botPermissionDenied := providerName == "telegram" && telegramPayload.TelegramBot != nil &&
+			strings.TrimSpace(token.Scope) != "" && !slices.Contains(strings.Fields(token.Scope), "telegram:bot_access")
+		bindSucceeded, notificationFailed = handleOAuthBind(c, providerName, provider, oauthUser, pendingFlow, state, consumeMatch, botPermissionDenied)
 		return
 	}
 	flow, err := model.ConsumeAuthFlow(state, consumeMatch)
@@ -344,7 +382,7 @@ func handleOAuthLogin(c *gin.Context, provider oauth.Provider, oauthUser *oauth.
 }
 
 // handleOAuthBind handles binding OAuth account to existing user
-func handleOAuthBind(c *gin.Context, providerName string, provider oauth.Provider, oauthUser *oauth.OAuthUser, flow *model.AuthFlow, state string, match model.AuthFlowMatch) (bool, bool) {
+func handleOAuthBind(c *gin.Context, providerName string, provider oauth.Provider, oauthUser *oauth.OAuthUser, flow *model.AuthFlow, state string, match model.AuthFlowMatch, botPermissionDenied bool) (bool, bool) {
 	identity, ok := middleware.GetSessionAuthIdentity(c)
 	if !ok {
 		writeSecurityOperationError(c, service.ErrAuthTokenInvalid)
@@ -366,13 +404,34 @@ func handleOAuthBind(c *gin.Context, providerName string, provider oauth.Provide
 		writeSecurityOperationError(c, err)
 		return false, false
 	}
-	if provider.IsUserIDTaken(oauthUser.ProviderUserID) {
+	botOnly := providerName == "telegram" && flow.Intent == model.AuthFlowIntentTelegramBot
+	if !botOnly && provider.IsUserIDTaken(oauthUser.ProviderUserID) {
 		common.ApiErrorT(c, "This {{provider}} account has already been bound", providerParams(provider.GetName()))
 		return false, false
 	}
 	_, err = model.ConsumeAuthFlowWithAction(state, match, func(tx *gorm.DB, _ *model.AuthFlow) error {
 		if providerName == "telegram" {
-			return model.BindTelegramForSessionWithTx(tx, identity, oauthUser.ProviderUserID)
+			if botOnly {
+				if payload.TelegramBot == nil {
+					return model.ErrAuthFlowInvalid
+				}
+				if err := model.ValidateAuthSessionWithTx(tx, identity); err != nil {
+					return err
+				}
+				var user model.User
+				if err := tx.Select("id", "telegram_id").First(&user, identity.UserID).Error; err != nil {
+					return err
+				}
+				if user.TelegramId == "" || user.TelegramId != oauthUser.ProviderUserID {
+					return oauth.ErrTelegramOAuthFailed
+				}
+			} else if err := model.BindTelegramForSessionWithTx(tx, identity, oauthUser.ProviderUserID); err != nil {
+				return err
+			}
+			if payload.TelegramBot != nil && !botPermissionDenied {
+				return model.CompleteTelegramBotOAuthTx(tx, identity.UserID, oauthUser.ProviderUserID, payload.TelegramBot)
+			}
+			return nil
 		}
 		if custom, ok := provider.(*oauth.GenericOAuthProvider); ok {
 			return model.UpdateUserOAuthBindingForSessionWithTx(tx, identity, custom.GetProviderId(), oauthUser.ProviderUserID)
@@ -383,13 +442,26 @@ func handleOAuthBind(c *gin.Context, providerName string, provider oauth.Provide
 		writeSecurityOperationError(c, err)
 		return false, false
 	}
+	if botOnly {
+		if botPermissionDenied {
+			common.ApiSuccessT(c, "Telegram message permission was not granted", gin.H{"action": "bind", "telegram_bot": false, "permission_denied": true})
+			return true, false
+		}
+		common.ApiSuccessT(c, "Telegram bot connection started", gin.H{"action": "bind", "telegram_bot": true})
+		return true, false
+	}
 	user, err := model.GetUserById(identity.UserID, false)
 	if err != nil {
 		writeSecurityOperationError(c, err)
 		return true, true
 	}
 	notificationFailed := service.NotifyAccountSecurityChange(service.AccountMailLanguage(c, user.Id), user.Email, i18n.MsgSecurityEventLoginLinked, map[string]any{"Provider": provider.GetName()}) != nil
-	common.ApiSuccessT(c, "Binding successful", gin.H{"action": "bind", "notification_warning": notificationFailed})
+	result := gin.H{"action": "bind", "notification_warning": notificationFailed}
+	if payload.TelegramBot != nil {
+		result["telegram_bot"] = !botPermissionDenied
+		result["permission_denied"] = botPermissionDenied
+	}
+	common.ApiSuccessT(c, "Binding successful", result)
 	return true, notificationFailed
 }
 
