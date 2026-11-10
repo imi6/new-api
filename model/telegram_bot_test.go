@@ -24,7 +24,7 @@ func telegramBotConnectionFixture(t *testing.T, name, telegramID string, prefs T
 	require.NoError(t, DB.Create(&user).Error)
 	intent, err := BeginTelegramBotOAuth(user.Id, prefs)
 	require.NoError(t, err)
-	require.NoError(t, DB.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, telegramID, intent) }))
+	require.NoError(t, DB.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, telegramID, intent, confirm) }))
 	conn, err := GetTelegramBotConnection(user.Id)
 	require.NoError(t, err)
 	if confirm {
@@ -33,12 +33,6 @@ func telegramBotConnectionFixture(t *testing.T, name, telegramID string, prefs T
 		require.NoError(t, ConfirmTelegramBotConnection(conn, tgID))
 		conn, err = GetTelegramBotConnection(user.Id)
 		require.NoError(t, err)
-	} else {
-		// 显式模拟升级前已授权但仍等待欢迎投递确认的旧连接。
-		conn.Status, conn.ConnectedAt = TelegramBotConnecting, 0
-		require.NoError(t, DB.Save(conn).Error)
-		require.NoError(t, DB.Model(&TelegramBotOutbox{}).Where("user_id = ? AND kind = ?", conn.UserID, "welcome").Update("kind", "connect").Error)
-		require.NoError(t, DB.Where("user_id = ?", conn.UserID).Delete(&TelegramLowBalanceState{}).Error)
 	}
 	return &user, conn
 }
@@ -156,8 +150,8 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 			prefs := TelegramBotPreferences{Enabled: true, LowBalance: true, TopUp: true, Subscription: true, Expiry: true}
 			intent, err := BeginTelegramBotOAuth(user.Id, prefs)
 			require.NoError(t, err)
-			require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent) }))
-			require.Error(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent) }))
+			require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent, true) }))
+			require.Error(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent, true) }))
 			conn, err := GetTelegramBotConnection(user.Id)
 			require.NoError(t, err)
 			require.NoError(t, ConfirmTelegramBotConnection(conn, 42))
@@ -173,7 +167,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 					intent, err := BeginTelegramBotOAuth(other.Id, notificationPrefs)
 					require.NoError(t, err)
 					require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
-						return CompleteTelegramBotOAuthTx(tx, other.Id, telegramID, intent)
+						return CompleteTelegramBotOAuthTx(tx, other.Id, telegramID, intent, true)
 					}))
 					connected, err := GetTelegramBotConnection(other.Id)
 					require.NoError(t, err)
@@ -200,7 +194,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 					require.NoError(t, ConfirmTelegramBotConnection(connected, tgID))
 					require.ErrorIs(t, ConfirmTelegramBotConnection(connected, tgID+100), ErrTelegramBotExpired)
 					require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error {
-						return CompleteTelegramBotOAuthTx(tx, other.Id, telegramID, intent)
+						return CompleteTelegramBotOAuthTx(tx, other.Id, telegramID, intent, true)
 					}), ErrTelegramBotExpired)
 					if notificationPrefs.LowBalance {
 						var baseline TelegramLowBalanceState
@@ -216,6 +210,29 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 					require.NoError(t, err)
 					assert.False(t, allowed, "disconnect still revokes a pending welcome")
 				}
+			})
+
+			t.Run("unknown_oauth_permission_automatically_verifies_delivery", func(t *testing.T) {
+				other, connecting := telegramBotConnectionFixture(t, "unknown-permission", "57", TelegramBotPreferences{}, false)
+				require.Equal(t, TelegramBotConnecting, connecting.Status)
+				assert.Zero(t, connecting.ConnectedAt)
+				var task TelegramBotOutbox
+				require.NoError(t, db.Where("user_id = ?", other.Id).First(&task).Error)
+				require.Equal(t, "connect", task.Kind)
+				task.Status, task.LeaseOwner, task.LeaseUntil = "processing", "unknown-permission", time.Now().Unix()+120
+				require.NoError(t, db.Save(&task).Error)
+				allowed, err := AuthorizeTelegramBotSend(&task)
+				require.NoError(t, err)
+				assert.True(t, allowed, "关闭主动通知仍应自动验证本次明确选择的机器人连接")
+				require.ErrorIs(t, ConfirmTelegramBotConnection(connecting, 58), ErrTelegramBotExpired)
+				require.NoError(t, ConfirmTelegramBotConnection(connecting, 57))
+				connected, err := GetTelegramBotConnection(other.Id)
+				require.NoError(t, err)
+				assert.Equal(t, TelegramBotConnected, connected.Status)
+				assert.Positive(t, connected.ConnectedAt)
+				assert.Equal(t, connecting.Version, connected.Version)
+				require.NoError(t, DisconnectTelegramBot(other.Id))
+				require.ErrorIs(t, ConfirmTelegramBotConnection(connecting, 57), ErrTelegramBotExpired, "迟到的成功投递不能恢复用户主动断开的连接")
 			})
 
 			t.Run("checkin_is_atomic_and_daily", func(t *testing.T) {
@@ -383,7 +400,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				expiryPrefs := TelegramBotPreferences{Enabled: true, Expiry: true}
 				intent, err := BeginTelegramBotOAuth(other.Id, expiryPrefs)
 				require.NoError(t, err)
-				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "44", intent) }))
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "44", intent, true) }))
 				connected, err := GetTelegramBotConnection(other.Id)
 				require.NoError(t, err)
 				require.NoError(t, ConfirmTelegramBotConnection(connected, 44))
@@ -472,9 +489,9 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error {
 					return UpdateTelegramBotPreferencesTx(tx, user.Id, conn.PreferencesVersion, prefs)
 				}), ErrTelegramBotChanged)
-				require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent) }), ErrTelegramBotExpired, "old authorization cannot overwrite newer notification choices")
+				require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent, true) }), ErrTelegramBotExpired, "old authorization cannot overwrite newer notification choices")
 				require.NoError(t, DisconnectTelegramBot(user.Id))
-				require.Error(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent) }))
+				require.Error(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, user.Id, "42", intent, true) }))
 				require.NoError(t, db.First(&saved, user.Id).Error)
 				assert.Equal(t, "42", saved.TelegramId, "disconnect must keep the website login identity")
 			})
@@ -608,7 +625,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				assert.True(t, allowed, "login identity alone does not authorize a bot connection")
 				intent, err := BeginTelegramBotOAuth(other.Id, prefs)
 				require.NoError(t, err)
-				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "54", intent) }))
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "54", intent, true) }))
 				allowed, err = AuthorizeTelegramBotSend(&row)
 				require.NoError(t, err)
 				assert.False(t, allowed, "a queued not-active hint is obsolete while connecting")
@@ -709,7 +726,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				assert.False(t, allowed)
 				intent, err := BeginTelegramBotOAuth(other.Id, prefs)
 				require.NoError(t, err)
-				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "50", intent) }))
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "50", intent, true) }))
 				newer, err := GetTelegramBotConnection(other.Id)
 				require.NoError(t, err)
 				require.NoError(t, FinishTelegramBotOutbox(&row, "failed", "late failure", 0))
@@ -777,7 +794,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				day := CheckinBusinessDate(time.Now())
 				intent, err := BeginTelegramBotOAuth(other.Id, prefs)
 				require.NoError(t, err)
-				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "43", intent) }))
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "43", intent, true) }))
 				connected, err := GetTelegramBotConnection(other.Id)
 				require.NoError(t, err)
 				require.NoError(t, ConfirmTelegramBotConnection(connected, 43))
@@ -794,7 +811,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.ErrorIs(t, err, ErrTelegramBotNotConnected)
 				intent, err = BeginTelegramBotOAuth(other.Id, prefs)
 				require.NoError(t, err)
-				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "43", intent) }))
+				require.NoError(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "43", intent, true) }))
 				connected, err = GetTelegramBotConnection(other.Id)
 				require.NoError(t, err)
 				require.NoError(t, ConfirmTelegramBotConnection(connected, 43))
@@ -810,7 +827,7 @@ func TestTelegramBotDatabaseContracts(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, TelegramBotDisconnected, disconnected.Status)
 				assert.Greater(t, disconnected.Version, connected.Version)
-				require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "43", pending) }), ErrTelegramBotExpired)
+				require.ErrorIs(t, db.Transaction(func(tx *gorm.DB) error { return CompleteTelegramBotOAuthTx(tx, other.Id, "43", pending, true) }), ErrTelegramBotExpired)
 				_, err = UserCheckinForTelegram(other.Id, day, cfg.BotID, "43", connected.Version)
 				require.ErrorIs(t, err, ErrTelegramBotNotConnected)
 				var checkins int64
