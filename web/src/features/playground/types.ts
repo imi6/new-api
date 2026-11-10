@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { GroupLabel } from '@/lib/group-labels'
+
 // Message types
 export type MessageRole = 'user' | 'assistant' | 'system'
 
@@ -150,4 +152,5 @@ export interface GroupOption {
   value: string
   ratio: number | string
   desc?: string
+  badges?: GroupLabel[]
 }

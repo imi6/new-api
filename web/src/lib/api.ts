@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { GroupLabel } from '@/lib/group-labels'
 import { api } from '@/lib/http-client'
 import { authRequestOptions, authResult } from '@/lib/secure-verification'
 import { requireServerSuccess } from '@/lib/server-error-message'
@@ -62,7 +63,12 @@ export async function getUserGroups(): Promise<{
   message?: string
   data?: Record<
     string,
-    { desc: string; ratio: number | string; platform?: string }
+    {
+      desc: string
+      ratio: number | string
+      platform?: string
+      badges?: GroupLabel[]
+    }
   >
 }> {
   const res = await api.get('/api/user/self/groups')

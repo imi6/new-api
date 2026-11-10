@@ -23,6 +23,7 @@ import { useMemo, type ComponentProps } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AutoGroupOrderItem } from '@/components/auto-group-order-item'
+import { GroupLabels } from '@/components/group-labels'
 import { Button } from '@/components/ui/button'
 import {
   Empty,
@@ -175,6 +176,7 @@ export function AutoGroupOrderEditor(props: AutoGroupOrderEditorProps) {
                 >
                   {index + 1}
                 </span>
+                <GroupLabels labels={option.badges} />
                 <span
                   data-slot='global-auto-order-name'
                   className='max-w-40 truncate text-xs font-medium'
@@ -222,6 +224,14 @@ export function AutoGroupOrderEditor(props: AutoGroupOrderEditorProps) {
               group={group}
               index={index}
               count={props.value.length}
+              leading={
+                <GroupLabels
+                  labels={
+                    props.options.find((option) => option.value === group)
+                      ?.badges
+                  }
+                />
+              }
               onMove={handleMove}
               onRemove={handleRemove}
             />
