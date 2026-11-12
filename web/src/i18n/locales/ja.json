@@ -2747,6 +2747,8 @@
     "Epay signature type must be MD5 or RSA": "Epay の署名方式は MD5 または RSA のみ指定できます",
     "Epay site": "Epay サイト",
     "Epay site {{number}}": "Epay サイト {{number}}",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Epay サイト {{site}}：加盟店秘密鍵がないか、形式が正しくありません",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Epay サイト {{site}}：プラットフォーム公開鍵がないか、形式が正しくありません",
     "Epay site 1": "Epay サイト 1",
     "Epay site 2": "Epay サイト 2",
     "Epay site 2 endpoint": "Epay サイト 2 のエンドポイント",

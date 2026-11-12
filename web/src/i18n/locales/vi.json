@@ -2747,6 +2747,8 @@
     "Epay signature type must be MD5 or RSA": "Kiểu chữ ký Epay phải là MD5 hoặc RSA",
     "Epay site": "Trang Epay",
     "Epay site {{number}}": "Trang Epay {{number}}",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Trang Epay {{site}}: khóa riêng của người bán bị thiếu hoặc không hợp lệ",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Trang Epay {{site}}: khóa công khai của nền tảng bị thiếu hoặc không hợp lệ",
     "Epay site 1": "Trang Epay 1",
     "Epay site 2": "Trang Epay 2",
     "Epay site 2 endpoint": "Địa chỉ trang Epay 2",

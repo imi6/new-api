@@ -2747,6 +2747,8 @@
     "Epay signature type must be MD5 or RSA": "易支付签名方式只能是 MD5 或 RSA",
     "Epay site": "易支付站点",
     "Epay site {{number}}": "易支付站点 {{number}}",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "易支付站点 {{site}}：商户私钥缺失或格式不正确",
+    "Epay site {{site}}: the platform public key is missing or invalid": "易支付站点 {{site}}：平台公钥缺失或格式不正确",
     "Epay site 1": "易支付站点 1",
     "Epay site 2": "易支付站点 2",
     "Epay site 2 endpoint": "易支付站点 2 接口地址",
