@@ -268,6 +268,12 @@ func (upstreamRateTaskHandler) Run(ctx context.Context, task *model.SystemTask, 
 	if payload.SourceID != "" && processed == 0 {
 		runErr = errors.New("source_unavailable")
 	}
+	// 只在本轮确实读到了上游数据时检查；判断时只采用当前确定匹配的倍率，读取失败的渠道保持原状。
+	if processed > failed {
+		if err := applyUpstreamRateGuard(ctx); err != nil {
+			common.SysError(common.LogText("upstream rate guard failed: %v", err))
+		}
+	}
 }
 
 func GetUpstreamRateTask(taskID string) (*model.SystemTaskResponse, error) {

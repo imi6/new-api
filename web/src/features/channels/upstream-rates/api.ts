@@ -99,3 +99,21 @@ export async function getUpstreamRateTask(
     ).data
   ).data
 }
+
+/** Whether channels whose upstream rate exceeds their group ratio are disabled. */
+export async function getUpstreamRateGuard(
+  signal?: AbortSignal
+): Promise<boolean> {
+  const response = await api.get<Envelope<{ enabled: boolean }>>(
+    `${base}/guard`,
+    { signal }
+  )
+  return requireServerSuccess(response.data).data.enabled
+}
+
+export async function saveUpstreamRateGuard(enabled: boolean): Promise<void> {
+  requireServerSuccess(
+    (await api.put<Envelope<{ enabled: boolean }>>(`${base}/guard`, { enabled }))
+      .data
+  )
+}

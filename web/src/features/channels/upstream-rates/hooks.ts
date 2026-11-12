@@ -21,10 +21,14 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { handleServerError } from '@/lib/handle-server-error'
+
 import {
   getUpstreamRateConfig,
+  getUpstreamRateGuard,
   getUpstreamRateTask,
   refreshUpstreamRates,
+  saveUpstreamRateGuard,
   upstreamRateQueryKey,
 } from './api'
 
@@ -35,6 +39,36 @@ export function useUpstreamRateConfig(enabled = true) {
     staleTime: 30_000,
     enabled,
   })
+}
+
+const guardQueryKey = [...upstreamRateQueryKey, 'guard'] as const
+
+/** The switch that disables channels costing more upstream than they earn. */
+export function useUpstreamRateGuard(enabled = true) {
+  const { t } = useTranslation()
+  const client = useQueryClient()
+  const query = useQuery({
+    queryKey: guardQueryKey,
+    queryFn: ({ signal }) => getUpstreamRateGuard(signal),
+    enabled,
+  })
+  const mutation = useMutation({
+    mutationFn: saveUpstreamRateGuard,
+    onSuccess: (_, value) => {
+      client.setQueryData(guardQueryKey, value)
+      // The check runs in the background; channel statuses change shortly.
+      void client.invalidateQueries({ queryKey: ['channels'] })
+      toast.success(t('Setting updated successfully'))
+    },
+    onError: (error) =>
+      handleServerError(error, t('Failed to update setting')),
+  })
+  return {
+    enabled: query.data ?? false,
+    loading: query.isPending,
+    saving: mutation.isPending,
+    save: mutation.mutate,
+  }
 }
 
 export function useUpstreamRateRefresh() {
