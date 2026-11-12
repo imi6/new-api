@@ -51,6 +51,7 @@ const STATUS_RELATED_KEYS = new Set([
   'QuotaRemindEnabled',
   'QuotaRemindThreshold',
   'invoice_setting.enabled',
+  'intelligence_check_setting.user_test_enabled',
 ])
 
 // 分组引用保存须使用当前表单加载时的版本，不能给旧草稿附加后台刷新后的版本。
