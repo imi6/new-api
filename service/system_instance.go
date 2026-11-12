@@ -32,8 +32,10 @@ type SystemInstanceInfo struct {
 	Host          SystemInstanceHostInfo    `json:"host"`
 	Resources     SystemInstanceResources   `json:"resources"`
 	// Sync is what this node has applied of each sync topic.
-	Sync  map[string]NodeSyncTopicState `json:"sync,omitempty"`
-	Extra map[string]any                `json:"extra,omitempty"`
+	Sync map[string]NodeSyncTopicState `json:"sync,omitempty"`
+	// GroupRenameRevision 是本节点已加载的分组改名别名版本，改名据此确认所有节点都已跟上。
+	GroupRenameRevision int64          `json:"group_rename_revision"`
+	Extra               map[string]any `json:"extra,omitempty"`
 }
 
 type SystemInstanceRoleInfo struct {
@@ -127,7 +129,8 @@ func ReportCurrentSystemInstance() error {
 				UsedPercent: diskInfo.UsedPercent,
 			},
 		},
-		Sync: NodeSyncStates(),
+		Sync:                NodeSyncStates(),
+		GroupRenameRevision: common.GroupRenameAliasRevision(),
 	}
 	return model.UpsertSystemInstance(identity.Name, info, common.StartTime, common.GetTimestamp())
 }

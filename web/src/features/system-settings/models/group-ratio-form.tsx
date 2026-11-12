@@ -82,12 +82,20 @@ type GroupRatioFormProps = {
   form: UseFormReturn<GroupFormValues>
   onSave: (values: GroupFormValues) => Promise<void>
   isSaving: boolean
+  persistedGroupNames?: readonly string[]
+  hasUnsavedGroupChanges?: boolean
+  isRenaming?: boolean
+  onRename?: (oldName: string, newName: string) => Promise<void>
 }
 
 export const GroupRatioForm = memo(function GroupRatioForm({
   form,
   onSave,
   isSaving,
+  persistedGroupNames,
+  hasUnsavedGroupChanges,
+  isRenaming = false,
+  onRename,
 }: GroupRatioFormProps) {
   const { t } = useTranslation()
   const values = useWatch({ control: form.control })
@@ -111,7 +119,7 @@ export const GroupRatioForm = memo(function GroupRatioForm({
   }, [])
 
   return (
-    <div className='space-y-6'>
+    <fieldset disabled={isRenaming} className='min-w-0 space-y-6'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <p className='text-muted-foreground text-sm'>
           {editMode === 'visual'
@@ -166,7 +174,7 @@ export const GroupRatioForm = memo(function GroupRatioForm({
                 requestAnimationFrame(() => form.setFocus('MaxTokenAutoGroups'))
               }
             })}
-            disabled={isSaving || !groupNamesValid}
+            disabled={isSaving || isRenaming || !groupNamesValid}
           >
             {isSaving ? t('Saving...') : t('Save group settings')}
           </Button>
@@ -236,6 +244,10 @@ export const GroupRatioForm = memo(function GroupRatioForm({
             groupPlatformMap={values.GroupPlatformMap ?? ''}
             groupBadgeConfig={values.GroupBadgeConfig ?? ''}
             onGroupNamesValidityChange={setGroupNamesValid}
+            persistedGroupNames={persistedGroupNames}
+            renameDisabled={isSaving || !!hasUnsavedGroupChanges}
+            isRenaming={isRenaming}
+            onRename={onRename}
             onChange={(field, value) =>
               handleFieldChange(field as keyof GroupFormValues, value)
             }
@@ -468,7 +480,7 @@ export const GroupRatioForm = memo(function GroupRatioForm({
           </SettingsForm>
         )}
       </Form>
-    </div>
+    </fieldset>
   )
 })
 
