@@ -127,6 +127,10 @@ func GetOptions(c *gin.Context) {
 		if isSensitiveKey {
 			continue
 		}
+		// 新增易支付站点的密钥和商户私钥不返回给页面，留空保存时沿用原值。
+		if k == "EpayGateways" {
+			value = operation_setting.EpayGatewaysForDisplay()
+		}
 		options = append(options, &model.Option{
 			Key:   k,
 			Value: value,
