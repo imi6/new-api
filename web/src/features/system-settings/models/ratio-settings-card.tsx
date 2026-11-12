@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
@@ -45,6 +45,13 @@ import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { positiveIntegerSchema } from '../utils/numeric-field'
 import { GroupRatioForm } from './group-ratio-form'
+import {
+  cancelGroupRename,
+  getGroupRename,
+  GROUP_RENAME_QUERY_KEY,
+  renameGroup,
+} from './group-rename-api'
+import { GroupRenameStatusAlert } from './group-rename-status'
 import { ModelRatioForm } from './model-ratio-form'
 import { ToolPriceSettings } from './tool-price-settings'
 import { UpstreamRatioSync } from './upstream-ratio-sync'
@@ -54,6 +61,8 @@ import {
   normalizeJsonString,
   validateJsonString,
 } from './utils'
+
+const RENAME_POLL_MS = 5000
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
@@ -178,6 +187,7 @@ export function RatioSettingsCard({
   visibleTabs = ['models', 'groups', 'tool-prices', 'upstream-sync'],
 }: RatioSettingsCardProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const isMobile = useMediaQuery('(max-width: 639px)')
   const updateOption = useUpdateOption()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -302,6 +312,101 @@ export function RatioSettingsCard({
       GroupPlatformMap: formatJsonForTextarea(groupDefaults.GroupPlatformMap),
       GroupBadgeConfig: formatJsonForTextarea(groupDefaults.GroupBadgeConfig),
     },
+  })
+
+  const groupValues = useWatch({ control: groupForm.control })
+  const hasUnsavedGroupChanges = (
+    Object.keys(groupNormalizedDefaults.current) as Array<keyof GroupFormValues>
+  ).some((key) => {
+    const value = groupValues[key]
+    return (
+      (typeof value === 'string' ? normalizeJsonString(value) : value) !==
+      groupNormalizedDefaults.current[key]
+    )
+  })
+  const persistedGroupNames = useMemo(() => {
+    const names = new Set<string>()
+    for (const value of [
+      groupDefaults.GroupRatio,
+      groupDefaults.UserUsableGroups,
+      groupDefaults.TopupGroupRatio,
+    ]) {
+      try {
+        const parsed: unknown = JSON.parse(value)
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          for (const name of Object.keys(parsed)) names.add(name)
+        }
+      } catch {
+        // 非法 JSON 由原表单校验处理，不把它当成已保存分组。
+      }
+    }
+    return [...names]
+  }, [groupDefaults])
+  // The rename the server is finishing; polled while one runs.
+  const renameStatus = useQuery({
+    queryKey: GROUP_RENAME_QUERY_KEY,
+    queryFn: getGroupRename,
+    refetchInterval: (query) =>
+      query.state.data?.alias ? RENAME_POLL_MS : false,
+  })
+  const activeRename = renameStatus.data?.alias ?? null
+  // When a rename finishes, every page that shows group names reloads them.
+  const wasRenaming = useRef(false)
+  useEffect(() => {
+    if (activeRename) {
+      wasRenaming.current = true
+      return
+    }
+    if (!wasRenaming.current) return
+    wasRenaming.current = false
+    for (const key of [
+      'system-options',
+      'groups',
+      'user-groups',
+      'keys',
+      'api-key',
+      'token-auto-groups',
+      'channels',
+      'prefill_groups',
+      'users',
+      'pricing',
+      'playground-groups',
+      'playground-models',
+      'admin-subscription-plans',
+    ]) {
+      void queryClient.invalidateQueries({ queryKey: [key] })
+    }
+    toast.success(t('Group renamed successfully'))
+  }, [activeRename, queryClient, t])
+
+  const renameMutation = useMutation({
+    mutationFn: async (request: { oldName: string; newName: string }) => {
+      if (hasUnsavedGroupChanges || updateOption.isPending) {
+        throw new Error(t('Save group settings before renaming a group.'))
+      }
+      return renameGroup(request.oldName, request.newName)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: GROUP_RENAME_QUERY_KEY })
+      toast.success(
+        t('Rename started. It finishes in the background without downtime.')
+      )
+    },
+    onError: (error: Error) => handleServerError(error),
+    meta: { errorToast: false },
+  })
+  const cancelRename = useMutation({
+    mutationFn: cancelGroupRename,
+    onSuccess: async () => {
+      wasRenaming.current = false
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: GROUP_RENAME_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['system-options'] }),
+      ])
+      toast.success(t('Rename canceled'))
+    },
+    onError: (error: Error) => handleServerError(error),
+    meta: { errorToast: false },
   })
 
   useEffect(() => {
@@ -527,11 +632,26 @@ export function RatioSettingsCard({
     }
     if (tab === 'groups') {
       return (
-        <GroupRatioForm
-          form={groupForm}
-          onSave={saveGroupRatios}
-          isSaving={updateOption.isPending}
-        />
+        <div className='space-y-4'>
+          {renameStatus.data && (
+            <GroupRenameStatusAlert
+              status={renameStatus.data}
+              isCanceling={cancelRename.isPending}
+              onCancel={() => cancelRename.mutate()}
+            />
+          )}
+          <GroupRatioForm
+            form={groupForm}
+            onSave={saveGroupRatios}
+            isSaving={updateOption.isPending}
+            persistedGroupNames={persistedGroupNames}
+            hasUnsavedGroupChanges={hasUnsavedGroupChanges}
+            isRenaming={renameMutation.isPending || activeRename !== null}
+            onRename={async (oldName, newName) => {
+              await renameMutation.mutateAsync({ oldName, newName })
+            }}
+          />
+        </div>
       )
     }
     if (tab === 'tool-prices') {

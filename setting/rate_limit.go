@@ -52,7 +52,11 @@ func GetGroupRateLimit(group string) (totalCount, successCount int, found bool) 
 		return 0, 0, false
 	}
 
-	limits, found := ModelRequestRateLimitGroup[group]
+	// 改名期间同一分组可能还以别名出现在配置里。
+	limits, found := common.LookupRenamedGroup(group, func(name string) ([2]int, bool) {
+		limits, ok := ModelRequestRateLimitGroup[name]
+		return limits, ok
+	})
 	if !found {
 		return 0, 0, false
 	}
