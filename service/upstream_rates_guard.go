@@ -132,6 +132,14 @@ func applyUpstreamRateGuard(ctx context.Context) error {
 		}
 	}
 	groupRatios := ratio_setting.GetGroupRatioCopy()
+	// 自动禁用不会立即通知其他节点；这里是按价格停用，一轮结束后统一通知一次，
+	// 其他节点几秒内重载渠道缓存，不必等定时同步。
+	changed := false
+	defer func() {
+		if changed {
+			model.BumpSyncTopic(model.SyncTopicChannels)
+		}
+	}()
 	for start := 0; start < len(candidates); start += upstreamRateGuardBatch {
 		batch := candidates[start:min(start+upstreamRateGuardBatch, len(candidates))]
 		ids := make([]int, len(batch))
@@ -157,9 +165,9 @@ func applyUpstreamRateGuard(ctx context.Context) error {
 			}
 			switch {
 			case losing && channel.Status == common.ChannelStatusEnabled:
-				disableChannelForUpstreamRate(channel, detail)
+				changed = disableChannelForUpstreamRate(channel, detail) || changed
 			case !losing && upstreamRateGuardDisabled(channel):
-				enableChannelAfterUpstreamRate(channel)
+				changed = enableChannelAfterUpstreamRate(channel) || changed
 			}
 		}
 	}
@@ -175,17 +183,22 @@ func releaseUpstreamRateGuard(ctx context.Context) error {
 		Find(&channels).Error; err != nil {
 		return err
 	}
+	changed := false
 	for _, channel := range channels {
 		if upstreamRateGuardDisabled(channel) {
-			enableChannelAfterUpstreamRate(channel)
+			changed = enableChannelAfterUpstreamRate(channel) || changed
 		}
+	}
+	if changed {
+		model.BumpSyncTopic(model.SyncTopicChannels)
 	}
 	return nil
 }
 
-func disableChannelForUpstreamRate(channel *model.Channel, detail string) {
+// disableChannelForUpstreamRate 返回渠道状态是否确实改变。
+func disableChannelForUpstreamRate(channel *model.Channel, detail string) bool {
 	if !model.UpdateChannelStatus(channel.Id, "", common.ChannelStatusAutoDisabled, UpstreamRateGuardReason) {
-		return
+		return false
 	}
 	common.SysLog(common.LogText("channel %q (#%d) disabled because its upstream rate is higher than its group ratio: %s", channel.Name, channel.Id, detail))
 	CloseActiveWebSocketsForChannel(channel.Id, ChannelDisabledCloseReason)
@@ -193,15 +206,18 @@ func disableChannelForUpstreamRate(channel *model.Channel, detail string) {
 	NotifyChannelWatchers(formatNotifyType(channel.Id, common.ChannelStatusAutoDisabled), func(lang string) (string, string) {
 		return i18n.Translate(lang, i18n.MsgChannelNotifyDisabledSubject, params), i18n.Translate(lang, i18n.MsgChannelNotifyDisabledContent, params)
 	})
+	return true
 }
 
-func enableChannelAfterUpstreamRate(channel *model.Channel) {
+// enableChannelAfterUpstreamRate 返回渠道状态是否确实改变。
+func enableChannelAfterUpstreamRate(channel *model.Channel) bool {
 	if !model.UpdateChannelStatus(channel.Id, "", common.ChannelStatusEnabled, "") {
-		return
+		return false
 	}
 	common.SysLog(common.LogText("channel %q (#%d) enabled because its upstream rate is no longer higher than its group ratio", channel.Name, channel.Id))
 	params := map[string]any{"Name": channel.Name, "Id": channel.Id}
 	NotifyChannelWatchers(formatNotifyType(channel.Id, common.ChannelStatusEnabled), func(lang string) (string, string) {
 		return i18n.Translate(lang, i18n.MsgChannelNotifyEnabledSubject, params), i18n.Translate(lang, i18n.MsgChannelNotifyEnabledContent, params)
 	})
+	return true
 }
