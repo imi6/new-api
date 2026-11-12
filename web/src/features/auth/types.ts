@@ -188,6 +188,8 @@ export interface SystemStatus {
   /** Site default low balance reminder threshold, in quota units */
   quota_remind_threshold?: number
   invoice_enabled?: boolean
+  /** The API keys page shows the intelligence test entry. */
+  intelligence_user_test_enabled?: boolean
   [key: string]: unknown
 }
 
