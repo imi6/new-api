@@ -2747,6 +2747,8 @@
     "Epay signature type must be MD5 or RSA": "Тип подписи Epay должен быть MD5 или RSA",
     "Epay site": "Сайт Epay",
     "Epay site {{number}}": "Сайт Epay {{number}}",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Сайт Epay {{site}}: закрытый ключ мерчанта отсутствует или неверен",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Сайт Epay {{site}}: открытый ключ платформы отсутствует или неверен",
     "Epay site 1": "Сайт Epay 1",
     "Epay site 2": "Сайт Epay 2",
     "Epay site 2 endpoint": "Адрес сайта Epay 2",

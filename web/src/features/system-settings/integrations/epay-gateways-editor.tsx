@@ -23,14 +23,34 @@ import { CopyButton } from '@/components/copy-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+
+type EpaySignType = 'MD5' | 'RSA'
+
+const SIGN_TYPE_ITEMS = [
+  { value: 'MD5', label: 'MD5' },
+  { value: 'RSA', label: 'RSA' },
+]
 
 export type EpayGatewayDraft = {
   id: string
   name: string
   address: string
   epay_id: string
+  /** The server never sends stored secrets; blank keeps the saved one. */
   epay_key: string
   price: number
+  sign_type: EpaySignType
+  merchant_private_key: string
+  platform_public_key: string
 }
 
 type EpayGatewaysEditorProps = {
@@ -67,6 +87,15 @@ export function parseEpayGateways(value: string): EpayGatewayDraft[] {
       epay_id: typeof record.epay_id === 'string' ? record.epay_id : '',
       epay_key: typeof record.epay_key === 'string' ? record.epay_key : '',
       price: price >= 0 ? price : 0,
+      sign_type: record.sign_type === 'RSA' ? 'RSA' : 'MD5',
+      merchant_private_key:
+        typeof record.merchant_private_key === 'string'
+          ? record.merchant_private_key
+          : '',
+      platform_public_key:
+        typeof record.platform_public_key === 'string'
+          ? record.platform_public_key
+          : '',
     })
   }
   return sites
@@ -188,23 +217,101 @@ export function EpayGatewaysEditor(props: EpayGatewaysEditorProps) {
               </div>
             </div>
             <div className='space-y-2'>
-              <Label htmlFor={`epay-site-key-${site.id}`}>
-                {t('Epay secret key')}
+              <Label htmlFor={`epay-site-sign-${site.id}`}>
+                {t('Signature type')}
               </Label>
-              <Input
-                id={`epay-site-key-${site.id}`}
-                type='password'
-                value={site.epay_key}
-                autoComplete='new-password'
-                placeholder={t('Enter new key to update')}
-                onChange={(event) =>
-                  updateSite(site.id, { epay_key: event.target.value })
-                }
-              />
+              <Select
+                items={SIGN_TYPE_ITEMS}
+                value={site.sign_type}
+                onValueChange={(value) => {
+                  if (value === 'MD5' || value === 'RSA') {
+                    updateSite(site.id, { sign_type: value })
+                  }
+                }}
+              >
+                <SelectTrigger
+                  id={`epay-site-sign-${site.id}`}
+                  className='w-full md:w-1/2'
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    <SelectItem value='MD5'>MD5</SelectItem>
+                    <SelectItem value='RSA'>RSA</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
               <p className='text-muted-foreground text-sm'>
-                {t('Leave blank unless rotating the secret')}
+                {t(
+                  'Use the same signature type as in your Epay merchant console'
+                )}
               </p>
             </div>
+            {site.sign_type === 'RSA' ? (
+              <div className='grid gap-4 md:grid-cols-2 md:items-start'>
+                <div className='space-y-2'>
+                  <Label htmlFor={`epay-site-private-key-${site.id}`}>
+                    {t('Merchant private key')}
+                  </Label>
+                  <Textarea
+                    id={`epay-site-private-key-${site.id}`}
+                    rows={4}
+                    value={site.merchant_private_key}
+                    autoComplete='off'
+                    spellCheck={false}
+                    className='font-mono text-xs break-all'
+                    placeholder='MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...'
+                    onChange={(event) =>
+                      updateSite(site.id, {
+                        merchant_private_key: event.target.value,
+                      })
+                    }
+                  />
+                  <p className='text-muted-foreground text-sm'>
+                    {t('Leave blank to keep the existing key')}
+                  </p>
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor={`epay-site-public-key-${site.id}`}>
+                    {t('Platform public key')}
+                  </Label>
+                  <Textarea
+                    id={`epay-site-public-key-${site.id}`}
+                    rows={4}
+                    value={site.platform_public_key}
+                    autoComplete='off'
+                    spellCheck={false}
+                    className='font-mono text-xs break-all'
+                    placeholder='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...'
+                    onChange={(event) =>
+                      updateSite(site.id, {
+                        platform_public_key: event.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className='space-y-2'>
+                <Label htmlFor={`epay-site-key-${site.id}`}>
+                  {t('Epay secret key')}
+                </Label>
+                <Input
+                  id={`epay-site-key-${site.id}`}
+                  type='password'
+                  value={site.epay_key}
+                  autoComplete='new-password'
+                  placeholder={t('Enter new key to update')}
+                  onChange={(event) =>
+                    updateSite(site.id, { epay_key: event.target.value })
+                  }
+                />
+                <p className='text-muted-foreground text-sm'>
+                  {t('Leave blank unless rotating the secret')}
+                </p>
+              </div>
+            )}
             <div className='text-muted-foreground space-y-1 text-sm'>
               <div className='flex items-center gap-2'>
                 <span className='shrink-0'>{t('Top-up callback')}</span>
@@ -254,6 +361,9 @@ export function EpayGatewaysEditor(props: EpayGatewaysEditorProps) {
                 epay_id: '',
                 epay_key: '',
                 price: 1,
+                sign_type: 'MD5',
+                merchant_private_key: '',
+                platform_public_key: '',
               },
             ])
           )
