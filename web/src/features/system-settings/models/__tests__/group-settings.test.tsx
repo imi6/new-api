@@ -17,22 +17,38 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
+import {
+  act,
   fireEvent,
   render,
+  renderHook,
   screen,
   within,
   waitFor,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
+import { api } from '@/lib/api'
+
+import { SettingsPage } from '../../components/settings-page'
 import { SettingsPageProvider } from '../../components/settings-page-context'
+import { useUpdateOption } from '../../hooks/use-update-option'
 import { positiveIntegerSchema } from '../../utils/numeric-field'
 import { GroupRatioForm } from '../group-ratio-form'
+
+afterEach(() => vi.restoreAllMocks())
 
 const defaults = {
   GroupRatio: '{"default":1,"vip":0.8}',
@@ -64,12 +80,18 @@ function Fixture(props: {
   onSave?: (values: typeof defaults) => Promise<void>
   initial?: Partial<typeof defaults>
   isSaving?: boolean
+  persistedGroupNames?: readonly string[]
+  onRename?: (oldName: string, newName: string) => Promise<void>
 }) {
   const [actions, setActions] = useState<HTMLDivElement | null>(null)
+  const [isRenaming, setIsRenaming] = useState(false)
   const form = useForm({
     defaultValues: { ...defaults, ...props.initial },
     resolver: zodResolver(schema),
   })
+  useEffect(() => {
+    if (props.initial) form.reset({ ...defaults, ...props.initial })
+  }, [form, props.initial])
   return (
     <SettingsPageProvider actionsContainer={actions}>
       <div ref={setActions} />
@@ -77,12 +99,362 @@ function Fixture(props: {
         form={form}
         onSave={props.onSave ?? (async () => {})}
         isSaving={props.isSaving ?? false}
+        persistedGroupNames={props.persistedGroupNames}
+        hasUnsavedGroupChanges={!!props.onRename && form.formState.isDirty}
+        isRenaming={isRenaming}
+        onRename={
+          props.onRename &&
+          (async (oldName, newName) => {
+            setIsRenaming(true)
+            try {
+              await props.onRename?.(oldName, newName)
+            } finally {
+              setIsRenaming(false)
+            }
+          })
+        }
       />
     </SettingsPageProvider>
   )
 }
 
+function RevisionDraft(props: { settings: { UserUsableGroups: string } }) {
+  const [draft, setDraft] = useState(props.settings.UserUsableGroups)
+  const save = useUpdateOption()
+  return (
+    <>
+      <input
+        aria-label='Revision draft'
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <button
+        type='button'
+        onClick={() => save.mutate({ key: 'UserUsableGroups', value: draft })}
+      >
+        Save revision draft
+      </button>
+    </>
+  )
+}
+
 describe('group settings workspace', () => {
+  it('sends the loaded revision without adopting a newer background cache revision', async () => {
+    const client = new QueryClient()
+    const put = vi
+      .spyOn(api, 'put')
+      .mockResolvedValue({ data: { success: true } })
+    const baseline = '9007199254740993'
+    const { result } = renderHook(() => useUpdateOption(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>
+          <SettingsPageProvider
+            actionsContainer={null}
+            groupRenameRevision={baseline}
+          >
+            {children}
+          </SettingsPageProvider>
+        </QueryClientProvider>
+      ),
+    })
+    client.setQueryData(['system-options'], {
+      success: true,
+      data: [{ key: 'GroupRenameRevision', value: '9007199254740995' }],
+    })
+    await act(() =>
+      result.current.mutateAsync({
+        key: 'UserUsableGroups',
+        value: '{"vip":"Draft"}',
+      })
+    )
+    expect(put).toHaveBeenLastCalledWith('/api/option/', {
+      key: 'UserUsableGroups',
+      value: '{"vip":"Draft"}',
+      group_rename_revision: baseline,
+    })
+    await act(() =>
+      result.current.mutateAsync({ key: 'SystemName', value: 'A name' })
+    )
+    expect(put).toHaveBeenLastCalledWith('/api/option/', {
+      key: 'SystemName',
+      value: 'A name',
+    })
+    client.clear()
+  })
+
+  it('rebuilds stale drafts from the same refreshed options as the new revision', async () => {
+    const client = new QueryClient()
+    const oldOptions = {
+      success: true,
+      message: '',
+      data: [
+        { key: 'GroupRenameRevision', value: '1' },
+        { key: 'UserUsableGroups', value: '{"vip":"Saved"}' },
+      ],
+    }
+    const newOptions = {
+      ...oldOptions,
+      data: [
+        { key: 'GroupRenameRevision', value: '2' },
+        { key: 'UserUsableGroups', value: '{"premium":"Saved"}' },
+      ],
+    }
+    vi.spyOn(api, 'get').mockResolvedValue({ data: newOptions })
+    const put = vi
+      .spyOn(api, 'put')
+      .mockResolvedValue({ data: { success: true } })
+    client.setQueryData(['system-options'], oldOptions)
+    const root = createRootRoute()
+    const page = createRoute({
+      getParentRoute: () => root,
+      path: '/settings/$section',
+      component: () => (
+        <SettingsPage
+          routePath='/settings/$section'
+          defaultSettings={{ UserUsableGroups: '{}' }}
+          defaultSection='groups'
+          getSectionMeta={() => ({ titleKey: 'Group settings' })}
+          getSectionContent={(_section, settings) => (
+            <RevisionDraft settings={settings} />
+          )}
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: root.addChildren([page]),
+      history: createMemoryHistory({ initialEntries: ['/settings/groups'] }),
+    })
+    render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    )
+    await act(() => router.load())
+    const input = await screen.findByRole('textbox', { name: 'Revision draft' })
+    fireEvent.change(input, { target: { value: '{"vip":"Unsaved"}' } })
+    expect(input).toHaveValue('{"vip":"Unsaved"}')
+    act(() => {
+      client.setQueryData(['system-options'], newOptions)
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Revision draft' })
+      ).toHaveValue('{"premium":"Saved"}')
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Save revision draft' }))
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith('/api/option/', {
+        key: 'UserUsableGroups',
+        value: '{"premium":"Saved"}',
+        group_rename_revision: '2',
+      })
+    )
+    client.clear()
+  })
+
+  it('keeps saved and reserved group names read-only while allowing new group drafts', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn(async () => {})
+    render(
+      <Fixture
+        persistedGroupNames={['default', 'vip', 'auto']}
+        onRename={onRename}
+        initial={{ GroupRatio: '{"default":1,"vip":0.8,"auto":1}' }}
+      />
+    )
+    for (const name of ['default', 'vip', 'auto']) {
+      expect(screen.getByDisplayValue(name)).toHaveAttribute('readonly')
+    }
+    expect(
+      screen.queryByRole('button', { name: 'Rename group default' })
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Rename group auto' })
+    ).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Rename group vip' })
+    ).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Add group' }))
+    const draft = screen.getByDisplayValue('group_1')
+    expect(draft).not.toHaveAttribute('readonly')
+    await user.clear(draft)
+    await user.type(draft, 'new-group')
+    expect(draft).toHaveValue('new-group')
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it('confirms one persisted rename and waits for the refreshed server settings', async () => {
+    const user = userEvent.setup()
+    let resolveRename: (() => void) | undefined
+    const onRename = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRename = resolve
+        })
+    )
+    const { rerender } = render(
+      <Fixture persistedGroupNames={['default', 'vip']} onRename={onRename} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Rename group vip' }))
+    const dialog = screen.getByRole('alertdialog', { name: 'Rename group' })
+    expect(dialog).toHaveTextContent('Existing ratios remain unchanged.')
+    const input = within(dialog).getByRole('textbox', {
+      name: 'New group name',
+    })
+    await user.clear(input)
+    await user.type(input, 'premium')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Rename group' })
+    )
+    expect(onRename).toHaveBeenCalledExactlyOnceWith('vip', 'premium')
+    expect(screen.getByDisplayValue('vip')).toHaveAttribute('readonly')
+    expect(
+      within(dialog).getByRole('button', { name: 'Rename group' })
+    ).toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: 'Cancel' })
+    ).toBeDisabled()
+    resolveRename?.()
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    rerender(
+      <Fixture
+        persistedGroupNames={['default', 'premium']}
+        onRename={onRename}
+        initial={{
+          GroupRatio: '{"default":1,"premium":0.8}',
+          TopupGroupRatio: '{"premium":1.2}',
+          UserUsableGroups:
+            '{"default":"Standard access","premium":"Premium access"}',
+          AutoGroups: '["default","premium"]',
+        }}
+      />
+    )
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('premium')).toHaveAttribute('readonly')
+    )
+    expect(screen.queryByDisplayValue('vip')).toBeNull()
+    expect(screen.getAllByRole('spinbutton', { name: 'Ratio' })[1]).toHaveValue(
+      0.8
+    )
+    expect(
+      screen.getAllByRole('spinbutton', { name: 'Top-up ratio' })[1]
+    ).toHaveValue(1.2)
+  })
+
+  it('cancels a rename without changing the saved group or calling the server', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn(async () => {})
+    render(
+      <Fixture persistedGroupNames={['default', 'vip']} onRename={onRename} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Rename group vip' }))
+    await user.clear(screen.getByRole('textbox', { name: 'New group name' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'New group name' }),
+      'premium'
+    )
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Cancel',
+      })
+    )
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByDisplayValue('vip')).toHaveAttribute('readonly')
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it('rejects occupied and reserved target names before calling the server', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn(async () => {})
+    render(
+      <Fixture persistedGroupNames={['default', 'vip']} onRename={onRename} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Rename group vip' }))
+    const dialog = screen.getByRole('alertdialog')
+    const input = within(dialog).getByRole('textbox', {
+      name: 'New group name',
+    })
+    const confirm = within(dialog).getByRole('button', { name: 'Rename group' })
+    for (const name of [
+      'default',
+      'auto',
+      'a,b',
+      '+:extra',
+      '-:extra',
+      'a\u0001b',
+      ' spaced',
+      'x'.repeat(51),
+    ]) {
+      fireEvent.change(input, { target: { value: name } })
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(confirm).toBeDisabled()
+    }
+    fireEvent.change(input, { target: { value: 'vip' } })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'This group name is already in use.'
+    )
+    expect(confirm).toBeDisabled()
+    expect(onRename).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: '😀'.repeat(50) } })
+    expect(input).toHaveAttribute('aria-invalid', 'false')
+    expect(confirm).toBeEnabled()
+  })
+
+  it('blocks rename while pricing edits are unsaved and preserves those edits for saving', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn(async (_values: typeof defaults) => {})
+    const onRename = vi.fn(async () => {})
+    render(
+      <Fixture
+        persistedGroupNames={['default', 'vip']}
+        onRename={onRename}
+        onSave={onSave}
+      />
+    )
+    fireEvent.change(screen.getAllByRole('spinbutton', { name: 'Ratio' })[1], {
+      target: { value: '0.7' },
+    })
+    expect(
+      screen.getByRole('button', { name: 'Rename group vip' })
+    ).toBeDisabled()
+    expect(
+      screen.getByText('Save group settings before renaming a group.')
+    ).toBeVisible()
+    await user.click(
+      screen.getByRole('button', { name: 'Save group settings' })
+    )
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(JSON.parse(onSave.mock.calls[0][0].GroupRatio).vip).toBe(0.7)
+    expect(onRename).not.toHaveBeenCalled()
+  })
+
+  it('keeps the original row and entered target available when the rename request fails', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn(async () => {
+      throw new Error('Active tasks prevent renaming')
+    })
+    render(
+      <Fixture persistedGroupNames={['default', 'vip']} onRename={onRename} />
+    )
+    await user.click(screen.getByRole('button', { name: 'Rename group vip' }))
+    const dialog = screen.getByRole('alertdialog')
+    const input = within(dialog).getByRole('textbox', {
+      name: 'New group name',
+    })
+    await user.clear(input)
+    await user.type(input, 'premium')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Rename group' })
+    )
+    await waitFor(() =>
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
+        'Unable to confirm the rename.'
+      )
+    )
+    expect(input).toHaveValue('premium')
+    expect(screen.getByDisplayValue('vip')).toHaveAttribute('readonly')
+  })
+
   it.each([
     ['a', 'b'],
     ['b', 'a'],
@@ -244,7 +616,7 @@ describe('group settings workspace', () => {
     }
   })
 
-  it('chooses presets, creates reusable labels, orders them and follows group renaming', async () => {
+  it('chooses presets, creates reusable labels and preserves their order for reserved groups', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn(async (_values: typeof defaults) => {})
     render(<Fixture onSave={onSave} />)
@@ -277,11 +649,6 @@ describe('group settings workspace', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Premium' }))
     await user.click(screen.getByRole('button', { name: 'Apply labels' }))
-    await user.clear(screen.getAllByRole('textbox', { name: 'Group name' })[0])
-    await user.type(
-      screen.getAllByRole('textbox', { name: 'Group name' })[0],
-      'standard'
-    )
     await user.click(
       screen.getByRole('button', { name: 'Save group settings' })
     )
@@ -291,12 +658,12 @@ describe('group settings workspace', () => {
       (label: { name: string }) => label.name === 'Premium'
     )
     expect(config.groups).toEqual({
-      standard: [premium.id, 'self'],
+      default: [premium.id, 'self'],
       vip: [premium.id],
     })
     expect(config.labels).toHaveLength(2)
     expect(JSON.parse(onSave.mock.calls[0][0].GroupRatio)).toEqual({
-      standard: 1,
+      default: 1,
       vip: 0.8,
     })
   })

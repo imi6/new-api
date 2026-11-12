@@ -495,6 +495,9 @@ const AUDIT_TEMPLATES: Record<string, string> = {
   'user.oauth_unbind': 'Removed an OAuth binding for the user',
   // System settings
   'option.update': 'Updated system setting {{key}}',
+  'option.group_rename': 'Started renaming group {{old_name}} to {{new_name}}',
+  'option.group_rename_cancel':
+    'Canceled renaming group {{old_name}} to {{new_name}}',
   'telegram_bot.config_update': 'Updated Telegram bot configuration',
   'option.passkey_domains':
     'Updated Passkey domains: removed {{domains}}; affected {{known}}; unknown {{unknown}}',
