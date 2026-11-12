@@ -2845,6 +2845,8 @@
     "Epay signature type must be MD5 or RSA": "Epay signature type must be MD5 or RSA",
     "Epay site": "Epay site",
     "Epay site {{number}}": "Epay site {{number}}",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Epay site {{site}}: the merchant private key is missing or invalid",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Epay site {{site}}: the platform public key is missing or invalid",
     "Epay site 1": "Epay site 1",
     "Epay site 2": "Epay site 2",
     "Epay site 2 endpoint": "Epay site 2 endpoint",
