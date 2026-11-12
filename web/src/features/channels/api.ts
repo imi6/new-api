@@ -840,6 +840,16 @@ export async function getOllamaVersion(
  */
 export const getGroups = getUserGroups
 
+/** Each group's own ratio from the group pricing settings, keyed by name. */
+export async function getGroupRatios(): Promise<Record<string, number>> {
+  const res = await api.get<{
+    success: boolean
+    message?: string
+    data?: Record<string, number>
+  }>('/api/group/', { params: { with_ratio: true } })
+  return requireServerSuccess(res.data).data ?? {}
+}
+
 // ============================================================================
 // Prefill Groups (Model Groups)
 // ============================================================================
