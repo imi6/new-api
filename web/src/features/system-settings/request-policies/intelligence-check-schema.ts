@@ -51,6 +51,7 @@ function rangedInt(limits: { min: number; max: number }, message: string) {
 export const intelligenceCheckSchema = z
   .object({
     enabled: z.boolean(),
+    user_test_enabled: z.boolean(),
     targets: z
       .array(
         z.object({
@@ -176,6 +177,7 @@ export function toIntelligenceCheckValues(
 ): IntelligenceCheckValues {
   return {
     enabled: settings[`${PREFIX}enabled`],
+    user_test_enabled: settings[`${PREFIX}user_test_enabled`] ?? false,
     targets: parseIntelligenceCheckTargets(settings[`${PREFIX}targets`]),
     candy_enabled: settings[`${PREFIX}candy_enabled`],
     candy_interval_hours: settings[`${PREFIX}candy_interval_hours`],
