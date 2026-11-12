@@ -61,6 +61,8 @@ var channelPermissionRoutes = []permissionRoute{
 	{method: http.MethodGet, path: "/upstream_rates", permission: authz.ChannelRead, handler: controller.GetUpstreamRates},
 	{method: http.MethodPost, path: "/upstream_rates/refresh", permission: authz.ChannelOperate, handler: controller.RefreshUpstreamRates},
 	{method: http.MethodGet, path: "/upstream_rates/tasks/:task_id", permission: authz.ChannelRead, handler: controller.GetUpstreamRateTask},
+	{method: http.MethodGet, path: "/upstream_rates/guard", permission: authz.ChannelRead, handler: controller.GetUpstreamRateGuard},
+	{method: http.MethodPut, path: "/upstream_rates/guard", permission: authz.ChannelSensitiveWrite, handler: controller.SaveUpstreamRateGuard},
 	{method: http.MethodGet, path: "/priority/order", permission: authz.ChannelRead, handler: controller.GetChannelPriorityOrder},
 	{method: http.MethodPost, path: "/priority/reorder", permission: authz.ChannelWrite, handler: controller.ReorderChannelPriority},
 	{method: http.MethodGet, path: "/", permission: authz.ChannelRead, handler: controller.GetAllChannels},
