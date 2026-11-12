@@ -105,7 +105,11 @@ function AdminDetails(props: { check: IntelligenceCheck }) {
   )
 }
 
-export function CandyCheckCard(props: { check: IntelligenceCheck }) {
+export function CandyCheckCard(props: {
+  check: IntelligenceCheck
+  /** A user's own test: the expected answer stays on the server. */
+  hideExpected?: boolean
+}) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const check = props.check
@@ -126,15 +130,24 @@ export function CandyCheckCard(props: { check: IntelligenceCheck }) {
         </span>
       )}
 
-      <div className='grid grid-cols-[1fr_auto_1fr] items-center gap-2'>
-        <div className='bg-muted/30 flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5'>
-          <span className='text-muted-foreground text-xs'>
-            {t('Expected answer')}
-          </span>
-          <span className='text-xl font-semibold tabular-nums'>
-            {check.expected_answer || '—'}
-          </span>
-        </div>
+      <div
+        className={cn(
+          'grid items-center gap-2',
+          props.hideExpected
+            ? 'grid-cols-[auto_1fr]'
+            : 'grid-cols-[1fr_auto_1fr]'
+        )}
+      >
+        {!props.hideExpected && (
+          <div className='bg-muted/30 flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5'>
+            <span className='text-muted-foreground text-xs'>
+              {t('Expected answer')}
+            </span>
+            <span className='text-xl font-semibold tabular-nums'>
+              {check.expected_answer || '—'}
+            </span>
+          </div>
+        )}
         <div className='flex flex-col items-center gap-1'>
           <span
             className={cn(
@@ -198,9 +211,11 @@ export function CandyCheckCard(props: { check: IntelligenceCheck }) {
 
       {check.failed_checks.split(',').includes('token_limit') && (
         <p className='text-warning text-xs'>
-          {t(
-            'The answer stopped at the max output tokens. Raise the limit in the settings.'
-          )}
+          {props.hideExpected
+            ? t('Cut off at the max output tokens')
+            : t(
+                'The answer stopped at the max output tokens. Raise the limit in the settings.'
+              )}
         </p>
       )}
 
