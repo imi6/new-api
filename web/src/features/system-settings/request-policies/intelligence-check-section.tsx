@@ -321,7 +321,7 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
   }
 
   const renderSwitch = (
-    name: 'enabled' | 'candy_enabled' | 'pelican_enabled',
+    name: 'enabled' | 'user_test_enabled' | 'candy_enabled' | 'pelican_enabled',
     label: string,
     description: string
   ) => (
@@ -409,6 +409,14 @@ export function IntelligenceCheckSection(props: IntelligenceCheckSectionProps) {
             isSaving={saving}
             isResetDisabled={!isDirty}
           />
+
+          {renderSwitch(
+            'user_test_enabled',
+            t('Let users test on the API keys page'),
+            t(
+              'Shows an intelligence test entry on the API keys page. Users ask the questions below with their own key, billed at the normal price of its group.'
+            )
+          )}
 
           {renderSwitch(
             'enabled',

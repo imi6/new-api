@@ -146,6 +146,8 @@ func SetApiRouter(router *gin.Engine) {
 				telegramBotSelf.POST("/recovery", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("telegram-bot-connect"), controller.StartTelegramBotRecovery)
 				telegramBotSelf.POST("/recovery/confirm", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("telegram-bot-connect"), controller.ConfirmTelegramBotRecovery)
 				selfRoute.GET("/models", controller.GetUserModels)
+				selfRoute.GET("/intelligence-check", controller.GetIntelligenceUserTest)
+				selfRoute.POST("/intelligence-check/grade", middleware.UserCriticalRateLimit("intelligence-test"), controller.GradeIntelligenceUserTest)
 				selfRoute.PUT("/self", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.UpdateSelf)
 				selfRoute.DELETE("/self", middleware.DisableCache(), controller.DeleteSelf)
 				accessTokenRoute := selfRoute.Group("/access_tokens")

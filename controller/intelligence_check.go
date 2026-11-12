@@ -514,6 +514,131 @@ func GetIntelligenceChecks(c *gin.Context) {
 	common.ApiSuccess(c, public)
 }
 
+// A user's own check: the browser asks the question with the user's key
+// through the normal API, so it is billed and logged as any other call. The
+// server only serves the questions and grades the answer; the expected answer
+// never leaves it.
+
+// intelligenceUserTestMaxResponseBytes bounds the answer a user sends for
+// grading. A drawing is far smaller; this only stops oversized bodies.
+const intelligenceUserTestMaxResponseBytes = 1 << 20
+
+type intelligenceUserTestQuestion struct {
+	Key       string `json:"key"`
+	Prompt    string `json:"prompt"`
+	MaxTokens int    `json:"max_tokens"`
+}
+
+// GetIntelligenceUserTest serves the enabled questions and, for each model the
+// user can call, the endpoints it supports, so the page picks Responses for
+// models that only serve it. It does not depend on the pricing page being on.
+func GetIntelligenceUserTest(c *gin.Context) {
+	setting := operation_setting.GetIntelligenceCheckSetting()
+	if !setting.UserTestEnabled {
+		common.ApiErrorT(c, "Intelligence tests are turned off")
+		return
+	}
+	questions := make([]intelligenceUserTestQuestion, 0, 2)
+	if setting.PelicanEnabled {
+		questions = append(questions, intelligenceUserTestQuestion{
+			Key:       model.IntelligenceCheckPelican,
+			Prompt:    setting.PelicanPrompt,
+			MaxTokens: operation_setting.IntelligenceCheckMaxTokensOrDefault(setting.PelicanMaxTokens),
+		})
+	}
+	if setting.CandyEnabled {
+		prompt := setting.CandyPrompt
+		if format := strings.TrimSpace(setting.CandyAnswerFormat); format != "" {
+			prompt = strings.TrimRight(prompt, "\n") + "\n\n" + format
+		}
+		questions = append(questions, intelligenceUserTestQuestion{
+			Key:       model.IntelligenceCheckCandy,
+			Prompt:    prompt,
+			MaxTokens: operation_setting.IntelligenceCheckMaxTokensOrDefault(setting.CandyMaxTokens),
+		})
+	}
+	userGroup, err := model.GetUserGroup(c.GetInt("id"), false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	// The models of each group the user can use, so the page lists a key's
+	// models the same way the API serves them.
+	groupModels := map[string][]string{}
+	for group := range service.GetUserUsableGroups(userGroup) {
+		if group != "auto" {
+			groupModels[group] = model.GetGroupEnabledModels(group)
+		}
+	}
+	// The endpoint table is rebuilt with the pricing cache; refresh it here so
+	// it stays current while the pricing page is turned off.
+	model.GetPricing()
+	endpoints := map[string][]constant.EndpointType{}
+	for _, models := range groupModels {
+		for _, modelName := range models {
+			if _, done := endpoints[modelName]; !done {
+				endpoints[modelName] = model.GetModelSupportEndpointTypes(modelName)
+			}
+		}
+	}
+	common.ApiSuccess(c, gin.H{
+		"questions":       questions,
+		"user_group":      userGroup,
+		"auto_groups":     service.GetUserAutoGroup(userGroup),
+		"group_models":    groupModels,
+		"model_endpoints": endpoints,
+	})
+}
+
+type intelligenceUserTestGradeRequest struct {
+	Question   string `json:"question"`
+	Response   string `json:"response"`
+	CutAtLimit bool   `json:"cut_at_limit"`
+}
+
+// GradeIntelligenceUserTest grades an answer with the scheduled checks'
+// rules. The candy result carries the model's number, not the expected one.
+func GradeIntelligenceUserTest(c *gin.Context) {
+	setting := operation_setting.GetIntelligenceCheckSetting()
+	if !setting.UserTestEnabled {
+		common.ApiErrorT(c, "Intelligence tests are turned off")
+		return
+	}
+	var req intelligenceUserTestGradeRequest
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, intelligenceUserTestMaxResponseBytes+4096))
+	if err != nil || len(body) > intelligenceUserTestMaxResponseBytes+4096 || common.Unmarshal(body, &req) != nil {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	answer := service.IntelligenceAnswerText(req.Response)
+	result := intelligenceCheckView{FailedChecks: ""}
+	var failed []string
+	switch req.Question {
+	case model.IntelligenceCheckCandy:
+		if !setting.CandyEnabled {
+			common.ApiErrorT(c, "Invalid parameters")
+			return
+		}
+		result.Status, result.Answer = service.GradeIntelligenceAnswer(answer, strings.TrimSpace(setting.CandyAnswer))
+	case model.IntelligenceCheckPelican:
+		if !setting.PelicanEnabled {
+			common.ApiErrorT(c, "Invalid parameters")
+			return
+		}
+		result.Status, failed = service.GradeIntelligenceDrawing(answer)
+	default:
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	// Say why an answer stopped short, as the scheduled checks do.
+	if req.CutAtLimit && result.Status != model.IntelligenceCheckPassed {
+		failed = append([]string{service.IntelligenceCheckTokenLimit}, failed...)
+	}
+	result.FailedChecks = strings.Join(failed, ",")
+	result.Response, result.Truncated = service.TruncateIntelligenceResponse(answer)
+	common.ApiSuccess(c, result)
+}
+
 func hideIntelligenceCheckDetails(views []intelligenceCheckView) []intelligenceCheckView {
 	hidden := make([]intelligenceCheckView, len(views))
 	for i, view := range views {

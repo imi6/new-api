@@ -25,29 +25,36 @@ import { ApiKeysPrimaryButtons } from './components/api-keys-primary-buttons'
 import { ApiKeysProvider } from './components/api-keys-provider'
 import { ApiKeysTable } from './components/api-keys-table'
 import { ApiAddressBar } from './components/api-address-bar'
+import { IntelligenceTestDialog } from './components/dialogs/intelligence-test-dialog'
+import { IntelligenceTestIndicator } from './components/intelligence-test-indicator'
+import { IntelligenceTestProvider } from './components/intelligence-test-provider'
 
 export function ApiKeys() {
   const { t } = useTranslation()
   return (
     <ApiKeysProvider>
-      <SectionPageLayout fixedContent>
-        <SectionPageLayout.Title>{t('API Keys')}</SectionPageLayout.Title>
-        <SectionPageLayout.Actions>
-          <ApiKeysPrimaryButtons />
-        </SectionPageLayout.Actions>
-        <SectionPageLayout.Content>
-          {/* The content area does not scroll, so the table needs a bounded
-              height to scroll its own rows, as on the models page. */}
-          <div className='flex h-full min-h-0 flex-col gap-2'>
-            <ApiAddressBar />
-            <div className='min-h-0 flex-1'>
-              <ApiKeysTable />
+      <IntelligenceTestProvider>
+        <SectionPageLayout fixedContent>
+          <SectionPageLayout.Title>{t('API Keys')}</SectionPageLayout.Title>
+          <SectionPageLayout.Actions>
+            <ApiKeysPrimaryButtons />
+          </SectionPageLayout.Actions>
+          <SectionPageLayout.Content>
+            {/* The content area does not scroll, so the table needs a bounded
+                height to scroll its own rows, as on the models page. */}
+            <div className='flex h-full min-h-0 flex-col gap-2'>
+              <ApiAddressBar />
+              <div className='min-h-0 flex-1'>
+                <ApiKeysTable />
+              </div>
             </div>
-          </div>
-        </SectionPageLayout.Content>
-      </SectionPageLayout>
+          </SectionPageLayout.Content>
+        </SectionPageLayout>
 
-      <ApiKeysDialogs />
+        <ApiKeysDialogs />
+        <IntelligenceTestDialog />
+        <IntelligenceTestIndicator />
+      </IntelligenceTestProvider>
     </ApiKeysProvider>
   )
 }
