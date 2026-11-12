@@ -178,12 +178,10 @@ func GetEpayClientFor(gateway string) *epay.Client {
 	}
 	address, id, key := operation_setting.EpayCredentials(gateway)
 	config := &epay.Config{PartnerID: id, Key: key}
-	if gateway == "" || gateway == operation_setting.EpayGatewayPrimary {
-		if paymentSetting := operation_setting.GetPaymentSetting(); paymentSetting.EpaySignType == operation_setting.EpaySignTypeRSA {
-			config.SignType = epay.SignTypeRSA
-			config.MerchantPrivateKey = paymentSetting.EpayMerchantPrivateKey
-			config.PlatformPublicKey = paymentSetting.EpayPlatformPublicKey
-		}
+	if signType, privateKey, publicKey := operation_setting.EpaySigning(gateway); signType == operation_setting.EpaySignTypeRSA {
+		config.SignType = epay.SignTypeRSA
+		config.MerchantPrivateKey = privateKey
+		config.PlatformPublicKey = publicKey
 	}
 	withUrl, err := epay.NewClient(config, address)
 	if err != nil {
