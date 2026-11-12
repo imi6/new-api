@@ -110,3 +110,36 @@ func GetUpstreamRateTask(c *gin.Context) {
 	}
 	common.ApiSuccess(c, gin.H{"task_id": task.TaskID, "status": task.Status, "error": task.Error, "result": task.Result})
 }
+
+// GetUpstreamRateGuard 返回「上游倍率高于分组倍率时自动禁用渠道」是否开启。
+func GetUpstreamRateGuard(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	enabled, err := service.GetUpstreamRateGuardEnabled(c.Request.Context())
+	if err != nil {
+		upstreamRateAPIError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"enabled": enabled})
+}
+
+// SaveUpstreamRateGuard 开关自动禁用。开启后立即检查一次，关闭时恢复由它禁用的渠道。
+func SaveUpstreamRateGuard(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+	var input struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		upstreamRateAPIError(c, service.ErrUpstreamRateConfig)
+		return
+	}
+	if err := service.SetUpstreamRateGuardEnabled(c.Request.Context(), input.Enabled); err != nil {
+		upstreamRateAPIError(c, err)
+		return
+	}
+	action := "channel.upstream_rate_guard_disable"
+	if input.Enabled {
+		action = "channel.upstream_rate_guard_enable"
+	}
+	recordManageAudit(c, action, nil)
+	common.ApiSuccess(c, gin.H{"enabled": input.Enabled})
+}
