@@ -347,6 +347,9 @@ func migrateGroupRename(expected common.GroupRenameAlias, settle bool) error {
 	if err != nil || published == nil {
 		return err
 	}
+	// 渠道和能力表的分组列在同一事务里改了。先登记渠道同步再登记配置同步：节点每轮一次读出
+	// 全部主题的最新任务，能看到配置任务时也一定能看到渠道任务，上报改名版本前渠道缓存已重载。
+	BumpSyncTopic(SyncTopicChannels)
 	_ = publishOptions(published)
 	for _, id := range planIDs {
 		InvalidateSubscriptionPlanCache(id)
@@ -682,8 +685,8 @@ func upsertOptions(tx *gorm.DB, values map[string]string) error {
 	return nil
 }
 
-// publishOptions 在提交后更新本节点内存。改动了改名别名时再通知其他节点立即加载，
-// 通知丢失时由配置同步兜底。
+// publishOptions 在提交后更新本节点内存，再通过节点同步让其他节点几秒内重新加载配置。
+// 节点加载后上报改名版本，改名据此进入下一步；同步任务丢失时由定时配置同步兜底。
 func publishOptions(values map[string]string) error {
 	var first error
 	for _, key := range slices.Sorted(maps.Keys(values)) {
@@ -694,8 +697,6 @@ func publishOptions(values map[string]string) error {
 			}
 		}
 	}
-	if _, ok := values[common.GroupRenameAliasOption]; ok {
-		notifyGroupRenameRevision()
-	}
+	BumpSyncTopic(SyncTopicOptions)
 	return first
 }

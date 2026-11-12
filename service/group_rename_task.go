@@ -40,7 +40,7 @@ func (groupRenameTaskHandler) Run(ctx context.Context, task *model.SystemTask, r
 }
 
 // DriveGroupRename 在发起改名的节点上每秒推进一次改名，不等系统任务的 30 秒周期。
-// 本节点加载到新版本后立即上报，其他节点由 Redis 通知加载并上报，所以每一步通常一两秒就能确认。
+// 本节点加载到新版本后立即上报，其他节点由节点同步在几秒内加载并上报，所以每一步通常几秒就能确认。
 // 推进和系统任务都先锁别名配置并核对步骤，同时执行也只会推进一次。
 func DriveGroupRename() {
 	if !groupRenameDriving.CompareAndSwap(false, true) {
@@ -70,9 +70,4 @@ func DriveGroupRename() {
 			time.Sleep(time.Second)
 		}
 	})
-}
-
-// StartGroupRenameNotices 订阅其他节点发出的改名通知，加载后立即上报本节点版本。
-func StartGroupRenameNotices() {
-	model.StartGroupRenameSubscriber(context.Background(), reportSystemInstanceWithLog)
 }
