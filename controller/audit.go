@@ -51,6 +51,8 @@ var auditContentTemplates = map[string]string{
 	"user.passkey_delete":                "Deleted a passkey",
 	"user.reset_passkey":                 "Reset the user passkey",
 	"option.update":                      "Updated system setting ${key}",
+	"option.group_rename":                "Started renaming group ${old_name} to ${new_name}",
+	"option.group_rename_cancel":         "Canceled renaming group ${old_name} to ${new_name}",
 
 	"option.passkey_domains":           "Updated Passkey domains: removed ${domains}; affected ${known}; unknown ${unknown}",
 	"option.passkey_domains_confirmed": "Confirmed removal of Passkey domains: ${domains}; affected ${known}; unknown ${unknown}",

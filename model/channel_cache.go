@@ -134,13 +134,19 @@ func GetRandomSatisfiedChannel(
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
+	// 改名期间本节点的渠道缓存可能还是别名，此时用别名兜底。
+	model2channels, _ := common.LookupRenamedGroup(group, func(name string) (map[string][]int, bool) {
+		channels, ok := group2model2channels[name]
+		return channels, ok
+	})
+
 	// First, try to find channels with the exact model name.
-	channels, _ := filterCandidateIDs(group2model2channels[group][model], model, filters)
+	channels, _ := filterCandidateIDs(model2channels[model], model, filters)
 
 	// If no channels found, try to find channels with the normalized model name.
 	if len(channels) == 0 {
 		normalizedModel := ratio_setting.RoutingMatchModelName(model)
-		channels, _ = filterCandidateIDs(group2model2channels[group][normalizedModel], model, filters)
+		channels, _ = filterCandidateIDs(model2channels[normalizedModel], model, filters)
 	}
 
 	if len(channels) == 0 {

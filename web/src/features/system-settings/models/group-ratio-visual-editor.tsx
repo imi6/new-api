@@ -23,6 +23,7 @@ import {
   X,
   Info,
   Plus,
+  Pencil,
   Trash2,
   Tags,
 } from 'lucide-react'
@@ -38,6 +39,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import { AutoGroupOrderItem } from '@/components/auto-group-order-item'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { StaticDataTable } from '@/components/data-table/static/static-data-table'
 import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
 import { Dialog } from '@/components/dialog'
@@ -117,6 +119,10 @@ type GroupRatioVisualEditorProps = {
   groupPlatformMap: string
   groupBadgeConfig?: string
   onGroupNamesValidityChange?: (valid: boolean) => void
+  persistedGroupNames?: readonly string[]
+  renameDisabled?: boolean
+  isRenaming?: boolean
+  onRename?: (oldName: string, newName: string) => Promise<void>
   onChange: (field: string, value: string) => void
 }
 
@@ -345,6 +351,10 @@ export const GroupRatioVisualEditor = memo(function GroupRatioVisualEditor({
   groupPlatformMap,
   groupBadgeConfig = '',
   onGroupNamesValidityChange,
+  persistedGroupNames,
+  renameDisabled,
+  isRenaming,
+  onRename,
   onChange,
 }: GroupRatioVisualEditorProps) {
   const { t, i18n } = useTranslation()
@@ -441,6 +451,10 @@ export const GroupRatioVisualEditor = memo(function GroupRatioVisualEditor({
           groupPlatformMap={groupPlatformMap}
           groupBadgeConfig={groupBadgeConfig}
           onGroupNamesValidityChange={onGroupNamesValidityChange}
+          persistedGroupNames={persistedGroupNames}
+          renameDisabled={renameDisabled}
+          isRenaming={isRenaming}
+          onRename={onRename}
           onChange={onChange}
           onShowDetail={setDetailGroup}
         />
@@ -549,6 +563,10 @@ type GroupPricingTableProps = {
   groupPlatformMap: string
   groupBadgeConfig: string
   onGroupNamesValidityChange?: (valid: boolean) => void
+  persistedGroupNames?: readonly string[]
+  renameDisabled?: boolean
+  isRenaming?: boolean
+  onRename?: (oldName: string, newName: string) => Promise<void>
   onChange: (field: string, value: string) => void
   onShowDetail: (name: string) => void
 }
@@ -560,12 +578,20 @@ function GroupPricingTable({
   groupPlatformMap,
   groupBadgeConfig,
   onGroupNamesValidityChange,
+  persistedGroupNames,
+  renameDisabled = false,
+  isRenaming = false,
+  onRename,
   onChange,
   onShowDetail,
 }: GroupPricingTableProps) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [editingLabels, setEditingLabels] = useState<string | null>(null)
+  const [renameSource, setRenameSource] = useState<string | null>(null)
+  const [renameTarget, setRenameTarget] = useState('')
+  const [renameFailed, setRenameFailed] = useState(false)
+  const savedNames = new Set(persistedGroupNames)
   const badgeConfig = useMemo(
     () => parseGroupLabelConfig(groupBadgeConfig),
     [groupBadgeConfig]
@@ -751,6 +777,36 @@ function GroupPricingTable({
       row.name.toLowerCase().includes(query) ||
       row.description.toLowerCase().includes(query)
   )
+  const renameTargetInvalid =
+    renameTarget.length === 0 ||
+    renameTarget !== renameTarget.trim() ||
+    [...renameTarget].length > 50 ||
+    /[,\p{Cc}]/u.test(renameTarget) ||
+    /^(?:default|auto)$/u.test(renameTarget) ||
+    /^[+-]:/u.test(renameTarget)
+  const renameTargetConflict = rows.some(
+    (row) =>
+      row.committedName === renameTarget || row.name.trim() === renameTarget
+  )
+  const confirmRename = async () => {
+    if (
+      !onRename ||
+      !renameSource ||
+      renameDisabled ||
+      isRenaming ||
+      renameTargetInvalid ||
+      renameTargetConflict
+    ) {
+      return
+    }
+    setRenameFailed(false)
+    try {
+      await onRename(renameSource, renameTarget)
+      setRenameSource(null)
+    } catch {
+      setRenameFailed(true)
+    }
+  }
 
   return (
     <Card className={sectionCardClassName}>
@@ -776,6 +832,11 @@ function GroupPricingTable({
         </div>
       </CardHeader>
       <CardContent>
+        {onRename && renameDisabled && (
+          <p className='text-muted-foreground mb-3 text-sm'>
+            {t('Save group settings before renaming a group.')}
+          </p>
+        )}
         {!labelsValid && (
           <p role='alert' className='text-destructive mb-3 text-sm'>
             {t(
@@ -842,6 +903,11 @@ function GroupPricingTable({
                   cell: (row) => (
                     <Input
                       value={row.name}
+                      readOnly={
+                        row.committedName === 'default' ||
+                        row.committedName === 'auto' ||
+                        savedNames.has(row.committedName)
+                      }
                       aria-label={t('Group name')}
                       onChange={(event) =>
                         updateRow(row._id, 'name', event.target.value)
@@ -997,6 +1063,27 @@ function GroupPricingTable({
                   cellClassName: 'text-right',
                   cell: (row) => (
                     <div className='flex justify-end gap-1'>
+                      {onRename &&
+                        savedNames.has(row.committedName) &&
+                        row.committedName !== 'default' &&
+                        row.committedName !== 'auto' && (
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            size='sm'
+                            disabled={renameDisabled || isRenaming}
+                            aria-label={t('Rename group {{group}}', {
+                              group: row.committedName,
+                            })}
+                            onClick={() => {
+                              setRenameSource(row.committedName)
+                              setRenameTarget(row.committedName)
+                              setRenameFailed(false)
+                            }}
+                          >
+                            <Pencil className='h-4 w-4' />
+                          </Button>
+                        )}
                       <Button
                         variant='ghost'
                         size='sm'
@@ -1034,6 +1121,55 @@ function GroupPricingTable({
           </div>
         </fieldset>
       </CardContent>
+      <ConfirmDialog
+        open={renameSource !== null}
+        onOpenChange={(open) => {
+          if (!open && !isRenaming) setRenameSource(null)
+        }}
+        title={t('Rename group')}
+        desc={t(
+          'Rename {{group}} and move its API keys, users, channels and settings to the new name in the background. Requests keep working with both names meanwhile. Existing ratios remain unchanged.',
+          { group: renameSource ?? '' }
+        )}
+        confirmText={t('Rename group')}
+        isLoading={isRenaming}
+        disabled={renameDisabled || renameTargetInvalid || renameTargetConflict}
+        handleConfirm={() => void confirmRename()}
+      >
+        <div className='space-y-2'>
+          <Label htmlFor='group-rename-target'>{t('New group name')}</Label>
+          <Input
+            id='group-rename-target'
+            autoFocus
+            disabled={isRenaming}
+            value={renameTarget}
+            onChange={(event) => {
+              setRenameTarget(event.target.value)
+              setRenameFailed(false)
+            }}
+            aria-invalid={renameTargetInvalid || renameTargetConflict}
+          />
+          {renameTargetConflict && (
+            <p role='alert' className='text-destructive text-sm'>
+              {t('This group name is already in use.')}
+            </p>
+          )}
+          {renameTargetInvalid && (
+            <p role='alert' className='text-destructive text-sm'>
+              {t(
+                'Use 1–50 characters without commas, control characters, surrounding spaces or reserved names.'
+              )}
+            </p>
+          )}
+          {renameFailed && (
+            <p role='alert' className='text-destructive text-sm'>
+              {t(
+                'Unable to confirm the rename. Reload group settings before trying again.'
+              )}
+            </p>
+          )}
+        </div>
+      </ConfirmDialog>
       {labelRow && (
         <GroupLabelEditor
           key={labelRow._id}

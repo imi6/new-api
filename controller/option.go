@@ -59,6 +59,8 @@ func normalizeRebateGroups(raw string) (string, error) {
 		if name == "" {
 			continue
 		}
+		// 改名期间页面上可能还是别名，保存当前名字。
+		name = common.CurrentGroupName(name)
 		if _, duplicate := seen[name]; duplicate {
 			continue
 		}
@@ -162,8 +164,9 @@ func GetOptions(c *gin.Context) {
 }
 
 type OptionUpdateRequest struct {
-	Key   string `json:"key"`
-	Value any    `json:"value"`
+	Key                 string `json:"key"`
+	Value               any    `json:"value"`
+	GroupRenameRevision string `json:"group_rename_revision,omitempty"`
 }
 
 func UpdatePasskeyDomains(c *gin.Context) {
@@ -521,7 +524,11 @@ func UpdateOption(c *gin.Context) {
 		common.ApiSuccess(c, change)
 		return
 	}
-	err = model.UpdateOption(option.Key, option.Value.(string))
+	if slices.Contains(model.GroupRenameOptionKeys, option.Key) {
+		err = model.UpdateGroupOption(option.Key, option.Value.(string), option.GroupRenameRevision)
+	} else {
+		err = model.UpdateOption(option.Key, option.Value.(string))
+	}
 	if err != nil {
 		if errors.Is(err, system_setting.ErrPasskeyRPIDInvalid) {
 			writeSecurityOperationError(c, err)
@@ -538,4 +545,58 @@ func UpdateOption(c *gin.Context) {
 		"success": true,
 		"message": "",
 	})
+}
+
+// RenameGroup 开始分组改名。改名在后台分步完成，期间请求照常处理。
+func RenameGroup(c *gin.Context) {
+	var request struct {
+		OldName string `json:"old_name"`
+		NewName string `json:"new_name"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &request); err != nil {
+		common.ApiErrorStatus(c, http.StatusBadRequest, common.NewMessage("Invalid parameters"))
+		return
+	}
+	alias, err := model.StartGroupRename(request.OldName, request.NewName)
+	if err != nil {
+		respondGroupRenameError(c, err)
+		return
+	}
+	recordManageAudit(c, "option.group_rename", map[string]any{"old_name": alias.Old, "new_name": alias.New})
+	// 立即排队推进任务，不等调度器的下一轮。
+	if _, _, err := service.EnqueueSystemTask(model.SystemTaskTypeGroupRename, nil); err != nil {
+		common.SysError(common.LogText("failed to queue group rename task: %v", err))
+	}
+	common.ApiSuccess(c, alias)
+}
+
+// GetGroupRename 返回进行中的分组改名及其进度。
+func GetGroupRename(c *gin.Context) {
+	status, err := model.GetGroupRenameStatus()
+	if err != nil {
+		respondGroupRenameError(c, err)
+		return
+	}
+	common.ApiSuccess(c, status)
+}
+
+// CancelGroupRename 取消尚未开始迁移的分组改名。
+func CancelGroupRename(c *gin.Context) {
+	alias, err := model.CancelGroupRename()
+	if err != nil {
+		respondGroupRenameError(c, err)
+		return
+	}
+	recordManageAudit(c, "option.group_rename_cancel", map[string]any{"old_name": alias.Old, "new_name": alias.New})
+	common.ApiSuccess(c, alias)
+}
+
+func respondGroupRenameError(c *gin.Context, err error) {
+	var message *common.Message
+	if errors.As(err, &message) {
+		common.ApiError(c, message)
+		return
+	}
+	common.SysError(common.LogText("group rename failed: %v", err))
+	common.ApiErrorT(c, "Failed to rename group")
 }
