@@ -33,7 +33,7 @@ import { toast } from 'sonner'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { BadgeListCell } from '@/components/data-table'
-import { GroupBadge } from '@/components/group-badge'
+import { GroupBadge, GroupMultiplierBadge } from '@/components/group-badge'
 import { ProviderBadge } from '@/components/provider-badge'
 import { StatusBadge, type StatusBadgeProps } from '@/components/status-badge'
 import { TableId } from '@/components/table-id'
@@ -1114,7 +1114,6 @@ export function useChannelsColumns(
                   key={g}
                   group={g}
                   label={sensitiveVisible ? undefined : SENSITIVE_MASK}
-                  ratio={sensitiveVisible ? groupRatios[g] : undefined}
                   size='sm'
                 />
               ))}
@@ -1129,7 +1128,35 @@ export function useChannelsColumns(
           const groupArray = parseGroupsList(group)
           return groupArray.some((g) => value.includes(g))
         },
-        size: 200,
+        size: 150,
+        enableSorting: false,
+      },
+
+      // Each group's own ratio, in the order of the groups, beside the
+      // upstream rate so the two can be compared at a glance.
+      {
+        id: 'group_ratio',
+        header: t('Group Ratio'),
+        meta: { mobileHidden: true },
+        cell: ({ row }) => {
+          if (!sensitiveVisible) {
+            return <span className='text-muted-foreground'>••••</span>
+          }
+          const ratios = parseGroupsList(row.original.group ?? '').flatMap(
+            (g) => (groupRatios[g] === undefined ? [] : [groupRatios[g]])
+          )
+          if (ratios.length === 0) {
+            return <span className='text-muted-foreground'>—</span>
+          }
+          return (
+            <BadgeListCell
+              items={ratios.map((ratio, index) => (
+                <GroupMultiplierBadge key={index} ratio={ratio} />
+              ))}
+            />
+          )
+        },
+        size: 170,
         enableSorting: false,
       },
 
