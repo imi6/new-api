@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -159,8 +160,10 @@ func IsGroupRebateEligible(group string) bool {
 	if allowed == "" {
 		return true
 	}
+	// 改名期间同一分组的别名也算命中。
+	names := append([]string{group}, common.GroupRenameCounterparts(group)...)
 	for entry := range strings.SplitSeq(allowed, ",") {
-		if strings.TrimSpace(entry) == group {
+		if slices.Contains(names, strings.TrimSpace(entry)) {
 			return true
 		}
 	}

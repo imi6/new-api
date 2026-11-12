@@ -13,8 +13,13 @@ func GetUserUsableGroups(userGroup string) map[string]string {
 	return setting.GetUserUsableGroupsForUser(userGroup)
 }
 
+// GroupInUserUsableGroups 改名期间同一分组可能以别名出现在令牌或配置里，任一名字可用即可。
 func GroupInUserUsableGroups(userGroup, groupName string) bool {
-	_, ok := GetUserUsableGroups(userGroup)[groupName]
+	usable := GetUserUsableGroups(userGroup)
+	_, ok := common.LookupRenamedGroup(groupName, func(name string) (string, bool) {
+		description, ok := usable[name]
+		return description, ok
+	})
 	return ok
 }
 
