@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -247,6 +248,10 @@ func SyncOptions(frequency int) {
 }
 
 func validateOptionValue(key string, value string) error {
+	// 改名状态只能由改名流程写入。
+	if key == common.GroupRenameAliasOption || key == common.GroupRenameRevisionOption {
+		return common.NewMessage("Group rename state is managed by the rename process")
+	}
 	if key == common.GroupBadgeConfigOption {
 		_, err := common.ParseGroupBadgeConfig(value)
 		return err
@@ -306,8 +311,8 @@ func validateOptionValue(key string, value string) error {
 }
 
 func UpdateOption(key string, value string) error {
-	if key == common.GroupBadgeConfigOption {
-		return UpdateOptionsBulk(map[string]string{key: value})
+	if slices.Contains(GroupRenameOptionKeys, key) {
+		return UpdateGroupOption(key, value, "")
 	}
 	if IsRequestPolicyOption(key) {
 		return UpdateRequestPolicyOptions(map[string]string{key: value})
@@ -364,6 +369,10 @@ func UpdateOptionsBulk(values map[string]string) error {
 		return nil
 	}
 	for key := range values {
+		// 分组配置要和改名流程串行，只能逐项走 UpdateGroupOption。
+		if slices.Contains(GroupRenameOptionKeys, key) {
+			return common.NewMessage("Invalid group settings")
+		}
 		if IsPasskeyDomainOption(key) {
 			_, err := UpdatePasskeyDomainOptions(values, false, "")
 			return err
@@ -713,6 +722,8 @@ func updateOptionMap(key string, value string) (err error) {
 		common.GroupPlatformMap = value
 	case common.GroupBadgeConfigOption:
 		err = common.UpdateGroupBadgeConfig(value)
+	case common.GroupRenameAliasOption:
+		err = common.UpdateGroupRenameAliases(value)
 	case "QuotaRemindThreshold":
 		common.QuotaRemindThreshold, _ = strconv.Atoi(value)
 	case "PreConsumedQuota":
