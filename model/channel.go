@@ -470,6 +470,9 @@ func BatchInsertChannels(channels []Channel) error {
 		}
 	}()
 
+	for i := range channels {
+		channels[i].Group = common.CurrentGroupList(channels[i].Group)
+	}
 	// Keep each chunk backed by channels so generated IDs reach the caller.
 	for chunk := range slices.Chunk(channels, 50) {
 		if err := tx.Create(&chunk).Error; err != nil {
@@ -555,6 +558,8 @@ func (channel *Channel) GetStatusCodeMapping() string {
 
 func (channel *Channel) Insert() error {
 	var err error
+	// 改名期间页面上可能还是别名，写入当前名字。
+	channel.Group = common.CurrentGroupList(channel.Group)
 	err = DB.Create(channel).Error
 	if err != nil {
 		return err
@@ -602,6 +607,7 @@ func (channel *Channel) Update() error {
 			}
 		}
 	}
+	channel.Group = common.CurrentGroupList(channel.Group)
 	var err error
 	err = DB.Model(channel).Updates(channel).Error
 	if err != nil {
@@ -882,7 +888,7 @@ func EditChannelByTag(tag string, newTag *string, modelMapping *string, models *
 	}
 	if group != nil && *group != "" {
 		shouldReCreateAbilities = true
-		updateData.Group = *group
+		updateData.Group = common.CurrentGroupList(*group)
 	}
 	if priority != nil {
 		updateData.Priority = priority
