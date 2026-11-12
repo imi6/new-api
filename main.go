@@ -171,6 +171,8 @@ func main() {
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
 	service.StartSystemInstanceReporter()
+	// 其他节点推进分组改名时立即加载并上报，不等定时同步。
+	service.StartGroupRenameNotices()
 
 	// Wire task polling adaptor factory (breaks service -> relay import cycle).
 	// Must run before the system task runner starts: the async_task_poll handler
