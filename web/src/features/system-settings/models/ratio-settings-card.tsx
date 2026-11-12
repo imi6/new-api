@@ -62,7 +62,7 @@ import {
   validateJsonString,
 } from './utils'
 
-const RENAME_POLL_MS = 5000
+const RENAME_POLL_MS = 2000
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
@@ -362,6 +362,7 @@ export function RatioSettingsCard({
     for (const key of [
       'system-options',
       'groups',
+      'group-ratios',
       'user-groups',
       'keys',
       'api-key',

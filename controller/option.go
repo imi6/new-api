@@ -565,6 +565,7 @@ func RenameGroup(c *gin.Context) {
 	if _, _, err := service.EnqueueSystemTask(model.SystemTaskTypeGroupRename, nil); err != nil {
 		common.SysError(common.LogText("failed to queue group rename task: %v", err))
 	}
+	service.DriveGroupRename()
 	common.ApiSuccess(c, alias)
 }
 
