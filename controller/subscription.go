@@ -184,14 +184,15 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 		common.ApiErrorT(c, "Total quota cannot be negative")
 		return
 	}
-	req.Plan.UpgradeGroup = strings.TrimSpace(req.Plan.UpgradeGroup)
+	// 改名期间页面上可能还是别名，保存当前名字。
+	req.Plan.UpgradeGroup = common.CurrentGroupName(strings.TrimSpace(req.Plan.UpgradeGroup))
 	if req.Plan.UpgradeGroup != "" {
 		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.UpgradeGroup]; !ok {
 			common.ApiErrorT(c, "Upgrade group does not exist")
 			return
 		}
 	}
-	req.Plan.DowngradeGroup = strings.TrimSpace(req.Plan.DowngradeGroup)
+	req.Plan.DowngradeGroup = common.CurrentGroupName(strings.TrimSpace(req.Plan.DowngradeGroup))
 	if req.Plan.DowngradeGroup != "" {
 		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.DowngradeGroup]; !ok {
 			common.ApiErrorT(c, "Downgrade group does not exist")
@@ -258,14 +259,15 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 		common.ApiErrorT(c, "Total quota cannot be negative")
 		return
 	}
-	req.Plan.UpgradeGroup = strings.TrimSpace(req.Plan.UpgradeGroup)
+	// 改名期间页面上可能还是别名，保存当前名字。
+	req.Plan.UpgradeGroup = common.CurrentGroupName(strings.TrimSpace(req.Plan.UpgradeGroup))
 	if req.Plan.UpgradeGroup != "" {
 		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.UpgradeGroup]; !ok {
 			common.ApiErrorT(c, "Upgrade group does not exist")
 			return
 		}
 	}
-	req.Plan.DowngradeGroup = strings.TrimSpace(req.Plan.DowngradeGroup)
+	req.Plan.DowngradeGroup = common.CurrentGroupName(strings.TrimSpace(req.Plan.DowngradeGroup))
 	if req.Plan.DowngradeGroup != "" {
 		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.DowngradeGroup]; !ok {
 			common.ApiErrorT(c, "Downgrade group does not exist")

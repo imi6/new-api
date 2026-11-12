@@ -442,8 +442,9 @@ func downgradeUserGroupForSubscriptionTx(tx *gorm.DB, sub *UserSubscription, now
 	if tx == nil || sub == nil {
 		return "", errors.New("invalid downgrade args")
 	}
-	downgradeGroup := strings.TrimSpace(sub.DowngradeGroup)
-	upgradeGroup := strings.TrimSpace(sub.UpgradeGroup)
+	// 改名期间订阅里可能还是别名，比较和写入都用当前名字。
+	downgradeGroup := common.CurrentGroupName(strings.TrimSpace(sub.DowngradeGroup))
+	upgradeGroup := common.CurrentGroupName(strings.TrimSpace(sub.UpgradeGroup))
 	// Nothing to do if neither an explicit downgrade target nor an upgrade snapshot exists.
 	if downgradeGroup == "" && upgradeGroup == "" {
 		return "", nil
@@ -452,6 +453,7 @@ func downgradeUserGroupForSubscriptionTx(tx *gorm.DB, sub *UserSubscription, now
 	if err != nil {
 		return "", err
 	}
+	currentGroup = common.CurrentGroupName(currentGroup)
 	// If another active upgraded subscription exists, keep the current group.
 	var activeSub UserSubscription
 	activeQuery := tx.Where("user_id = ? AND status = ? AND end_time > ? AND id <> ? AND upgrade_group <> ''",
@@ -470,7 +472,7 @@ func downgradeUserGroupForSubscriptionTx(tx *gorm.DB, sub *UserSubscription, now
 		if currentGroup != upgradeGroup {
 			return "", nil
 		}
-		target = strings.TrimSpace(sub.PrevUserGroup)
+		target = common.CurrentGroupName(strings.TrimSpace(sub.PrevUserGroup))
 	}
 	if target == "" || target == currentGroup {
 		return "", nil
@@ -515,13 +517,15 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 	if nextReset > 0 {
 		lastReset = now.Unix()
 	}
-	upgradeGroup := strings.TrimSpace(plan.UpgradeGroup)
+	// 改名期间套餐里可能还是别名，写入用户和订阅时都换成当前名字。
+	upgradeGroup := common.CurrentGroupName(strings.TrimSpace(plan.UpgradeGroup))
 	prevGroup := ""
 	if upgradeGroup != "" {
 		currentGroup, err := getUserGroupByIdTx(tx, userId)
 		if err != nil {
 			return nil, err
 		}
+		currentGroup = common.CurrentGroupName(currentGroup)
 		if currentGroup != upgradeGroup {
 			prevGroup = currentGroup
 			if err := tx.Model(&User{}).Where("id = ?", userId).
@@ -547,7 +551,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		NextResetTime:       nextReset,
 		UpgradeGroup:        upgradeGroup,
 		PrevUserGroup:       prevGroup,
-		DowngradeGroup:      strings.TrimSpace(plan.DowngradeGroup),
+		DowngradeGroup:      common.CurrentGroupName(strings.TrimSpace(plan.DowngradeGroup)),
 		AllowWalletOverflow: allowWalletOverflow,
 		CreatedAt:           common.GetTimestamp(),
 		UpdatedAt:           common.GetTimestamp(),
@@ -1226,10 +1230,11 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 			// An explicit downgrade group takes precedence; otherwise revert to the
 			// group held before purchase (legacy behavior, only when the subscription
 			// actually elevated the user).
-			target := strings.TrimSpace(lastExpired.DowngradeGroup)
+			currentGroup = common.CurrentGroupName(currentGroup)
+			target := common.CurrentGroupName(strings.TrimSpace(lastExpired.DowngradeGroup))
 			if target == "" {
-				upgradeGroup := strings.TrimSpace(lastExpired.UpgradeGroup)
-				prevGroup := strings.TrimSpace(lastExpired.PrevUserGroup)
+				upgradeGroup := common.CurrentGroupName(strings.TrimSpace(lastExpired.UpgradeGroup))
+				prevGroup := common.CurrentGroupName(strings.TrimSpace(lastExpired.PrevUserGroup))
 				if upgradeGroup == "" || prevGroup == "" {
 					return nil
 				}

@@ -52,9 +52,9 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/group-health/intelligence": accessTokenAnyRule,
 	// Supplier applications. A submission is a browser form, so an access
 	// token cannot make one.
-	"GET /api/partner/config":             accessTokenAnyRule,
-	"POST /api/partner/sites":             accessTokenSessionRule,
-	"GET /api/partner/sites":              accessTokenScopeRule("profile:read"),
+	"GET /api/partner/config":              accessTokenAnyRule,
+	"POST /api/partner/sites":              accessTokenSessionRule,
+	"GET /api/partner/sites":               accessTokenScopeRule("profile:read"),
 	"GET /api/partner/admin/offers":        accessTokenScopeRule("user:read"),
 	"DELETE /api/partner/admin/offers/:id": accessTokenScopeRule("user:write"),
 	"PATCH /api/partner/admin/sites/:id":   accessTokenScopeRule("user:write"),
@@ -213,6 +213,9 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"PATCH /api/option/request_policy":                           accessTokenScopeRule("option:write"),
 	"PUT /api/option/":                                           accessTokenScopeRule("option:write"),
 	"PUT /api/option/passkey/domains":                            accessTokenScopeRule("option:write"),
+	"GET /api/option/group/rename":                               accessTokenScopeRule("option:read"),
+	"POST /api/option/group/rename":                              accessTokenSessionRule,
+	"DELETE /api/option/group/rename":                            accessTokenSessionRule,
 	"GET /api/option/model_pricing":                              accessTokenScopeRule("option:read"),
 	"GET /api/option/model_pricing/issues":                       accessTokenScopeRule("option:read"),
 	"PATCH /api/option/model_pricing":                            accessTokenScopeRule("option:write"),

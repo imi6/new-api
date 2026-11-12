@@ -26,4 +26,5 @@ export const SYSTEM_TASK_TYPE_LABEL: Record<string, string> = {
   async_task_poll: 'Async task polling',
   intelligence_check: 'Intelligence checks',
   upstream_rates: 'Upstream rates',
+  group_rename: 'Group rename',
 }
