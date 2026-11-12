@@ -27,12 +27,17 @@ import { EmptyState } from '@/components/empty-state'
 import { ErrorState } from '@/components/error-state'
 import { LoadingState } from '@/components/loading-state'
 import { Button } from '@/components/ui/button'
+import { SettingsSwitchField } from '@/features/system-settings/components/settings-form-layout'
 import { hasPermission } from '@/lib/admin-permissions'
 import { formatTimestampToDate } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { deleteUpstreamRateSource, upstreamRateQueryKey } from './api'
-import { useUpstreamRateConfig, useUpstreamRateRefresh } from './hooks'
+import {
+  useUpstreamRateConfig,
+  useUpstreamRateGuard,
+  useUpstreamRateRefresh,
+} from './hooks'
 import { UpstreamRateSourceForm } from './source-form'
 import { upstreamRateErrorKeys } from './status'
 import type { UpstreamRateSource } from './types'
@@ -49,6 +54,7 @@ export function UpstreamRateSourcesDialog(props: {
   const data = config.data
   const client = useQueryClient()
   const refresh = useUpstreamRateRefresh()
+  const guard = useUpstreamRateGuard(props.open)
   const [editing, setEditing] = useState<UpstreamRateSource | 'new' | null>(
     null
   )
@@ -74,6 +80,17 @@ export function UpstreamRateSourcesDialog(props: {
       {config.isError && <ErrorState onRetry={() => void config.refetch()} />}
       {data && (
         <div className='space-y-4'>
+          <SettingsSwitchField
+            className='rounded-lg border p-3'
+            controlId='upstream-rate-guard'
+            checked={guard.enabled}
+            onCheckedChange={(value) => guard.save(value)}
+            disabled={!canWrite || guard.loading || guard.saving}
+            label={t('Disable channels that cost more than they earn')}
+            description={t(
+              'After each upstream sync, a channel is disabled when its upstream rate is higher than the lowest ratio of its groups, and enabled again when the rate drops back. Channels disabled by hand or by request errors are left alone.'
+            )}
+          />
           {editing === null && canWrite && (
             <Button type='button' onClick={() => setEditing('new')}>
               {t('Add source')}

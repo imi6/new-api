@@ -1067,7 +1067,8 @@ func testChannelForHealthCheck(ctx context.Context, channel *model.Channel, test
 		}
 	}
 
-	if result.localErr == nil && !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status) {
+	if result.localErr == nil && !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status) &&
+		channel.GetOtherInfo()["status_reason"] != service.UpstreamRateGuardReason {
 		service.EnableChannel(channel.Id, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.Name)
 		summary.Enabled++
 	}
@@ -1265,6 +1266,10 @@ func selectChannelsForAutomaticTest(channels []*model.Channel, mode string) []*m
 			continue
 		}
 		if mode == operation_setting.ChannelTestModePassiveRecovery && channel.Status != common.ChannelStatusAutoDisabled {
+			continue
+		}
+		// 倍率守护停用的渠道由上游倍率决定何时恢复，测试成功不能让它重新亏本接单。
+		if channel.Status == common.ChannelStatusAutoDisabled && channel.GetOtherInfo()["status_reason"] == service.UpstreamRateGuardReason {
 			continue
 		}
 		selected = append(selected, channel)

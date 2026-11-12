@@ -527,6 +527,10 @@ const AUDIT_TEMPLATES: Record<string, string> = {
   'channel.delete_batch': 'Batch deleted {{count}} channels',
   'channel.delete_disabled': 'Deleted all disabled channels ({{count}})',
   'channel.key_view': 'Viewed channel key {{name}} (ID: {{id}})',
+  'channel.upstream_rate_guard_enable':
+    'Turned on disabling channels whose upstream rate is higher than the group ratio',
+  'channel.upstream_rate_guard_disable':
+    'Turned off disabling channels whose upstream rate is higher than the group ratio',
   'channel.tag_disable': 'Disabled channels with tag {{tag}}',
   'channel.tag_enable': 'Enabled channels with tag {{tag}}',
   'channel.tag_edit': 'Edited channels with tag {{tag}}',
