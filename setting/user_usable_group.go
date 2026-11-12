@@ -32,7 +32,8 @@ func GetUserUsableGroupsForUser(userGroup string) map[string]string {
 	if userGroup == "" {
 		return groups
 	}
-	if specialGroups, ok := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.Get(userGroup); ok {
+	specialRules := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup
+	if specialGroups, ok := common.LookupRenamedGroup(userGroup, specialRules.Get); ok {
 		for group, description := range specialGroups {
 			if name, ok := strings.CutPrefix(group, "-:"); ok {
 				delete(groups, name)
@@ -43,7 +44,12 @@ func GetUserUsableGroupsForUser(userGroup string) map[string]string {
 			}
 		}
 	}
-	if _, ok := groups[userGroup]; !ok {
+	// 改名期间用户缓存里可能还是别名，配置已列出同一分组时不再重复添加。
+	_, listed := common.LookupRenamedGroup(userGroup, func(name string) (string, bool) {
+		description, ok := groups[name]
+		return description, ok
+	})
+	if !listed {
 		groups[userGroup] = "User group"
 	}
 	return groups
@@ -72,7 +78,11 @@ func GetUsableGroupDescription(groupName string) string {
 	userUsableGroupsMutex.RLock()
 	defer userUsableGroupsMutex.RUnlock()
 
-	if desc, ok := userUsableGroups[groupName]; ok {
+	desc, ok := common.LookupRenamedGroup(groupName, func(name string) (string, bool) {
+		desc, ok := userUsableGroups[name]
+		return desc, ok
+	})
+	if ok {
 		return desc
 	}
 	return groupName

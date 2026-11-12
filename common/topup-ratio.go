@@ -32,7 +32,11 @@ func UpdateTopupGroupRatioByJSONString(jsonStr string) error {
 func GetTopupGroupRatio(name string) float64 {
 	topupGroupRatioMutex.RLock()
 	defer topupGroupRatioMutex.RUnlock()
-	ratio, ok := topupGroupRatio[name]
+	// 改名期间同一分组可能还以别名出现在配置里。
+	ratio, ok := LookupRenamedGroup(name, func(group string) (float64, bool) {
+		ratio, ok := topupGroupRatio[group]
+		return ratio, ok
+	})
 	if !ok {
 		SysError(LogText("topup group ratio not found: %s", name))
 		return 1
