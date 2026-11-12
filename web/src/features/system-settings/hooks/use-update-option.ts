@@ -24,6 +24,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { updatePasskeyDomains, updateSystemOption } from '../api'
+import { useSettingsGroupRenameRevision } from '../components/settings-page-context'
 import type { UpdateOptionRequest, UpdatePasskeyDomainsRequest } from '../types'
 
 // Configuration keys that require status refresh
@@ -52,12 +53,38 @@ const STATUS_RELATED_KEYS = new Set([
   'invoice_setting.enabled',
 ])
 
+// 分组引用保存须使用当前表单加载时的版本，不能给旧草稿附加后台刷新后的版本。
+const GROUP_REFERENCE_OPTION_KEYS = new Set([
+  'GroupRatio',
+  'group_ratio_setting.group_ratio',
+  'GroupGroupRatio',
+  'group_ratio_setting.group_group_ratio',
+  'group_ratio_setting.group_special_usable_group',
+  'UserUsableGroups',
+  'TopupGroupRatio',
+  'AutoGroups',
+  'AffiliateRebateGroups',
+  'GroupPlatformMap',
+  'GroupBadgeConfig',
+  'ModelRequestRateLimitGroup',
+  'intelligence_check_setting.targets',
+])
+
 export function useUpdateOption() {
   const queryClient = useQueryClient()
+  const groupRenameRevision = useSettingsGroupRenameRevision()
 
   return useMutation({
-    mutationFn: async (request: UpdateOptionRequest) =>
-      requireServerSuccess(await updateSystemOption(request)),
+    mutationFn: async (request: UpdateOptionRequest) => {
+      const guardedRequest = GROUP_REFERENCE_OPTION_KEYS.has(request.key)
+        ? {
+            ...request,
+            group_rename_revision:
+              request.group_rename_revision ?? groupRenameRevision,
+          }
+        : request
+      return requireServerSuccess(await updateSystemOption(guardedRequest))
+    },
     onSuccess: (data, variables) => {
       if (data.success) {
         // Always refresh system-options
