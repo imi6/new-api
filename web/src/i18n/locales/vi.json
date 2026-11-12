@@ -138,6 +138,8 @@
     "Enter the Bot Token from BotFather": "Nhập Bot Token do BotFather cung cấp",
     "Enter the deletion reason": "Nhập lý do xóa",
     "Enter the receiving address": "Nhập địa chỉ nhận",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Trang Epay {{site}}: khóa riêng của người bán bị thiếu hoặc không hợp lệ",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Trang Epay {{site}}: khóa công khai của nền tảng bị thiếu hoặc không hợp lệ",
     "Existing withdrawal amounts and fees stay locked. Disabling withdrawals also pauses new U conversions; existing orders remain manageable.": "Số tiền và phí của yêu cầu hiện có vẫn được cố định. Tắt rút tiền cũng tạm dừng đổi U mới; các yêu cầu hiện có vẫn có thể xử lý.",
     "Expand channels to view rates": "Mở rộng kênh để xem hệ số",
     "Expected payout": "Dự kiến nhận",

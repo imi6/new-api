@@ -138,6 +138,8 @@
     "Enter the Bot Token from BotFather": "Введите Bot Token из BotFather",
     "Enter the deletion reason": "Укажите причину удаления",
     "Enter the receiving address": "Введите адрес получения",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Сайт Epay {{site}}: закрытый ключ мерчанта отсутствует или неверен",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Сайт Epay {{site}}: открытый ключ платформы отсутствует или неверен",
     "Existing withdrawal amounts and fees stay locked. Disabling withdrawals also pauses new U conversions; existing orders remain manageable.": "Суммы и комиссии существующих заявок остаются фиксированными. Отключение вывода также приостанавливает новые обмены на U; существующие заявки можно обрабатывать.",
     "Expand channels to view rates": "Разверните каналы для просмотра множителей",
     "Expected payout": "Ожидаемая выплата",

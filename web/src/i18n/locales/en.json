@@ -138,6 +138,8 @@
     "Enter the Bot Token from BotFather": "Enter the Bot Token from BotFather",
     "Enter the deletion reason": "Enter the deletion reason",
     "Enter the receiving address": "Enter the receiving address",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "Epay site {{site}}: the merchant private key is missing or invalid",
+    "Epay site {{site}}: the platform public key is missing or invalid": "Epay site {{site}}: the platform public key is missing or invalid",
     "Existing withdrawal amounts and fees stay locked. Disabling withdrawals also pauses new U conversions; existing orders remain manageable.": "Existing withdrawal amounts and fees stay locked. Disabling withdrawals also pauses new U conversions; existing orders remain manageable.",
     "Expand channels to view rates": "Expand channels to view rates",
     "Expected payout": "Expected payout",

@@ -138,6 +138,8 @@
     "Enter the Bot Token from BotFather": "填写 BotFather 提供的 Bot Token",
     "Enter the deletion reason": "请填写删除原因",
     "Enter the receiving address": "请输入收款地址",
+    "Epay site {{site}}: the merchant private key is missing or invalid": "易支付站点 {{site}}：商户私钥缺失或格式不正确",
+    "Epay site {{site}}: the platform public key is missing or invalid": "易支付站点 {{site}}：平台公钥缺失或格式不正确",
     "Existing withdrawal amounts and fees stay locked. Disabling withdrawals also pauses new U conversions; existing orders remain manageable.": "已有提现申请的金额和手续费保持锁定。关闭提现也会暂停新增 U 兑换，已有订单仍可处理。",
     "Expand channels to view rates": "展开渠道查看倍率",
     "Expected payout": "预计到账",
