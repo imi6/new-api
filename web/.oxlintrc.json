@@ -135,7 +135,8 @@
           "getSiteSectionMeta",
           "getUsageLogsSectionNavItems",
           "isUsageLogsSectionId",
-          "useSuppressSettingsSectionHeader"
+          "useSuppressSettingsSectionHeader",
+          "useSettingsGroupRenameRevision"
         ]
       }
     ],

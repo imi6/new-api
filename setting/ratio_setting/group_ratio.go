@@ -63,8 +63,13 @@ func GetGroupRatioCopy() map[string]float64 {
 	return groupRatioMap.ReadAll()
 }
 
+// lookupGroupRatio 改名期间同一分组可能还以别名出现在配置里，用别名兜底。
+func lookupGroupRatio(name string) (float64, bool) {
+	return common.LookupRenamedGroup(name, groupRatioMap.Get)
+}
+
 func ContainsGroupRatio(name string) bool {
-	_, ok := groupRatioMap.Get(name)
+	_, ok := lookupGroupRatio(name)
 	return ok
 }
 
@@ -77,7 +82,7 @@ func UpdateGroupRatioByJSONString(jsonStr string) error {
 }
 
 func GetGroupRatio(name string) float64 {
-	ratio, ok := groupRatioMap.Get(name)
+	ratio, ok := lookupGroupRatio(name)
 	if !ok {
 		common.SysLog(common.LogText("group ratio not found: %s", name))
 		return 1
@@ -85,12 +90,20 @@ func GetGroupRatio(name string) float64 {
 	return ratio
 }
 
+// lookupUserGroupRatios 返回用户组的特殊倍率表，改名期间同样接受别名。
+func lookupUserGroupRatios(userGroup string) (map[string]float64, bool) {
+	return common.LookupRenamedGroup(userGroup, groupGroupRatioMap.Get)
+}
+
 func GetGroupGroupRatio(userGroup, usingGroup string) (float64, bool) {
-	gp, ok := groupGroupRatioMap.Get(userGroup)
+	gp, ok := lookupUserGroupRatios(userGroup)
 	if !ok {
 		return -1, false
 	}
-	ratio, ok := gp[usingGroup]
+	ratio, ok := common.LookupRenamedGroup(usingGroup, func(name string) (float64, bool) {
+		ratio, ok := gp[name]
+		return ratio, ok
+	})
 	if !ok {
 		return -1, false
 	}
@@ -100,7 +113,7 @@ func GetGroupGroupRatio(userGroup, usingGroup string) (float64, bool) {
 // HasGroupSpecialRatio reports whether users of the group have a special ratio
 // rule, that is, the group is a user group in GroupGroupRatio.
 func HasGroupSpecialRatio(userGroup string) bool {
-	rules, ok := groupGroupRatioMap.Get(userGroup)
+	rules, ok := lookupUserGroupRatios(userGroup)
 	return ok && len(rules) > 0
 }
 

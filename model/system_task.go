@@ -27,6 +27,7 @@ const (
 	SystemTaskTypeChannelBalance    = "channel_balance"
 	SystemTaskTypeCleanup           = "system_task_cleanup"
 	SystemTaskTypeIntelligenceCheck = "intelligence_check"
+	SystemTaskTypeGroupRename       = "group_rename"
 
 	systemTaskCleanupBatchSize = 500
 )
