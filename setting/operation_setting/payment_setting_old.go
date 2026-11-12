@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/QuantumNous/new-api/common"
 )
 
@@ -36,6 +37,19 @@ type EpayGateway struct {
 	EpayID  string  `json:"epay_id"`
 	EpayKey string  `json:"epay_key"`
 	Price   float64 `json:"price"`
+	// SignType is MD5 (the default, using EpayKey) or RSA: the merchant private key
+	// signs orders and the platform public key verifies callbacks.
+	SignType           string `json:"sign_type"`
+	MerchantPrivateKey string `json:"merchant_private_key"`
+	PlatformPublicKey  string `json:"platform_public_key"`
+}
+
+// label names the site in messages shown to administrators.
+func (site EpayGateway) label() string {
+	if site.Name != "" {
+		return site.Name
+	}
+	return site.ID
 }
 
 // EpayGateways holds every added Epay site. An empty list keeps the original site only.
@@ -185,16 +199,36 @@ func EpayCredentials(gateway string) (address string, id string, key string) {
 	return strings.TrimSpace(PayAddress), strings.TrimSpace(EpayId), strings.TrimSpace(EpayKey)
 }
 
+// EpaySigning returns how one Epay site signs: MD5 or RSA, with the RSA keys.
+// The original site uses the payment settings; an added site uses its own fields.
+func EpaySigning(gateway string) (signType string, privateKey string, publicKey string) {
+	if gateway != "" && gateway != EpayGatewayPrimary {
+		for _, site := range EpayGateways {
+			if site.ID != gateway {
+				continue
+			}
+			if strings.EqualFold(site.SignType, EpaySignTypeRSA) {
+				return EpaySignTypeRSA, strings.TrimSpace(site.MerchantPrivateKey), strings.TrimSpace(site.PlatformPublicKey)
+			}
+			return EpaySignTypeMD5, "", ""
+		}
+		return EpaySignTypeMD5, "", ""
+	}
+	if paymentSetting.EpaySignType == EpaySignTypeRSA {
+		return EpaySignTypeRSA, strings.TrimSpace(paymentSetting.EpayMerchantPrivateKey), strings.TrimSpace(paymentSetting.EpayPlatformPublicKey)
+	}
+	return EpaySignTypeMD5, "", ""
+}
+
 // EpayConfigured reports whether one Epay site has its address, merchant ID and
-// signing keys. The original site in RSA mode needs both RSA keys instead of the MD5 key.
+// signing keys: the MD5 key, or both RSA keys in RSA mode.
 func EpayConfigured(gateway string) bool {
 	address, id, key := EpayCredentials(gateway)
 	if address == "" || id == "" {
 		return false
 	}
-	if (gateway == "" || gateway == EpayGatewayPrimary) && paymentSetting.EpaySignType == EpaySignTypeRSA {
-		return strings.TrimSpace(paymentSetting.EpayMerchantPrivateKey) != "" &&
-			strings.TrimSpace(paymentSetting.EpayPlatformPublicKey) != ""
+	if signType, privateKey, publicKey := EpaySigning(gateway); signType == EpaySignTypeRSA {
+		return privateKey != "" && publicKey != ""
 	}
 	return key != ""
 }
@@ -244,18 +278,62 @@ func EpayGateways2JsonString() string {
 	return string(jsonBytes)
 }
 
+// EpayGatewaysForDisplay returns the added sites without their secrets for the
+// settings page. Saving a site with a blank secret keeps the stored one.
+func EpayGatewaysForDisplay() string {
+	sites := make([]EpayGateway, len(EpayGateways))
+	copy(sites, EpayGateways)
+	for i := range sites {
+		sites[i].EpayKey = ""
+		sites[i].MerchantPrivateKey = ""
+	}
+	jsonBytes, err := common.Marshal(sites)
+	if err != nil {
+		return "[]"
+	}
+	return string(jsonBytes)
+}
+
+// keepEpayGatewaySecrets fills blank secrets of the submitted sites with the
+// stored ones, because the settings page never receives them.
+func keepEpayGatewaySecrets(next []EpayGateway) {
+	previous := make(map[string]EpayGateway, len(EpayGateways))
+	for _, site := range EpayGateways {
+		previous[site.ID] = site
+	}
+	for i := range next {
+		stored, ok := previous[next[i].ID]
+		if !ok {
+			continue
+		}
+		if next[i].EpayKey == "" {
+			next[i].EpayKey = stored.EpayKey
+		}
+		if next[i].MerchantPrivateKey == "" {
+			next[i].MerchantPrivateKey = stored.MerchantPrivateKey
+		}
+	}
+}
+
 func PrepareEpayGatewaysJSON(value string) (string, error) {
 	next, err := parseEpayGateways(value)
 	if err != nil {
 		return "", err
 	}
-	previousKeys := make(map[string]string, len(EpayGateways))
-	for _, site := range EpayGateways {
-		previousKeys[site.ID] = site.EpayKey
-	}
-	for i := range next {
-		if next[i].EpayKey == "" {
-			next[i].EpayKey = previousKeys[next[i].ID]
+	keepEpayGatewaySecrets(next)
+	// RSA sites need both keys to parse. Under MD5 a newly entered key is still checked,
+	// so a later switch to RSA does not fail on a key saved earlier.
+	for _, site := range next {
+		rsaActive := site.SignType == EpaySignTypeRSA
+		if rsaActive || site.MerchantPrivateKey != "" {
+			if _, err := epay.ParseRSAPrivateKey(site.MerchantPrivateKey); err != nil {
+				return "", common.NewMessage("Epay site {{site}}: the merchant private key is missing or invalid", map[string]any{"site": site.label()})
+			}
+		}
+		if rsaActive || site.PlatformPublicKey != "" {
+			if _, err := epay.ParseRSAPublicKey(site.PlatformPublicKey); err != nil {
+				return "", common.NewMessage("Epay site {{site}}: the platform public key is missing or invalid", map[string]any{"site": site.label()})
+			}
 		}
 	}
 	encoded, err := common.Marshal(next)
@@ -275,15 +353,7 @@ func UpdateEpayGatewaysByJsonString(value string) error {
 	if err != nil {
 		return err
 	}
-	previousKeys := make(map[string]string, len(EpayGateways))
-	for _, site := range EpayGateways {
-		previousKeys[site.ID] = site.EpayKey
-	}
-	for i := range next {
-		if next[i].EpayKey == "" {
-			next[i].EpayKey = previousKeys[next[i].ID]
-		}
-	}
+	keepEpayGatewaySecrets(next)
 	EpayGateways = next
 	return nil
 }
@@ -309,6 +379,19 @@ func parseEpayGateways(value string) ([]EpayGateway, error) {
 		sites[i].Address = strings.TrimRight(strings.TrimSpace(sites[i].Address), "/")
 		sites[i].EpayID = strings.TrimSpace(sites[i].EpayID)
 		sites[i].EpayKey = strings.TrimSpace(sites[i].EpayKey)
+		sites[i].MerchantPrivateKey = strings.TrimSpace(sites[i].MerchantPrivateKey)
+		sites[i].PlatformPublicKey = strings.TrimSpace(sites[i].PlatformPublicKey)
+		switch strings.ToUpper(strings.TrimSpace(sites[i].SignType)) {
+		case "", EpaySignTypeMD5:
+			sites[i].SignType = EpaySignTypeMD5
+		case EpaySignTypeRSA:
+			sites[i].SignType = EpaySignTypeRSA
+		default:
+			return nil, common.NewMessage("Epay signature type must be MD5 or RSA")
+		}
+		if len(sites[i].MerchantPrivateKey) > 8192 || len(sites[i].PlatformPublicKey) > 8192 {
+			return nil, errors.New("Epay site RSA key is too long")
+		}
 		id := sites[i].ID
 		if id == EpayGatewayPrimary || !epayGatewayIDPattern.MatchString(id) {
 			return nil, errors.New("Epay site id must be letters, numbers, _ or -, and cannot be epay")
