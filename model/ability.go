@@ -40,10 +40,16 @@ func GetAllEnableAbilityWithChannels() ([]AbilityWithChannel, error) {
 	return abilities, err
 }
 
+// abilityGroupNames 返回查询能力表时要匹配的分组名。改名期间能力表可能还是
+// 别名，同一改名链上的名字都要匹配，任一名字的请求才不会落空。
+func abilityGroupNames(group string) []string {
+	return append([]string{group}, common.GroupRenameCounterparts(group)...)
+}
+
 func GetGroupEnabledModels(group string) []string {
 	var models []string
 	// Find distinct models
-	DB.Table("abilities").Where(commonGroupCol+" = ? and enabled = ?", group, true).Distinct("model").Pluck("model", &models)
+	DB.Table("abilities").Where(commonGroupCol+" IN ? and enabled = ?", abilityGroupNames(group), true).Distinct("model").Pluck("model", &models)
 	return models
 }
 
@@ -65,7 +71,7 @@ func getPriority(group string, model string, retry int) (int, error) {
 	var priorities []int
 	err := DB.Model(&Ability{}).
 		Select("DISTINCT(priority)").
-		Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true).
+		Where(commonGroupCol+" IN ? and model = ? and enabled = ?", abilityGroupNames(group), model, true).
 		Order("priority DESC").              // 按优先级降序排序
 		Pluck("priority", &priorities).Error // Pluck用于将查询的结果直接扫描到一个切片中
 
@@ -91,14 +97,14 @@ func getPriority(group string, model string, retry int) (int, error) {
 }
 
 func getChannelQuery(group string, model string, retry int) (*gorm.DB, error) {
-	maxPrioritySubQuery := DB.Model(&Ability{}).Select("MAX(priority)").Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true)
-	channelQuery := DB.Where(commonGroupCol+" = ? and model = ? and enabled = ? and priority = (?)", group, model, true, maxPrioritySubQuery)
+	maxPrioritySubQuery := DB.Model(&Ability{}).Select("MAX(priority)").Where(commonGroupCol+" IN ? and model = ? and enabled = ?", abilityGroupNames(group), model, true)
+	channelQuery := DB.Where(commonGroupCol+" IN ? and model = ? and enabled = ? and priority = (?)", abilityGroupNames(group), model, true, maxPrioritySubQuery)
 	if retry != 0 {
 		priority, err := getPriority(group, model, retry)
 		if err != nil {
 			return nil, err
 		} else {
-			channelQuery = DB.Where(commonGroupCol+" = ? and model = ? and enabled = ? and priority = ?", group, model, true, priority)
+			channelQuery = DB.Where(commonGroupCol+" IN ? and model = ? and enabled = ? and priority = ?", abilityGroupNames(group), model, true, priority)
 		}
 	}
 
@@ -112,7 +118,7 @@ func GetChannel(
 	filters []dto.ChannelFilter,
 ) (*Channel, error) {
 	var abilities []Ability
-	err := DB.Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true).Order("priority DESC, weight DESC").Find(&abilities).Error
+	err := DB.Where(commonGroupCol+" IN ? and model = ? and enabled = ?", abilityGroupNames(group), model, true).Order("priority DESC, weight DESC").Find(&abilities).Error
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +126,7 @@ func GetChannel(
 	// Like the memory cache, retry with the routing name (for example without
 	// @ modifiers) when no channel serves the exact name.
 	if normalized := ratio_setting.RoutingMatchModelName(model); len(abilities) == 0 && normalized != "" && normalized != model {
-		err = DB.Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, normalized, true).Order("priority DESC, weight DESC").Find(&abilities).Error
+		err = DB.Where(commonGroupCol+" IN ? and model = ? and enabled = ?", abilityGroupNames(group), normalized, true).Order("priority DESC, weight DESC").Find(&abilities).Error
 		if err != nil {
 			return nil, err
 		}

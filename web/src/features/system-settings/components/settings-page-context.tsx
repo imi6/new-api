@@ -33,12 +33,14 @@ type SettingsPageContextValue = {
   actionsContainer: HTMLDivElement | null
   titleStatusContainer: HTMLSpanElement | null
   suppressSectionHeader: boolean
+  groupRenameRevision: string
 }
 
 const SettingsPageContext = createContext<SettingsPageContextValue>({
   actionsContainer: null,
   titleStatusContainer: null,
   suppressSectionHeader: false,
+  groupRenameRevision: '0',
 })
 
 type SettingsPageProviderProps = {
@@ -46,6 +48,7 @@ type SettingsPageProviderProps = {
   titleStatusContainer?: HTMLSpanElement | null
   children: ReactNode
   suppressSectionHeader?: boolean
+  groupRenameRevision?: string
 }
 
 export function SettingsPageProvider(props: SettingsPageProviderProps) {
@@ -55,6 +58,7 @@ export function SettingsPageProvider(props: SettingsPageProviderProps) {
         actionsContainer: props.actionsContainer,
         titleStatusContainer: props.titleStatusContainer ?? null,
         suppressSectionHeader: props.suppressSectionHeader ?? true,
+        groupRenameRevision: props.groupRenameRevision ?? '0',
       }}
     >
       {props.children}
@@ -64,6 +68,10 @@ export function SettingsPageProvider(props: SettingsPageProviderProps) {
 
 export function useSuppressSettingsSectionHeader() {
   return useContext(SettingsPageContext).suppressSectionHeader
+}
+
+export function useSettingsGroupRenameRevision() {
+  return useContext(SettingsPageContext).groupRenameRevision
 }
 
 type SettingsPageTitleStatusPortalProps = {

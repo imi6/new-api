@@ -122,7 +122,8 @@ func setTokenAutoGroups(c *gin.Context, token *model.Token, groups []string) boo
 		}
 	}
 
-	if err := token.SetAutoGroups(groups); err != nil {
+	// 改名期间页面上可能还是别名，保存当前名字。
+	if err := token.SetAutoGroups(common.CurrentGroupNames(groups)); err != nil {
 		common.ApiError(c, err)
 		return false
 	}
@@ -359,7 +360,7 @@ func AddToken(c *gin.Context) {
 		ModelLimitsEnabled: token.ModelLimitsEnabled,
 		ModelLimits:        token.ModelLimits,
 		AllowIps:           token.AllowIps,
-		Group:              token.Group,
+		Group:              common.CurrentGroupName(token.Group),
 		CrossGroupRetry:    token.CrossGroupRetry,
 		AutoGroups:         token.AutoGroups,
 	}
@@ -459,7 +460,7 @@ func UpdateToken(c *gin.Context) {
 		if request.AllowUserQuotaQuery != nil {
 			cleanToken.AllowUserQuotaQuery = *request.AllowUserQuotaQuery
 		}
-		cleanToken.Group = token.Group
+		cleanToken.Group = common.CurrentGroupName(token.Group)
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
 		if token.Group != "auto" {
 			cleanToken.CrossGroupRetry = false
