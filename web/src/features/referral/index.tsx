@@ -86,6 +86,8 @@ function StatCard(props: StatCardProps) {
 // Main page
 // ─────────────────────────────────────────────────────────────────────────────
 
+const INVITEE_PAGE_SIZE = 10
+
 export function ReferralPage() {
   const { t } = useTranslation()
 
@@ -96,6 +98,7 @@ export function ReferralPage() {
   const [affiliateCode, setAffiliateCode] = useState('')
   const [affiliateLink, setAffiliateLink] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [inviteePage, setInviteePage] = useState(1)
   const cash = useAffiliateCash()
   const queryClient = useQueryClient()
 
@@ -143,6 +146,19 @@ export function ReferralPage() {
   const accrued = summary?.accrued ?? 0
 
   const affCount = user?.aff_count ?? 0
+
+  // The summary returns every invitee at once, so the list pages locally.
+  const invitees = summary?.invitees ?? []
+  const inviteePageCount = Math.max(
+    1,
+    Math.ceil(invitees.length / INVITEE_PAGE_SIZE)
+  )
+  // A refresh can shrink the list; stay on the last page that still exists.
+  const currentInviteePage = Math.min(inviteePage, inviteePageCount)
+  const pagedInvitees = invitees.slice(
+    (currentInviteePage - 1) * INVITEE_PAGE_SIZE,
+    currentInviteePage * INVITEE_PAGE_SIZE
+  )
 
   return (
     <SectionPageLayout>
@@ -325,8 +341,7 @@ export function ReferralPage() {
                     </span>
                   </h3>
                   {summaryLoading && <Skeleton className='h-20 rounded-lg' />}
-                  {!summaryLoading &&
-                    (summary?.invitees ?? []).length === 0 && (
+                  {!summaryLoading && invitees.length === 0 && (
                       <div className='flex flex-col items-center gap-2 py-8'>
                         <div className='bg-muted flex size-12 items-center justify-center rounded-full'>
                           <User
@@ -340,7 +355,7 @@ export function ReferralPage() {
                       </div>
                     )}
                   {!summaryLoading &&
-                    summary?.invitees.map((invitee) => (
+                    pagedInvitees.map((invitee) => (
                       <div
                         key={invitee.user_id}
                         className='flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm'
@@ -355,6 +370,36 @@ export function ReferralPage() {
                         </span>
                       </div>
                     ))}
+                  {/* Same pager layout as the rebate bill below. */}
+                  {!summaryLoading && inviteePageCount > 1 && (
+                    <div className='flex items-center justify-between gap-3'>
+                      <p className='text-muted-foreground text-xs tabular-nums'>
+                        {currentInviteePage} / {inviteePageCount}
+                      </p>
+                      <div className='flex gap-2'>
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          disabled={currentInviteePage <= 1}
+                          onClick={() =>
+                            setInviteePage(currentInviteePage - 1)
+                          }
+                        >
+                          {t('Previous page')}
+                        </Button>
+                        <Button
+                          size='sm'
+                          variant='outline'
+                          disabled={currentInviteePage >= inviteePageCount}
+                          onClick={() =>
+                            setInviteePage(currentInviteePage + 1)
+                          }
+                        >
+                          {t('Next page')}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
