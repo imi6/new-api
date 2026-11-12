@@ -24,6 +24,7 @@ import { GroupBadge } from '@/components/group-badge'
 import { StatusBadgeTypeContext } from '@/components/status-badge'
 
 import { CHANNEL_STATUS } from '../constants'
+import { useGroupRatios } from '../hooks/use-group-ratios'
 import { isTagAggregateRow, parseGroupsList } from '../lib'
 import type { Channel } from '../types'
 import { ChannelRowActionsLayoutContext } from './channel-row-actions-context'
@@ -50,6 +51,7 @@ function ChannelCardComponent({
 }) {
   const { t } = useTranslation()
   const { sensitiveVisible } = useChannels()
+  const groupRatios = useGroupRatios()
   const isTagRow = isTagAggregateRow(row.original)
   const cells = row.getAllCells()
 
@@ -176,6 +178,7 @@ function ChannelCardComponent({
                   key={g}
                   group={g}
                   label={sensitiveVisible ? undefined : SENSITIVE_MASK}
+                  ratio={sensitiveVisible ? groupRatios[g] : undefined}
                   size='sm'
                 />
               ))}
