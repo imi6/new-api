@@ -661,4 +661,26 @@ func TestPrepareEpayGatewaysKeepsExistingKeyAndRejectsBadID(t *testing.T) {
 	assert.Contains(t, prepared, `"epay_key":"kept-secret"`)
 	assert.Contains(t, prepared, `"epay_key":"trx-secret"`)
 	require.Error(t, operation_setting.ValidateEpayGatewaysJSON(`[{"id":"epay","name":"bad","address":"","epay_id":"","epay_key":"","price":1}]`))
+
+	// An added site can sign with RSA: both keys must parse, the stored private key
+	// survives a blank save, and the settings page never receives it.
+	privateKey, publicKey := newEpayRSAKeyPairForTest(t)
+	_, err = operation_setting.PrepareEpayGatewaysJSON(`[{"id":"sitersa","address":"https://rsa.example.com","epay_id":"300","sign_type":"RSA","merchant_private_key":"bad","platform_public_key":"` + publicKey + `"}]`)
+	require.Error(t, err)
+	operation_setting.EpayGateways = []operation_setting.EpayGateway{{
+		ID: "sitersa", Address: "https://rsa.example.com", EpayID: "300",
+		SignType: operation_setting.EpaySignTypeRSA, MerchantPrivateKey: privateKey, PlatformPublicKey: publicKey,
+	}}
+	prepared, err = operation_setting.PrepareEpayGatewaysJSON(`[{"id":"sitersa","address":"https://rsa.example.com","epay_id":"300","sign_type":"rsa","merchant_private_key":"","platform_public_key":"` + publicKey + `"}]`)
+	require.NoError(t, err)
+	assert.Contains(t, prepared, privateKey)
+	assert.Contains(t, prepared, `"sign_type":"RSA"`)
+	assert.True(t, operation_setting.EpayConfigured("sitersa"))
+	signType, signingKey, verifyKey := operation_setting.EpaySigning("sitersa")
+	assert.Equal(t, operation_setting.EpaySignTypeRSA, signType)
+	assert.Equal(t, privateKey, signingKey)
+	assert.Equal(t, publicKey, verifyKey)
+	require.NotNil(t, GetEpayClientFor("sitersa"))
+	assert.NotContains(t, operation_setting.EpayGatewaysForDisplay(), privateKey)
+	assert.Contains(t, operation_setting.EpayGatewaysForDisplay(), publicKey)
 }
