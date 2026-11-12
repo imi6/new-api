@@ -31,6 +31,10 @@ func (t IntelligenceCheckTarget) RunsPelican() bool { return t.Pelican == nil ||
 type IntelligenceCheckSetting struct {
 	Enabled bool                      `json:"enabled"`
 	Targets []IntelligenceCheckTarget `json:"targets"`
+	// UserTestEnabled lets users ask the questions themselves from the API
+	// keys page, with their own key and at its normal price. It only shows the
+	// entry and serves the questions and grading; it is separate from Enabled.
+	UserTestEnabled bool `json:"user_test_enabled"`
 
 	CandyEnabled       bool   `json:"candy_enabled"`
 	CandyIntervalHours int    `json:"candy_interval_hours"`
@@ -160,7 +164,7 @@ func ValidateIntelligenceCheckSettingOption(key, value string) error {
 		return nil
 	}
 	switch field {
-	case "enabled", "candy_enabled", "pelican_enabled":
+	case "enabled", "candy_enabled", "pelican_enabled", "user_test_enabled":
 		if _, err := strconv.ParseBool(strings.TrimSpace(value)); err != nil {
 			return common.NewMessage("Invalid parameters")
 		}
