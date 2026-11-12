@@ -98,6 +98,8 @@ function PassSummary(props: {
 interface DrawingDetailProps {
   check: IntelligenceCheck
   onBack: () => void
+  /** Text of the back button; defaults to going back to the drawing grid. */
+  backLabel?: string
 }
 
 /**
@@ -105,7 +107,7 @@ interface DrawingDetailProps {
  * grid on the left, when and by which model in the middle, and the preview
  * switches on the right.
  */
-function DrawingDetail(props: DrawingDetailProps) {
+export function DrawingDetail(props: DrawingDetailProps) {
   const { t } = useTranslation()
   const [view, setView] = useState<'preview' | 'source'>('preview')
   const [playing, setPlaying] = useState(true)
@@ -122,7 +124,7 @@ function DrawingDetail(props: DrawingDetailProps) {
           onClick={props.onBack}
         >
           <ArrowLeft aria-hidden='true' />
-          {t('Back to all drawings')}
+          {props.backLabel ?? t('Back to all drawings')}
         </Button>
         <span className='text-muted-foreground truncate text-center text-sm'>
           {time}

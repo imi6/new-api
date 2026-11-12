@@ -215,7 +215,7 @@ export function useApiKeysColumns(
         cell: ({ row }) => (
           <ApiKeyActivityCell apiKey={row.original} now={now} />
         ),
-        size: 220,
+        size: 160,
         meta: { mobileHidden: true },
       },
       {

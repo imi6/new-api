@@ -24,6 +24,7 @@ import {
   PowerOff,
   ExternalLink,
   ArrowRightLeft,
+  Brain,
   Copy,
   Link,
   Loader2,
@@ -50,6 +51,7 @@ import {
 import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import { resolveChatUrl, type ChatPreset } from '@/features/chat/lib/chat-links'
 import { sendToFluent } from '@/features/chat/lib/send-to-fluent'
+import { useStatus } from '@/hooks/use-status'
 import { encodeChannelConnectionInfo } from '@/lib/channel-connection-info'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -58,6 +60,7 @@ import { updateApiKeyStatus } from '../api'
 import { API_KEY_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import { apiKeySchema } from '../types'
 import { useApiKeys } from './api-keys-provider'
+import { useIntelligenceTest } from './intelligence-test-provider'
 
 function getServerAddress(): string {
   try {
@@ -91,6 +94,9 @@ export function DataTableRowActions<TData>({
   } = useApiKeys()
   const isEnabled = apiKey.status === API_KEY_STATUS.ENABLED
   const { chatPresets, serverAddress } = useChatPresets()
+  const { status } = useStatus()
+  const intelligenceTest = useIntelligenceTest()
+  const showIntelligenceTest = status?.intelligence_user_test_enabled === true
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const isRealKeyLoading = Boolean(loadingKeys[apiKey.id])
 
@@ -215,6 +221,25 @@ export function DataTableRowActions<TData>({
         <TooltipContent>{t('Edit')}</TooltipContent>
       </Tooltip>
 
+      {showIntelligenceTest && (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant='ghost'
+                size='icon-sm'
+                onClick={() => intelligenceTest.openDialog(apiKey.id)}
+                aria-label={t('Intelligence test')}
+                className='text-violet-600 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-400'
+              />
+            }
+          >
+            <Brain />
+          </TooltipTrigger>
+          <TooltipContent>{t('Intelligence test')}</TooltipContent>
+        </Tooltip>
+      )}
+
       <DataTableRowActionMenu
         ariaLabel={t('Open menu')}
         contentClassName='w-[200px]'
@@ -267,6 +292,14 @@ export function DataTableRowActions<TData>({
             <ArrowRightLeft size={16} />
           </DropdownMenuShortcut>
         </DropdownMenuItem>
+        {showIntelligenceTest && (
+          <DropdownMenuItem onClick={() => intelligenceTest.openDialog(apiKey.id)}>
+            {t('Intelligence test')}
+            <DropdownMenuShortcut>
+              <Brain size={16} />
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+        )}
         {hasChatPresets && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>{t('Chat')}</DropdownMenuSubTrigger>
