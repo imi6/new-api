@@ -12,9 +12,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetGroups 返回全部分组名。带 with_ratio=true 时返回分组名到分组倍率的映射，渠道列表据此在分组旁显示倍率。
 func GetGroups(c *gin.Context) {
-	groupNames := make([]string, 0)
-	for groupName := range ratio_setting.GetGroupRatioCopy() {
+	ratios := ratio_setting.GetGroupRatioCopy()
+	if c.Query("with_ratio") == "true" {
+		common.ApiSuccess(c, ratios)
+		return
+	}
+	groupNames := make([]string, 0, len(ratios))
+	for groupName := range ratios {
 		groupNames = append(groupNames, groupName)
 	}
 	c.JSON(http.StatusOK, gin.H{
