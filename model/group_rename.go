@@ -25,10 +25,10 @@ import (
 // GroupRenameRetentionSeconds 要长于异步任务的超时时间（默认 3 天），任务结算时别名仍在。
 const GroupRenameRetentionSeconds int64 = 7 * 24 * 60 * 60
 
-// groupRenameSettleDelaySeconds 是所有节点切到新名后到收尾的等待时间，
-// 要长于令牌、用户缓存的有效期和渠道缓存的同步间隔。
+// groupRenameSettleDelaySeconds 是所有节点切到新名后到收尾的等待时间，留给确认前已开始的请求写完。
+// 确认后所有写入都会换成新名；缓存里残留的旧名在别名保留期内仍能找到分组，不必等缓存过期。
 func groupRenameSettleDelaySeconds() int64 {
-	return max(2*int64(common.SyncFrequency), 120)
+	return 10
 }
 
 type GroupRenameStatus struct {
@@ -682,7 +682,8 @@ func upsertOptions(tx *gorm.DB, values map[string]string) error {
 	return nil
 }
 
-// publishOptions 在提交后更新本节点内存，其他节点由配置同步加载。
+// publishOptions 在提交后更新本节点内存。改动了改名别名时再通知其他节点立即加载，
+// 通知丢失时由配置同步兜底。
 func publishOptions(values map[string]string) error {
 	var first error
 	for _, key := range slices.Sorted(maps.Keys(values)) {
@@ -692,6 +693,9 @@ func publishOptions(values map[string]string) error {
 				first = err
 			}
 		}
+	}
+	if _, ok := values[common.GroupRenameAliasOption]; ok {
+		notifyGroupRenameRevision()
 	}
 	return first
 }
