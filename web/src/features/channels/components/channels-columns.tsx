@@ -1142,18 +1142,59 @@ export function useChannelsColumns(
           if (!sensitiveVisible) {
             return <span className='text-muted-foreground'>••••</span>
           }
-          const ratios = parseGroupsList(row.original.group ?? '').flatMap(
-            (g) => (groupRatios[g] === undefined ? [] : [groupRatios[g]])
-          )
-          if (ratios.length === 0) {
+          // One range per channel, as the upstream rate shows; the tooltip
+          // names each group's ratio, cheapest first.
+          const entries = parseGroupsList(row.original.group ?? '')
+            .flatMap((group) =>
+              groupRatios[group] === undefined
+                ? []
+                : [{ group, ratio: groupRatios[group] }]
+            )
+            .sort((a, b) => a.ratio - b.ratio)
+          if (entries.length === 0) {
             return <span className='text-muted-foreground'>—</span>
           }
-          return (
-            <BadgeListCell
-              items={ratios.map((ratio, index) => (
-                <GroupMultiplierBadge key={index} ratio={ratio} />
-              ))}
+          const format = new Intl.NumberFormat(locale, {
+            maximumSignificantDigits: 15,
+          }).format
+          const min = entries[0].ratio
+          const max = entries[entries.length - 1].ratio
+          const label =
+            min === max
+              ? `${format(min)}x`
+              : `${format(min)}x–${format(max)}x`
+          // One fixed color, unlike the upstream rate's amber, so the two
+          // columns read apart at a glance.
+          const badge = (
+            <GroupMultiplierBadge
+              label={label}
+              className='border-info/30 bg-info/10 text-info'
             />
+          )
+          if (entries.length === 1) return badge
+          return (
+            <TooltipProvider delay={100}>
+              <Tooltip>
+                <TooltipTrigger render={<span className='cursor-help' />}>
+                  {badge}
+                </TooltipTrigger>
+                <TooltipContent side='top' className='max-w-xs'>
+                  <div className='space-y-1 text-xs'>
+                    {entries.map((entry) => (
+                      <div
+                        key={entry.group}
+                        className='flex items-center justify-between gap-4'
+                      >
+                        <span className='wrap-anywhere'>{entry.group}</span>
+                        <span className='shrink-0 tabular-nums'>
+                          {format(entry.ratio)}x
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )
         },
         size: 170,
