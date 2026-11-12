@@ -24,7 +24,6 @@ import { GroupBadge } from '@/components/group-badge'
 import { StatusBadgeTypeContext } from '@/components/status-badge'
 
 import { CHANNEL_STATUS } from '../constants'
-import { useGroupRatios } from '../hooks/use-group-ratios'
 import { isTagAggregateRow, parseGroupsList } from '../lib'
 import type { Channel } from '../types'
 import { ChannelRowActionsLayoutContext } from './channel-row-actions-context'
@@ -51,7 +50,6 @@ function ChannelCardComponent({
 }) {
   const { t } = useTranslation()
   const { sensitiveVisible } = useChannels()
-  const groupRatios = useGroupRatios()
   const isTagRow = isTagAggregateRow(row.original)
   const cells = row.getAllCells()
 
@@ -72,6 +70,11 @@ function ChannelCardComponent({
   const statusCell = renderCell('status')
   const actionsCell = renderCell('actions')
   const priorityCell = renderCell('priority')
+  const groupRatioCell = cells
+    .find((cell) => cell.column.id === 'group_ratio')
+    ?.column.getIsVisible()
+    ? renderCell('group_ratio')
+    : null
   const upstreamRateCell = cells
     .find((cell) => cell.column.id === 'upstream_rate')
     ?.column.getIsVisible()
@@ -163,6 +166,12 @@ function ChannelCardComponent({
           </div>
         </StatusBadgeTypeContext.Provider>
 
+        {groupRatioCell && (
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className={labelClass}>{t('Group Ratio')}</span>
+            {groupRatioCell}
+          </div>
+        )}
         {upstreamRateCell && (
           <div className='flex flex-wrap items-center gap-2'>
             <span className={labelClass}>{t('Upstream rates')}</span>
@@ -178,7 +187,6 @@ function ChannelCardComponent({
                   key={g}
                   group={g}
                   label={sensitiveVisible ? undefined : SENSITIVE_MASK}
-                  ratio={sensitiveVisible ? groupRatios[g] : undefined}
                   size='sm'
                 />
               ))}
