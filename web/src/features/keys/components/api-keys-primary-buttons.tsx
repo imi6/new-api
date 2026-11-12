@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronDown, Globe, Plus } from 'lucide-react'
+import { Brain, ChevronDown, Globe, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
@@ -42,10 +42,12 @@ import { useAuthStore } from '@/stores/auth-store'
 import { quotaUnitsToDollars } from '@/lib/format'
 
 import { useApiKeys } from './api-keys-provider'
+import { useIntelligenceTest } from './intelligence-test-provider'
 
 export function ApiKeysPrimaryButtons() {
   const { t } = useTranslation()
   const { setOpen } = useApiKeys()
+  const intelligenceTest = useIntelligenceTest()
   const { status, loading } = useStatus()
   const { items } = useApiInfo()
   const user = useAuthStore((s) => s.auth.user)
@@ -133,6 +135,16 @@ export function ApiKeysPrimaryButtons() {
           )}
         </PopoverContent>
       </Popover>
+      {status?.intelligence_user_test_enabled === true && (
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={() => intelligenceTest.openDialog(null)}
+        >
+          <Brain aria-hidden='true' />
+          {t('Intelligence test')}
+        </Button>
+      )}
       <Button size='sm' onClick={() => setOpen('create')}>
         <Plus className='h-4 w-4' />
         {t('Create API Key')}
