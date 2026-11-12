@@ -893,6 +893,10 @@ func (user *User) UpdateWithTx(tx *gorm.DB, updatePassword bool) error {
 		}
 	}
 	newUser := *user
+	// 改名期间页面上可能还是别名，写入当前名字。
+	if newUser.Group != "" {
+		newUser.Group = common.CurrentGroupName(newUser.Group)
+	}
 	current := User{}
 	// 与 Bot 签到及身份失效保持用户行在前、连接行在后的锁顺序。
 	if err = lockForUpdate(tx).First(&current, user.Id).Error; err != nil {
@@ -966,6 +970,7 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	}
 
 	newUser := *user
+	newUser.Group = common.CurrentGroupName(newUser.Group)
 	updates := map[string]any{
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,

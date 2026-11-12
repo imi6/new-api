@@ -112,7 +112,11 @@ func GroupBadgeConfigJSONString() string {
 // GetGroupBadges 返回副本，调用方的修改不会影响后续请求。
 func GetGroupBadges(group string) []GroupLabel {
 	if snapshot := groupBadgeState.Load(); snapshot != nil {
-		return slices.Clone(snapshot.groups[group])
+		labels, _ := LookupRenamedGroup(group, func(name string) ([]GroupLabel, bool) {
+			labels, ok := snapshot.groups[name]
+			return labels, ok
+		})
+		return slices.Clone(labels)
 	}
 	return nil
 }

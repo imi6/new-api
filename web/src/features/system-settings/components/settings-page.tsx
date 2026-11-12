@@ -54,6 +54,7 @@ type SettingsPageProps<
 type SettingsPageFrameProps = {
   title: ReactNode
   children: ReactNode
+  groupRenameRevision?: string
 }
 
 function SettingsPageFrame(props: SettingsPageFrameProps) {
@@ -66,6 +67,7 @@ function SettingsPageFrame(props: SettingsPageFrameProps) {
     <SettingsPageProvider
       actionsContainer={actionsContainer}
       titleStatusContainer={titleStatusContainer}
+      groupRenameRevision={props.groupRenameRevision}
     >
       <SectionPageLayout>
         <SectionPageLayout.Title>
@@ -154,9 +156,17 @@ export function SettingsPage<
     settings,
     ...((extraArgs ?? []) as TExtraArgs)
   )
+  // 表单与同次加载的版本一起重建，避免新版本被旧草稿沿用。
+  const groupRenameRevision =
+    data?.data.find((option) => option.key === 'GroupRenameRevision')?.value ??
+    '0'
 
   return (
-    <SettingsPageFrame title={t(sectionMeta.titleKey)}>
+    <SettingsPageFrame
+      key={groupRenameRevision}
+      title={t(sectionMeta.titleKey)}
+      groupRenameRevision={groupRenameRevision}
+    >
       {sectionContent}
     </SettingsPageFrame>
   )
