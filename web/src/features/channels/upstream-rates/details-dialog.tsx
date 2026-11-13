@@ -39,6 +39,7 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import type { Channel } from '../types'
 import { useUpstreamRateRefresh } from './hooks'
+import { createUpstreamRateFormatter } from './lib/rate-format'
 import { upstreamRateErrorKeys, upstreamRateStatusKeys } from './status'
 import type { UpstreamRate, UpstreamRateKey } from './types'
 
@@ -48,8 +49,7 @@ function UpstreamRateKeyItem(props: {
 }) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
-  const format = new Intl.NumberFormat(locale, { maximumSignificantDigits: 15 })
-    .format
+  const format = createUpstreamRateFormatter(locale)
   const item = props.item
   const historical = item.ratio !== undefined && item.status !== 'matched'
   const showStatus =
@@ -99,6 +99,18 @@ function UpstreamRateKeyItem(props: {
         <p className='text-sm font-medium break-words'>
           {item.group_name ?? '—'}
         </p>
+        {item.raw_ratio !== undefined &&
+          item.ratio !== undefined &&
+          item.conversion_factor !== undefined &&
+          item.conversion_factor !== 1 && (
+            <p className='text-muted-foreground text-xs break-words tabular-nums'>
+              {t('Rate conversion: {{raw}} × {{factor}} = {{effective}}', {
+                raw: format(item.raw_ratio),
+                factor: format(item.conversion_factor),
+                effective: format(item.ratio),
+              })}
+            </p>
+          )}
       </div>
       {(item.source_id || item.site_url) && (
         <div className='text-muted-foreground space-y-1 text-xs'>

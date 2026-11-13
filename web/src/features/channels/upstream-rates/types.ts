@@ -31,6 +31,28 @@ export type UpstreamRateSource = {
 export type UpstreamRateConfig = {
   sources: UpstreamRateSource[]
   encryption_ready: boolean
+  conversion_rules: UpstreamRateConversionRule[]
+  conversion_sites: UpstreamRateConversionSite[]
+}
+
+export type UpstreamRateConversionRule = {
+  source_id: string
+  site_url: string
+  upstream_channel_id?: number
+  group_id?: number
+  group_name?: string
+  factor: number
+}
+
+export type UpstreamRateConversionSite = {
+  source_id: string
+  source_name: string
+  site_url: string
+  channels: {
+    id: number
+    name: string
+    groups: { id: number; name: string }[]
+  }[]
 }
 
 export type UpstreamRateSourceInput = Pick<
@@ -55,6 +77,8 @@ export type UpstreamRateKey = {
   group_id?: number
   group_name?: string
   ratio?: number
+  raw_ratio?: number
+  conversion_factor?: number
   collected_at: number
   key_synced_at: number
   change?: { from: number; to: number; at: number }

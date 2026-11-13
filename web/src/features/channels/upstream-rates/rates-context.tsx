@@ -35,6 +35,7 @@ import { toIntlLocale } from '@/i18n/languages'
 import { isTagAggregateRow } from '../lib/channel-utils'
 import type { Channel } from '../types'
 import { getUpstreamRates, upstreamRateQueryKey } from './api'
+import { createUpstreamRateFormatter } from './lib/rate-format'
 import { summarizeUpstreamRate } from './summary'
 import type { UpstreamRate } from './types'
 
@@ -145,8 +146,7 @@ export function UpstreamRateCell(props: {
   const rate = context.rates.get(props.channel.id)
   const summary = rate ? summarizeUpstreamRate(rate) : undefined
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
-  const format = new Intl.NumberFormat(locale, { maximumSignificantDigits: 15 })
-    .format
+  const format = createUpstreamRateFormatter(locale)
   let label: string | undefined
   if (
     !context.error &&

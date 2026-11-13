@@ -23,6 +23,8 @@ type UpstreamRateKeyView struct {
 	GroupID             int                 `json:"group_id,omitempty"`
 	GroupName           string              `json:"group_name,omitempty"`
 	Ratio               *float64            `json:"ratio,omitempty"`
+	RawRatio            *float64            `json:"raw_ratio,omitempty"`
+	ConversionFactor    float64             `json:"conversion_factor,omitempty"`
 	CollectedAt         int64               `json:"collected_at"`
 	KeySyncedAt         int64               `json:"key_synced_at"`
 	Change              *UpstreamRateChange `json:"change,omitempty"`

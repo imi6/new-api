@@ -47,6 +47,29 @@ func SaveUpstreamRateSource(c *gin.Context) {
 	common.ApiSuccess(c, nil)
 }
 
+// SaveUpstreamRateConversionRules 保存集中换算规则，并用现有快照立即重新判断渠道状态。
+func SaveUpstreamRateConversionRules(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 256<<10)
+	var input struct {
+		Rules *[]service.UpstreamRateConversionRule `json:"rules"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || input.Rules == nil {
+		upstreamRateAPIError(c, service.ErrUpstreamRateConfig)
+		return
+	}
+	if err := service.SaveUpstreamRateConversionRules(c.Request.Context(), *input.Rules); err != nil {
+		upstreamRateAPIError(c, err)
+		return
+	}
+	recordManageAudit(c, "channel.upstream_rate_conversion_update", nil)
+	rechecked := true
+	if err := service.RecheckUpstreamRateGuard(c.Request.Context()); err != nil {
+		rechecked = false
+		common.SysError(common.LogText("upstream rate guard failed: %v", err))
+	}
+	common.ApiSuccess(c, gin.H{"guard_rechecked": rechecked})
+}
+
 func DeleteUpstreamRateSource(c *gin.Context) {
 	if err := service.DeleteUpstreamRateSource(c.Request.Context(), c.Param("source_id")); err != nil {
 		upstreamRateAPIError(c, err)

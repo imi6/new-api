@@ -22,6 +22,7 @@ import { requireServerSuccess } from '@/lib/server-error-message'
 import type {
   UpstreamRate,
   UpstreamRateConfig,
+  UpstreamRateConversionRule,
   UpstreamRateSourceInput,
   UpstreamRateTask,
 } from './types'
@@ -64,6 +65,16 @@ export async function saveUpstreamRateSource(
   requireServerSuccess(
     (await api.put<Envelope<null>>(`${base}/sources`, input)).data
   )
+}
+
+export async function saveUpstreamRateConversionRules(
+  rules: UpstreamRateConversionRule[]
+): Promise<{ guard_rechecked: boolean }> {
+  const response = await api.put<Envelope<{ guard_rechecked: boolean }>>(
+    `${base}/conversion_rules`,
+    { rules }
+  )
+  return requireServerSuccess(response.data).data
 }
 
 export async function deleteUpstreamRateSource(id: string): Promise<void> {
@@ -113,7 +124,10 @@ export async function getUpstreamRateGuard(
 
 export async function saveUpstreamRateGuard(enabled: boolean): Promise<void> {
   requireServerSuccess(
-    (await api.put<Envelope<{ enabled: boolean }>>(`${base}/guard`, { enabled }))
-      .data
+    (
+      await api.put<Envelope<{ enabled: boolean }>>(`${base}/guard`, {
+        enabled,
+      })
+    ).data
   )
 }
