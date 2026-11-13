@@ -531,6 +531,8 @@ const AUDIT_TEMPLATES: Record<string, string> = {
     'Turned on disabling channels whose upstream rate is higher than the group ratio',
   'channel.upstream_rate_guard_disable':
     'Turned off disabling channels whose upstream rate is higher than the group ratio',
+  'channel.upstream_rate_conversion_update':
+    'Updated upstream rate conversion rules',
   'channel.tag_disable': 'Disabled channels with tag {{tag}}',
   'channel.tag_enable': 'Enabled channels with tag {{tag}}',
   'channel.tag_edit': 'Edited channels with tag {{tag}}',

@@ -216,6 +216,11 @@ func GetUpstreamRates(ctx context.Context, ids []int) ([]UpstreamRateView, error
 	if err != nil {
 		return nil, err
 	}
+	return getUpstreamRatesWithConfig(ctx, ids, config)
+}
+
+// getUpstreamRatesWithConfig 使用同一份配置生成整批视图，供守护在写入时核对配置是否仍有效。
+func getUpstreamRatesWithConfig(ctx context.Context, ids []int, config upstreamRateConfig) ([]UpstreamRateView, error) {
 	channels, err := model.GetUpstreamRateChannels(ctx, ids)
 	if err != nil {
 		return nil, err
@@ -244,6 +249,7 @@ func GetUpstreamRates(ctx context.Context, ids []int) ([]UpstreamRateView, error
 		conflict := false
 		for i, rawKey := range keys {
 			item := index.match(rawKey, keys, now)
+			applyUpstreamRateConversion(&item, config.ConversionRules)
 			item.Index, item.Enabled = i+1, true
 			if channel.ChannelInfo.IsMultiKey {
 				if status, exists := channel.ChannelInfo.MultiKeyStatusList[i]; exists {

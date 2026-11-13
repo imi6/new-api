@@ -48,7 +48,8 @@ type upstreamRateSource struct {
 }
 
 type upstreamRateConfig struct {
-	Sources []upstreamRateSource `json:"sources"`
+	Sources         []upstreamRateSource         `json:"sources"`
+	ConversionRules []UpstreamRateConversionRule `json:"conversion_rules"`
 }
 
 type UpstreamRateSourceView struct {
@@ -64,15 +65,20 @@ type UpstreamRateSourceView struct {
 }
 
 type UpstreamRateConfigView struct {
-	Sources         []UpstreamRateSourceView `json:"sources"`
-	EncryptionReady bool                     `json:"encryption_ready"`
+	Sources         []UpstreamRateSourceView     `json:"sources"`
+	EncryptionReady bool                         `json:"encryption_ready"`
+	ConversionRules []UpstreamRateConversionRule `json:"conversion_rules"`
+	ConversionSites []UpstreamRateConversionSite `json:"conversion_sites"`
 }
 
 func loadUpstreamRateConfig(ctx context.Context) (upstreamRateConfig, error) {
-	config := upstreamRateConfig{Sources: []upstreamRateSource{}}
+	config := upstreamRateConfig{Sources: []upstreamRateSource{}, ConversionRules: []UpstreamRateConversionRule{}}
 	raw, err := model.ReadUpstreamRatesState(ctx, "config")
 	if err == nil && raw != "" {
 		err = common.UnmarshalJsonStr(raw, &config)
+	}
+	if config.ConversionRules == nil {
+		config.ConversionRules = []UpstreamRateConversionRule{}
 	}
 	return config, err
 }
@@ -99,15 +105,22 @@ func GetUpstreamRateConfig(ctx context.Context) (*UpstreamRateConfigView, error)
 	if err != nil {
 		return nil, err
 	}
-	view := &UpstreamRateConfigView{Sources: []UpstreamRateSourceView{}, EncryptionReady: upstreamRateEncryptionReady()}
+	view := &UpstreamRateConfigView{
+		Sources:         []UpstreamRateSourceView{},
+		EncryptionReady: upstreamRateEncryptionReady(),
+		ConversionRules: config.ConversionRules,
+	}
+	snapshots := make(map[string]upstreamRateSnapshot, len(config.Sources))
 	for _, source := range config.Sources {
 		snapshot, err := loadUpstreamRateSnapshot(ctx, source)
 		if err != nil {
 			return nil, err
 		}
+		snapshots[source.ID] = snapshot
 		item := UpstreamRateSourceView{ID: source.ID, Name: source.Name, BaseURL: source.BaseURL, Enabled: source.Enabled, TokenConfigured: source.TokenCiphertext != "" || source.TokenPlaintext != "", PollSeconds: source.PollSeconds, ReadAt: snapshot.ReadAt, Error: snapshot.Error, Complete: snapshot.Complete}
 		view.Sources = append(view.Sources, item)
 	}
+	view.ConversionSites = upstreamRateConversionSites(config.Sources, snapshots)
 	return view, nil
 }
 
@@ -213,6 +226,13 @@ func DeleteUpstreamRateSource(ctx context.Context, id string) error {
 				break
 			}
 		}
+		keptRules := make([]UpstreamRateConversionRule, 0, len(config.ConversionRules))
+		for _, rule := range config.ConversionRules {
+			if rule.SourceID != id {
+				keptRules = append(keptRules, rule)
+			}
+		}
+		config.ConversionRules = keptRules
 		encoded, err := common.Marshal(config)
 		return string(encoded), err
 	})
