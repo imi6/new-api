@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -20,6 +23,9 @@ const UpstreamRateGuardReason = "Upstream rate is higher than the group ratio"
 
 // upstreamRateGuardBatch 是每次读取上游倍率视图的渠道数，与前端分批一致。
 const upstreamRateGuardBatch = 200
+
+// 配置保存、同步后的检查和开关恢复按顺序执行，避免同节点旧判断覆盖新规则。
+var upstreamRateGuardMu sync.Mutex
 
 type upstreamRateGuardSetting struct {
 	Enabled bool `json:"enabled"`
@@ -43,6 +49,8 @@ func GetUpstreamRateGuardEnabled(ctx context.Context) (bool, error) {
 // SetUpstreamRateGuardEnabled 开关倍率守护。开启后立即检查一次；关闭时恢复所有由守护停用的渠道，
 // 避免它们在功能关闭后一直停着没人管。手动禁用和请求失败自动禁用的渠道不受影响。
 func SetUpstreamRateGuardEnabled(ctx context.Context, enabled bool) error {
+	upstreamRateGuardMu.Lock()
+	defer upstreamRateGuardMu.Unlock()
 	err := model.MutateUpstreamRatesState(ctx, "guard", func(string) (string, error) {
 		encoded, err := common.Marshal(upstreamRateGuardSetting{Enabled: enabled})
 		return string(encoded), err
@@ -52,15 +60,26 @@ func SetUpstreamRateGuardEnabled(ctx context.Context, enabled bool) error {
 	}
 	// 检查要读取全部渠道的上游倍率，放到后台执行，不让保存请求等待。
 	gopool.Go(func() {
-		run := releaseUpstreamRateGuard
-		if enabled {
-			run = applyUpstreamRateGuard
-		}
-		if err := run(context.Background()); err != nil {
+		// 执行时读取最新开关，不能恢复已被后来一次开启操作接管的渠道。
+		if err := RecheckUpstreamRateGuard(context.Background()); err != nil {
 			common.SysError(common.LogText("upstream rate guard failed: %v", err))
 		}
 	})
 	return nil
+}
+
+// RecheckUpstreamRateGuard 只读取本地快照，不访问真实上游。
+func RecheckUpstreamRateGuard(ctx context.Context) error {
+	upstreamRateGuardMu.Lock()
+	defer upstreamRateGuardMu.Unlock()
+	enabled, err := GetUpstreamRateGuardEnabled(ctx)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return releaseUpstreamRateGuard(ctx)
+	}
+	return applyUpstreamRateGuardLocked(ctx)
 }
 
 // upstreamRateGuardVerdict 判断一条渠道当前是否亏损。trusted 为 false 表示数据不足以下结论，
@@ -73,7 +92,7 @@ func upstreamRateGuardVerdict(channel *model.Channel, view UpstreamRateView, gro
 			continue
 		}
 		// 只用当前快照里确定匹配的值，历史回退、冲突、未同步都不作数。
-		if key.Status != "matched" || key.Ratio == nil {
+		if key.Status != "matched" || key.Ratio == nil || math.IsNaN(*key.Ratio) || math.IsInf(*key.Ratio, 0) || *key.Ratio < 0 {
 			return false, false, ""
 		}
 		matched++
@@ -112,11 +131,25 @@ func upstreamRateGuardDisabled(channel *model.Channel) bool {
 	return reason == UpstreamRateGuardReason
 }
 
-// applyUpstreamRateGuard 在上游倍率同步后检查全部已启用渠道和由守护停用的渠道。
+// applyUpstreamRateGuard 在快照同步后按当前开关重新检查，关闭时也重试此前未完成的恢复。
 func applyUpstreamRateGuard(ctx context.Context) error {
+	return RecheckUpstreamRateGuard(ctx)
+}
+
+func applyUpstreamRateGuardLocked(ctx context.Context) error {
 	enabled, err := GetUpstreamRateGuardEnabled(ctx)
 	if err != nil || !enabled {
 		return err
+	}
+	expectedConfig, err := model.ReadUpstreamRatesState(ctx, "config")
+	if err != nil {
+		return err
+	}
+	var config upstreamRateConfig
+	if expectedConfig != "" {
+		if err := common.UnmarshalJsonStr(expectedConfig, &config); err != nil {
+			return err
+		}
 	}
 	var channels []*model.Channel
 	if err := model.DB.WithContext(ctx).
@@ -146,7 +179,7 @@ func applyUpstreamRateGuard(ctx context.Context) error {
 		for i, channel := range batch {
 			ids[i] = channel.Id
 		}
-		views, err := GetUpstreamRates(ctx, ids)
+		views, err := getUpstreamRatesWithConfig(ctx, ids, config)
 		if err != nil {
 			return err
 		}
@@ -163,11 +196,20 @@ func applyUpstreamRateGuard(ctx context.Context) error {
 			if !trusted {
 				continue
 			}
+			var written bool
+			var writeErr error
 			switch {
 			case losing && channel.Status == common.ChannelStatusEnabled:
-				changed = disableChannelForUpstreamRate(channel, detail) || changed
+				written, writeErr = disableChannelForUpstreamRate(ctx, channel, detail, expectedConfig)
 			case !losing && upstreamRateGuardDisabled(channel):
-				changed = enableChannelAfterUpstreamRate(channel) || changed
+				written, writeErr = enableChannelAfterUpstreamRate(ctx, channel, expectedConfig, true)
+			}
+			changed = written || changed
+			if errors.Is(writeErr, model.ErrUpstreamRateGuardStateChanged) {
+				return nil
+			}
+			if writeErr != nil {
+				return writeErr
 			}
 		}
 	}
@@ -176,6 +218,10 @@ func applyUpstreamRateGuard(ctx context.Context) error {
 
 // releaseUpstreamRateGuard 关闭守护时恢复它停用的渠道。
 func releaseUpstreamRateGuard(ctx context.Context) error {
+	expectedConfig, err := model.ReadUpstreamRatesState(ctx, "config")
+	if err != nil {
+		return err
+	}
 	var channels []*model.Channel
 	if err := model.DB.WithContext(ctx).
 		Select("id", "name", "status", "other_info").
@@ -184,21 +230,31 @@ func releaseUpstreamRateGuard(ctx context.Context) error {
 		return err
 	}
 	changed := false
+	defer func() {
+		if changed {
+			model.BumpSyncTopic(model.SyncTopicChannels)
+		}
+	}()
 	for _, channel := range channels {
 		if upstreamRateGuardDisabled(channel) {
-			changed = enableChannelAfterUpstreamRate(channel) || changed
+			written, err := enableChannelAfterUpstreamRate(ctx, channel, expectedConfig, false)
+			changed = written || changed
+			if errors.Is(err, model.ErrUpstreamRateGuardStateChanged) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
 		}
-	}
-	if changed {
-		model.BumpSyncTopic(model.SyncTopicChannels)
 	}
 	return nil
 }
 
 // disableChannelForUpstreamRate 返回渠道状态是否确实改变。
-func disableChannelForUpstreamRate(channel *model.Channel, detail string) bool {
-	if !model.UpdateChannelStatus(channel.Id, "", common.ChannelStatusAutoDisabled, UpstreamRateGuardReason) {
-		return false
+func disableChannelForUpstreamRate(ctx context.Context, channel *model.Channel, detail, expectedConfig string) (bool, error) {
+	written, err := model.UpdateUpstreamRateGuardChannelStatus(ctx, channel.Id, false, UpstreamRateGuardReason, expectedConfig, true)
+	if err != nil || !written {
+		return false, err
 	}
 	common.SysLog(common.LogText("channel %q (#%d) disabled because its upstream rate is higher than its group ratio: %s", channel.Name, channel.Id, detail))
 	CloseActiveWebSocketsForChannel(channel.Id, ChannelDisabledCloseReason)
@@ -206,18 +262,19 @@ func disableChannelForUpstreamRate(channel *model.Channel, detail string) bool {
 	NotifyChannelWatchers(formatNotifyType(channel.Id, common.ChannelStatusAutoDisabled), func(lang string) (string, string) {
 		return i18n.Translate(lang, i18n.MsgChannelNotifyDisabledSubject, params), i18n.Translate(lang, i18n.MsgChannelNotifyDisabledContent, params)
 	})
-	return true
+	return true, nil
 }
 
 // enableChannelAfterUpstreamRate 返回渠道状态是否确实改变。
-func enableChannelAfterUpstreamRate(channel *model.Channel) bool {
-	if !model.UpdateChannelStatus(channel.Id, "", common.ChannelStatusEnabled, "") {
-		return false
+func enableChannelAfterUpstreamRate(ctx context.Context, channel *model.Channel, expectedConfig string, guardEnabled bool) (bool, error) {
+	written, err := model.UpdateUpstreamRateGuardChannelStatus(ctx, channel.Id, true, UpstreamRateGuardReason, expectedConfig, guardEnabled)
+	if err != nil || !written {
+		return false, err
 	}
 	common.SysLog(common.LogText("channel %q (#%d) enabled because its upstream rate is no longer higher than its group ratio", channel.Name, channel.Id))
 	params := map[string]any{"Name": channel.Name, "Id": channel.Id}
 	NotifyChannelWatchers(formatNotifyType(channel.Id, common.ChannelStatusEnabled), func(lang string) (string, string) {
 		return i18n.Translate(lang, i18n.MsgChannelNotifyEnabledSubject, params), i18n.Translate(lang, i18n.MsgChannelNotifyEnabledContent, params)
 	})
-	return true
+	return true, nil
 }
