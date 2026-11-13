@@ -33,6 +33,7 @@ import { formatTimestampToDate } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { deleteUpstreamRateSource, upstreamRateQueryKey } from './api'
+import { UpstreamRateConversionRules } from './conversion-rules'
 import {
   useUpstreamRateConfig,
   useUpstreamRateGuard,
@@ -90,6 +91,11 @@ export function UpstreamRateSourcesDialog(props: {
             description={t(
               'After each upstream sync, a channel is disabled when its upstream rate is higher than the lowest ratio of its groups, and enabled again when the rate drops back. Channels disabled by hand or by request errors are left alone.'
             )}
+          />
+          <UpstreamRateConversionRules
+            rules={data.conversion_rules ?? []}
+            sites={data.conversion_sites ?? []}
+            canWrite={canWrite}
           />
           {editing === null && canWrite && (
             <Button type='button' onClick={() => setEditing('new')}>
