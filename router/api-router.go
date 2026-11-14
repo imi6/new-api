@@ -137,6 +137,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.DELETE("/sessions/:sid", middleware.DisableCache(), controller.DeleteLoginSession)
 				selfRoute.POST("/sessions/revoke-others", middleware.DisableCache(), controller.RevokeOtherLoginSessions)
 				selfRoute.GET("/self/groups", controller.GetUserGroups)
+				selfRoute.GET("/self/group-health", controller.GetUserGroupHealth)
 				selfRoute.GET("/self", controller.GetSelf)
 				telegramBotSelf := selfRoute.Group("/self/telegram-bot")
 				telegramBotSelf.GET("", controller.GetTelegramBotStatus)

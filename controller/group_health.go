@@ -143,9 +143,29 @@ type groupHealthCacheEntry struct {
 	expires time.Time
 }
 
+// userGroupHealthResponse 只提供密钥创建页需要的分组统计，不包含渠道信息和价格。
+type userGroupHealthResponse struct {
+	UpdatedAt int64                  `json:"updated_at"`
+	Groups    []userGroupHealthGroup `json:"groups"`
+}
+
+type userGroupHealthGroup struct {
+	Name   string           `json:"name"`
+	Status string           `json:"status"`
+	Total  groupHealthBar   `json:"total"`
+	Bars   []groupHealthBar `json:"bars"`
+}
+
+type userGroupHealthCacheEntry struct {
+	data         *userGroupHealthResponse
+	usableGroups []string
+	expires      time.Time
+}
+
 var (
-	groupHealthCache   = map[string]groupHealthCacheEntry{}
-	groupHealthCacheMu sync.Mutex
+	groupHealthCache     = map[string]groupHealthCacheEntry{}
+	userGroupHealthCache = map[string]userGroupHealthCacheEntry{}
+	groupHealthCacheMu   sync.Mutex
 )
 
 // GetGroupHealth serves the group health page. Access follows the
@@ -177,6 +197,66 @@ func GetGroupHealth(c *gin.Context) {
 	common.ApiSuccess(c, data)
 }
 
+// GetUserGroupHealth 根据服务端用户身份返回可选分组的小时统计，不依赖公开导航开关。
+func GetUserGroupHealth(c *gin.Context) {
+	userID := c.GetInt("id")
+	if userID <= 0 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	userGroup, err := model.GetUserGroup(userID, false)
+	if err != nil {
+		common.ApiErrorT(c, "Failed to load channel status")
+		return
+	}
+	usable := service.GetUserUsableGroups(userGroup)
+	ratios := ratio_setting.GetGroupRatioCopy()
+	groups := make([]string, 0, len(usable))
+	for group := range usable {
+		if _, ok := ratios[group]; !ok || group == "auto" || group == "" {
+			delete(usable, group)
+			continue
+		}
+		groups = append(groups, group)
+	}
+	slices.Sort(groups)
+	now := time.Now()
+	groupHealthCacheMu.Lock()
+	entry, ok := userGroupHealthCache[userGroup]
+	groupHealthCacheMu.Unlock()
+	// 每次请求都重算权限列表，撤销分组权限后不继续返回旧缓存。
+	if ok && now.Before(entry.expires) && slices.Equal(groups, entry.usableGroups) {
+		common.ApiSuccess(c, entry.data)
+		return
+	}
+	data, err := buildGroupHealthForGroups("hour", now, usable)
+	if err != nil {
+		common.SysError(common.LogText("failed to build group health: %s", err.Error()))
+		common.ApiErrorT(c, "Failed to load channel status")
+		return
+	}
+	summary := &userGroupHealthResponse{
+		UpdatedAt: data.UpdatedAt,
+		Groups:    make([]userGroupHealthGroup, 0, len(data.Groups)),
+	}
+	for _, group := range data.Groups {
+		summary.Groups = append(summary.Groups, userGroupHealthGroup{
+			Name: group.Name, Status: group.Status, Total: group.Total, Bars: group.Bars,
+		})
+	}
+	groupHealthCacheMu.Lock()
+	for key, cached := range userGroupHealthCache {
+		if !now.Before(cached.expires) {
+			delete(userGroupHealthCache, key)
+		}
+	}
+	userGroupHealthCache[userGroup] = userGroupHealthCacheEntry{
+		data: summary, usableGroups: groups, expires: now.Add(groupHealthCacheTTL),
+	}
+	groupHealthCacheMu.Unlock()
+	common.ApiSuccess(c, summary)
+}
+
 type channelStatusCacheClearRequest struct {
 	// Before deletes the cache counts from before this time; zero deletes all.
 	Before int64 `json:"before"`
@@ -198,6 +278,7 @@ func ClearChannelStatusCache(c *gin.Context) {
 	// The page shows the cleared rates at once instead of after a minute.
 	groupHealthCacheMu.Lock()
 	groupHealthCache = map[string]groupHealthCacheEntry{}
+	userGroupHealthCache = map[string]userGroupHealthCacheEntry{}
 	groupHealthCacheMu.Unlock()
 	common.ApiSuccess(c, gin.H{"deleted": deleted})
 }
@@ -229,7 +310,10 @@ func groupHealthBarStarts(rangeName string, now time.Time) []int64 {
 }
 
 func buildGroupHealth(rangeName string, now time.Time) (*groupHealthResponse, error) {
-	usable := service.GetUserUsableGroups("")
+	return buildGroupHealthForGroups(rangeName, now, service.GetUserUsableGroups(""))
+}
+
+func buildGroupHealthForGroups(rangeName string, now time.Time, usable map[string]string) (*groupHealthResponse, error) {
 	channels, err := model.GetGroupHealthChannels()
 	if err != nil {
 		return nil, err
