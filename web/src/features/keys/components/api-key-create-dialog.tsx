@@ -88,6 +88,7 @@ import {
 } from '../lib/api-key-group-platforms'
 import type { ApiKey } from '../types'
 import type { ApiKeyGroupOption } from './api-key-group-combobox'
+import { ApiKeyGroupHealth } from './api-key-group-health'
 import { useApiKeys } from './api-keys-provider'
 
 type ApiKeyCreateDialogProps = {
@@ -837,6 +838,7 @@ export function ApiKeyCreateDialog({
                   </dt>
                   <dd className='mt-1 font-medium'>{t('Balance billing')}</dd>
                 </dl>
+                <ApiKeyGroupHealth group={previewGroup.value} enabled={open} />
                 <Button
                   type='button'
                   className='mt-auto'
