@@ -131,3 +131,15 @@ export interface GroupHealthResponse {
   message?: string
   data: GroupHealthData
 }
+
+/** 当前用户可用分组的状态摘要，不包含渠道信息或价格。 */
+export interface UserGroupHealthData {
+  updated_at: number
+  groups: Pick<GroupHealthGroup, 'name' | 'status' | 'total' | 'bars'>[]
+}
+
+export interface UserGroupHealthResponse {
+  success: boolean
+  message?: string
+  data: UserGroupHealthData
+}
