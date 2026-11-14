@@ -22,12 +22,18 @@ import type {
   GroupHealthRange,
   GroupHealthResponse,
   IntelligenceCheckResponse,
+  UserGroupHealthResponse,
 } from './types'
 
 export async function getGroupHealth(
   range: GroupHealthRange
 ): Promise<GroupHealthResponse> {
   const res = await api.get('/api/group-health', { params: { range } })
+  return res.data
+}
+
+export async function getUserGroupHealth(): Promise<UserGroupHealthResponse> {
+  const res = await api.get('/api/user/self/group-health')
   return res.data
 }
 
