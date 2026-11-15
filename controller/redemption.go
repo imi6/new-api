@@ -80,8 +80,8 @@ func AddRedemption(c *gin.Context) {
 		common.ApiErrorT(c, "Redemption code count must be greater than 0")
 		return
 	}
-	if redemption.Count > 100 {
-		common.ApiErrorT(c, "Maximum 100 redemption codes can be generated at once")
+	if redemption.Count > 300 {
+		common.ApiErrorT(c, "Maximum 300 redemption codes can be generated at once")
 		return
 	}
 	if redemption.Quota <= 0 {
