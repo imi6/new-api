@@ -64,7 +64,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { addTimeToDate } from '@/lib/time'
 
 import { createRedemption, updateRedemption, getRedemption } from '../api'
-import { SUCCESS_MESSAGES } from '../constants'
+import { REDEMPTION_VALIDATION, SUCCESS_MESSAGES } from '../constants'
 import {
   getRedemptionFormSchema,
   type RedemptionFormValues,
@@ -407,8 +407,8 @@ export function RedemptionsMutateDrawer({
                             <Input
                               {...field}
                               type='number'
-                              min='1'
-                              max='100'
+                              min={REDEMPTION_VALIDATION.COUNT_MIN}
+                              max={REDEMPTION_VALIDATION.COUNT_MAX}
                               placeholder={t('Number of codes to create')}
                               onChange={(e) =>
                                 field.onChange(
@@ -419,7 +419,7 @@ export function RedemptionsMutateDrawer({
                           </FormControl>
                           <FormDescription>
                             {t(
-                              'Create multiple redemption codes at once (1-100)'
+                              'Create multiple redemption codes at once (1-300)'
                             )}
                           </FormDescription>
                           <FormMessage />
