@@ -22,6 +22,7 @@ import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
+import { TrialRewardAction } from '@/features/telegram-bot/trial-reward-action'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
@@ -144,6 +145,7 @@ export function AppHeader({
               loading={notifications.loading}
             />
           )}
+          <TrialRewardAction />
           <LanguageSwitcher />
           {showConfigDrawer && <ConfigDrawer />}
           {showProfileDropdown && <ProfileDropdown />}

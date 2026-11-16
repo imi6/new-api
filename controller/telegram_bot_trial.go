@@ -6,6 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetTelegramBotTrialStatus 返回登录账号的试用提示，不接受其他用户的身份参数。
+func GetTelegramBotTrialStatus(c *gin.Context) {
+	status, err := model.GetTelegramTrialStatus(c.GetInt("id"))
+	if err != nil {
+		telegramBotError(c, err)
+		return
+	}
+	common.ApiSuccess(c, status)
+}
+
 func GetTelegramBotTrialConfig(c *gin.Context) {
 	config, err := model.GetTelegramBotTrialConfig()
 	if err != nil {

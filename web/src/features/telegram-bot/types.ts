@@ -94,6 +94,18 @@ export interface TelegramTrialConfig {
   today_granted: number
 }
 
+export interface TelegramTrialStatus {
+  enabled: boolean
+  quota: number
+  claimed: boolean
+  email_bound: boolean
+  bot_connected: boolean
+  budget_available: boolean
+  require_membership: boolean
+  join_url: string
+  bot_url: string
+}
+
 export type TelegramTrialConfigInput = Omit<
   TelegramTrialConfig,
   'total_granted' | 'today_granted'
