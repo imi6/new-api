@@ -50,6 +50,8 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/rankings":                  accessTokenAnyRule,
 	"GET /api/group-health":              accessTokenAnyRule,
 	"GET /api/group-health/intelligence": accessTokenAnyRule,
+	"GET /api/telegram-bot/trial/config": accessTokenSessionRule,
+	"PUT /api/telegram-bot/trial/config": accessTokenSessionRule,
 	// Supplier applications. A submission is a browser form, so an access
 	// token cannot make one.
 	"GET /api/partner/config":              accessTokenAnyRule,

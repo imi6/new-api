@@ -80,3 +80,21 @@ export interface TelegramBotRecovery {
   flow_token: string
   expires_at: number
 }
+
+export interface TelegramTrialConfig {
+  enabled: boolean
+  quota: number
+  daily_limit: number
+  total_limit: number
+  require_membership: boolean
+  chat_id: string
+  join_url: string
+  version: number
+  total_granted: number
+  today_granted: number
+}
+
+export type TelegramTrialConfigInput = Omit<
+  TelegramTrialConfig,
+  'total_granted' | 'today_granted'
+>
