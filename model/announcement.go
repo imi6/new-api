@@ -39,6 +39,7 @@ type Announcement struct {
 	Content    string `json:"content" gorm:"type:text"`
 	Status     string `json:"status" gorm:"type:varchar(16);index"`
 	NotifyMode string `json:"notify_mode" gorm:"type:varchar(16)"`
+	Pinned     bool   `json:"pinned"`
 	// StartsAt and EndsAt are Unix seconds; 0 means no limit.
 	StartsAt int64 `json:"starts_at"`
 	EndsAt   int64 `json:"ends_at"`
@@ -118,8 +119,7 @@ func invalidateAnnouncementCache() {
 	announcementCache.Unlock()
 }
 
-// ActiveAnnouncements returns the announcements live now, newest first, at
-// most AnnouncementPublicLimit of them.
+// ActiveAnnouncements 返回当前生效的公告，置顶优先，其次按原展示时间倒序排列。
 func ActiveAnnouncements() []Announcement {
 	now := common.GetTimestamp()
 	active := make([]Announcement, 0)
@@ -129,6 +129,12 @@ func ActiveAnnouncements() []Announcement {
 		}
 	}
 	slices.SortFunc(active, func(left, right Announcement) int {
+		if left.Pinned != right.Pinned {
+			if left.Pinned {
+				return -1
+			}
+			return 1
+		}
 		if left.ShownAt() != right.ShownAt() {
 			if left.ShownAt() > right.ShownAt() {
 				return -1
@@ -200,12 +206,24 @@ func MarkAnnouncementsRead(userId int, announcementIds []int) error {
 	return DB.Clauses(clause.OnConflict{DoNothing: true}).Create(&rows).Error
 }
 
-// GetAllAnnouncements lists every announcement for administrators, newest
-// first.
+// GetAllAnnouncements 返回管理端公告，置顶优先，其次保持原有的新建顺序。
 func GetAllAnnouncements() ([]Announcement, error) {
 	items := make([]Announcement, 0)
 	err := DB.Order("id DESC").Find(&items).Error
-	return items, err
+	if err != nil {
+		return nil, err
+	}
+	// 旧记录的 pinned 可能为 NULL，统一按 Go 零值处理，避免不同数据库的 NULL 排序差异。
+	slices.SortStableFunc(items, func(left, right Announcement) int {
+		if left.Pinned == right.Pinned {
+			return 0
+		}
+		if left.Pinned {
+			return -1
+		}
+		return 1
+	})
+	return items, nil
 }
 
 func GetAnnouncementById(id int) (*Announcement, error) {
@@ -228,14 +246,39 @@ func CreateAnnouncement(item *Announcement) error {
 	return nil
 }
 
-// UpdateAnnouncement saves what an administrator can change, so the creator
-// and creation time stay as they were.
-func UpdateAnnouncement(item *Announcement) error {
+// UpdateAnnouncement 只保存可编辑字段；未提交置顶状态时不写该列，避免覆盖并发置顶操作。
+func UpdateAnnouncement(item *Announcement, updatePinned bool) error {
+	columns := []string{"title", "content", "status", "notify_mode", "starts_at", "ends_at", "published_at", "updated_by", "updated_at"}
+	if updatePinned {
+		columns = append(columns, "pinned")
+	}
 	err := DB.Model(&Announcement{}).Where("id = ?", item.Id).
-		Select("title", "content", "status", "notify_mode", "starts_at", "ends_at", "published_at", "updated_by", "updated_at").
+		Select(columns).
 		Updates(item).Error
 	if err != nil {
 		return err
+	}
+	invalidateAnnouncementCache()
+	return nil
+}
+
+// SetAnnouncementPinned 仅更新置顶状态和操作信息，避免快捷操作覆盖同时编辑的公告正文。
+func SetAnnouncementPinned(id int, pinned bool, updatedBy int) error {
+	result := DB.Model(&Announcement{}).Where("id = ?", id).Updates(map[string]any{
+		"pinned": pinned, "updated_by": updatedBy, "updated_at": common.GetTimestamp(),
+	})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		// MySQL 对同秒内的重复设置可能返回零行，需区分幂等成功和公告不存在。
+		var count int64
+		if err := DB.Model(&Announcement{}).Where("id = ?", id).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return common.NewMessage("The announcement does not exist")
+		}
 	}
 	invalidateAnnouncementCache()
 	return nil
