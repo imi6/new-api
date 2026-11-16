@@ -61,6 +61,7 @@ import {
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useResetForm } from '../hooks/use-reset-form'
+import { TelegramTrialSettings } from './telegram-trial-settings'
 
 const configSchema = z.object({
   enabled: z.boolean(),
@@ -92,6 +93,7 @@ export function TelegramBotSection() {
           refreshing={query.isFetching}
         />
       )}
+      <TelegramTrialSettings />
     </SettingsSection>
   )
 }
