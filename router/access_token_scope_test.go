@@ -181,6 +181,77 @@ func TestAccessTokenCatalogCoversEveryPermission(t *testing.T) {
 	}
 }
 
+func TestTelegramTrialConfigRequiresAdministratorBrowserSession(t *testing.T) {
+	setupRelayRouterTestDB(t)
+	require.NoError(t, i18n.Init())
+	require.NoError(t, model.DB.AutoMigrate(
+		&model.UserSession{}, &model.UserAccessToken{}, &model.Option{}, &model.AuditLog{},
+		&model.TelegramBotConfig{}, &model.TelegramBotTrialConfig{}, &model.TelegramBotTrialDay{},
+	))
+	previousSecret := common.SessionSecret
+	previousGlobalLimit, previousCriticalLimit := common.GlobalApiRateLimitEnable, common.CriticalRateLimitEnable
+	previousSecure, previousTrusted := common.SessionCookieSecure, common.SessionCookieTrustedURLs
+	common.SessionSecret = "telegram-trial-route-test-secret"
+	common.GlobalApiRateLimitEnable, common.CriticalRateLimitEnable = false, false
+	common.SessionCookieSecure, common.SessionCookieTrustedURLs = true, nil
+	t.Cleanup(func() {
+		common.SessionSecret = previousSecret
+		common.GlobalApiRateLimitEnable, common.CriticalRateLimitEnable = previousGlobalLimit, previousCriticalLimit
+		common.SessionCookieSecure, common.SessionCookieTrustedURLs = previousSecure, previousTrusted
+	})
+	credentials := make([]string, 3)
+	var rootID int
+	for index, role := range []int{common.RoleCommonUser, common.RoleAdminUser, common.RoleRootUser} {
+		user := model.User{Username: fmt.Sprintf("trial-route-%d", index), AffCode: fmt.Sprintf("trial-route-%d", index), Status: common.UserStatusEnabled, Role: role, AuthVersion: 1}
+		require.NoError(t, model.DB.Create(&user).Error)
+		bundle, err := service.CreateLoginSession(user.Id, "password", "127.0.0.1", "trial-route-test")
+		require.NoError(t, err)
+		credentials[index] = bundle.AccessToken
+		rootID = user.Id
+	}
+	pat := model.AccessTokenPrefix + strings.Repeat("t", 43)
+	access := &model.UserAccessToken{Name: "trial-root-pat", TokenHash: model.AccessTokenFingerprint(pat), TokenHint: model.AccessTokenHint(pat)}
+	require.NoError(t, access.SetScopes([]string{"option:read", "option:write"}))
+	require.NoError(t, model.CreateUserAccessToken(rootID, access, service.AccessTokenMaxPerUser))
+	engine := gin.New()
+	SetApiRouter(engine)
+	for _, tc := range []struct {
+		name, method, token, origin string
+		status                      int
+	}{
+		{name: "anonymous_read", method: http.MethodGet, status: http.StatusUnauthorized},
+		{name: "ordinary_user_read", method: http.MethodGet, token: credentials[0], status: http.StatusForbidden},
+		{name: "admin_read", method: http.MethodGet, token: credentials[1], status: http.StatusOK},
+		{name: "admin_write", method: http.MethodPut, token: credentials[1], origin: "https://panel.example.test", status: http.StatusForbidden},
+		{name: "root_pat_read", method: http.MethodGet, token: pat, status: http.StatusForbidden},
+		{name: "root_pat_write", method: http.MethodPut, token: pat, origin: "https://panel.example.test", status: http.StatusForbidden},
+		{name: "cross_origin_write", method: http.MethodPut, token: credentials[2], origin: "https://other.example.test", status: http.StatusForbidden},
+		{name: "missing_origin_write", method: http.MethodPut, token: credentials[2], status: http.StatusForbidden},
+		{name: "root_browser_write", method: http.MethodPut, token: credentials[2], origin: "https://panel.example.test", status: http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(tc.method, "https://panel.example.test/api/telegram-bot/trial/config", strings.NewReader(`{"enabled":true,"quota":100,"daily_limit":1000,"total_limit":1000,"version":0}`))
+			request.Header.Set("Content-Type", "application/json")
+			if tc.token != "" {
+				request.Header.Set("Authorization", "Bearer "+tc.token)
+			}
+			if tc.origin != "" {
+				request.Header.Set("Origin", tc.origin)
+			}
+			response := httptest.NewRecorder()
+			engine.ServeHTTP(response, request)
+			require.Equal(t, tc.status, response.Code, response.Body.String())
+			if tc.status == http.StatusOK {
+				var result struct {
+					Success bool `json:"success"`
+				}
+				require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+				assert.True(t, result.Success, response.Body.String())
+			}
+		})
+	}
+}
+
 func TestAccessTokenVerificationScopesAreAllListed(t *testing.T) {
 	files, err := filepath.Glob("../service/*.go")
 	require.NoError(t, err)
