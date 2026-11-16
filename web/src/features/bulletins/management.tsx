@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Pin, PinOff, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -28,12 +28,21 @@ import { StaticRowActions } from '@/components/data-table/static/static-row-acti
 import { SectionPageLayout } from '@/components/layout'
 import { StatusBadge, type StatusVariant } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SettingsSwitchField } from '@/features/system-settings/components/settings-form-layout'
 import { formatTimestampToDate } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 
-import { deleteBulletin, getManagedBulletins, setBulletinGuestPopup } from './api'
+import {
+  deleteBulletin,
+  getManagedBulletins,
+  setBulletinGuestPopup,
+  setBulletinPinned,
+} from './api'
 import { BulletinFormDialog } from './components/bulletin-form-dialog'
 import {
   BULLETIN_NOTIFY_LABEL_KEYS,
@@ -82,7 +91,20 @@ export function BulletinManagement() {
     queryFn: getManagedBulletins,
   })
   const refresh = () =>
-    void queryClient.invalidateQueries({ queryKey: BULLETINS_QUERY_KEY })
+    queryClient.invalidateQueries({ queryKey: BULLETINS_QUERY_KEY })
+
+  const pin = useMutation({
+    mutationFn: (input: { id: number; pinned: boolean }) =>
+      setBulletinPinned(input.id, input.pinned),
+    onSuccess: (_, input) => {
+      toast.success(
+        input.pinned ? t('Announcement pinned') : t('Announcement unpinned')
+      )
+      return refresh()
+    },
+    onError: (error) => handleServerError(error),
+    meta: { errorToast: false },
+  })
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteBulletin(id),
@@ -112,7 +134,9 @@ export function BulletinManagement() {
 
   return (
     <SectionPageLayout>
-      <SectionPageLayout.Title>{t('Announcement management')}</SectionPageLayout.Title>
+      <SectionPageLayout.Title>
+        {t('Announcement management')}
+      </SectionPageLayout.Title>
       <SectionPageLayout.Actions>
         <Button size='sm' onClick={() => openForm(null)}>
           <Plus aria-hidden='true' />
@@ -146,7 +170,20 @@ export function BulletinManagement() {
                   id: 'title',
                   header: t('Title'),
                   cellClassName: 'max-w-xs truncate font-medium',
-                  cell: (item) => item.title,
+                  cell: (item) => (
+                    <div className='flex min-w-0 items-center gap-2'>
+                      {item.pinned && (
+                        <StatusBadge
+                          icon={Pin}
+                          label={t('Pinned')}
+                          variant='warning'
+                          copyable={false}
+                          className='shrink-0'
+                        />
+                      )}
+                      <span className='truncate'>{item.title}</span>
+                    </div>
+                  ),
                 },
                 {
                   id: 'status',
@@ -165,7 +202,8 @@ export function BulletinManagement() {
                 {
                   id: 'notify',
                   header: t('Notification method'),
-                  cell: (item) => t(BULLETIN_NOTIFY_LABEL_KEYS[item.notify_mode]),
+                  cell: (item) =>
+                    t(BULLETIN_NOTIFY_LABEL_KEYS[item.notify_mode]),
                 },
                 {
                   id: 'schedule',
@@ -192,7 +230,27 @@ export function BulletinManagement() {
                       menuLabel={t('Open menu')}
                       onEdit={() => openForm(item)}
                       onDelete={() => setDeleting(item)}
-                    />
+                      editDisabled={pin.isPending}
+                      deleteDisabled={pin.isPending}
+                    >
+                      <DropdownMenuItem
+                        disabled={pin.isPending}
+                        onClick={() =>
+                          pin.mutate({ id: item.id, pinned: !item.pinned })
+                        }
+                      >
+                        {item.pinned
+                          ? t('Unpin announcement')
+                          : t('Pin announcement')}
+                        <DropdownMenuShortcut>
+                          {item.pinned ? (
+                            <PinOff size={16} aria-hidden='true' />
+                          ) : (
+                            <Pin size={16} aria-hidden='true' />
+                          )}
+                        </DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </StaticRowActions>
                   ),
                 },
               ]}
