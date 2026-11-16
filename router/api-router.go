@@ -144,6 +144,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/self", controller.GetSelf)
 				telegramBotSelf := selfRoute.Group("/self/telegram-bot")
 				telegramBotSelf.GET("", controller.GetTelegramBotStatus)
+				telegramBotSelf.GET("/trial", controller.GetTelegramBotTrialStatus)
 				telegramBotSelf.PUT("/preferences", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("telegram-bot-settings"), controller.UpdateTelegramBotPreferences)
 				telegramBotSelf.POST("/disconnect", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("telegram-bot-settings"), controller.DisconnectTelegramBot)
 				telegramBotSelf.POST("/test", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("telegram-bot-test"), controller.TestTelegramBot)

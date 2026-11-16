@@ -26,6 +26,7 @@ import type {
   TelegramBotStatus,
   TelegramTrialConfig,
   TelegramTrialConfigInput,
+  TelegramTrialStatus,
 } from './types'
 
 interface TelegramResponse<T> {
@@ -35,6 +36,14 @@ interface TelegramResponse<T> {
 }
 
 const userBase = '/api/user/self/telegram-bot'
+
+export async function getTelegramTrialStatus(signal?: AbortSignal) {
+  const response = await api.get<TelegramResponse<TelegramTrialStatus>>(
+    `${userBase}/trial`,
+    { signal }
+  )
+  return requireServerSuccess(response.data).data
+}
 
 export async function getTelegramBotStatus(signal?: AbortSignal) {
   const response = await api.get<TelegramResponse<TelegramBotStatus>>(
