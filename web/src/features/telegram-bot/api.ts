@@ -24,6 +24,8 @@ import type {
   TelegramBotPreferences,
   TelegramBotRecovery,
   TelegramBotStatus,
+  TelegramTrialConfig,
+  TelegramTrialConfigInput,
 } from './types'
 
 interface TelegramResponse<T> {
@@ -109,6 +111,24 @@ export async function updateTelegramBotConfig(payload: {
 }) {
   const response = await api.put<TelegramResponse<TelegramBotConfig>>(
     '/api/telegram-bot/config',
+    payload
+  )
+  return requireServerSuccess(response.data).data
+}
+
+export async function getTelegramTrialConfig(signal?: AbortSignal) {
+  const response = await api.get<TelegramResponse<TelegramTrialConfig>>(
+    '/api/telegram-bot/trial/config',
+    { signal }
+  )
+  return requireServerSuccess(response.data).data
+}
+
+export async function updateTelegramTrialConfig(
+  payload: TelegramTrialConfigInput
+) {
+  const response = await api.put<TelegramResponse<TelegramTrialConfig>>(
+    '/api/telegram-bot/trial/config',
     payload
   )
   return requireServerSuccess(response.data).data
