@@ -17,10 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Pencil, Trash2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuShortcut,
 } from '@/components/ui/dropdown-menu'
 
@@ -31,13 +33,16 @@ type StaticRowActionsProps = {
   deleteLabel: string
   menuLabel: string
   onEdit: () => void
-  /** Without it the row has nothing to delete and shows only the edit button. */
+  /** 未提供删除回调时，只保留编辑及额外菜单操作。 */
   onDelete?: () => void
   editDisabled?: boolean
   deleteDisabled?: boolean
+  /** 放在删除项前的额外菜单操作，沿用统一的行操作菜单。 */
+  children?: ReactNode
 }
 
 export function StaticRowActions(props: StaticRowActionsProps) {
+  const hasExtraActions = Boolean(props.children)
   return (
     <div className='flex justify-end gap-1'>
       <Button
@@ -49,18 +54,22 @@ export function StaticRowActions(props: StaticRowActionsProps) {
       >
         <Pencil />
       </Button>
-      {props.onDelete && (
+      {(props.onDelete || hasExtraActions) && (
         <DataTableRowActionMenu ariaLabel={props.menuLabel}>
-          <DropdownMenuItem
-            onClick={props.onDelete}
-            disabled={props.deleteDisabled}
-            className='text-destructive focus:text-destructive'
-          >
-            {props.deleteLabel}
-            <DropdownMenuShortcut>
-              <Trash2 size={16} />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
+          {props.children}
+          {hasExtraActions && props.onDelete && <DropdownMenuSeparator />}
+          {props.onDelete && (
+            <DropdownMenuItem
+              onClick={props.onDelete}
+              disabled={props.deleteDisabled}
+              className='text-destructive focus:text-destructive'
+            >
+              {props.deleteLabel}
+              <DropdownMenuShortcut>
+                <Trash2 size={16} />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
         </DataTableRowActionMenu>
       )}
     </div>

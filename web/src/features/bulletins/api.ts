@@ -71,13 +71,24 @@ export async function updateBulletin(
 }
 
 export async function deleteBulletin(id: number): Promise<void> {
-  const res = await api.delete<Response<null>>(
-    `/api/announcements/admin/${id}`
+  const res = await api.delete<Response<null>>(`/api/announcements/admin/${id}`)
+  requireServerSuccess(res.data)
+}
+
+export async function setBulletinPinned(
+  id: number,
+  pinned: boolean
+): Promise<void> {
+  const res = await api.put<Response<null>>(
+    `/api/announcements/admin/${id}/pin`,
+    { pinned }
   )
   requireServerSuccess(res.data)
 }
 
-export async function setBulletinGuestPopup(guestPopup: boolean): Promise<void> {
+export async function setBulletinGuestPopup(
+  guestPopup: boolean
+): Promise<void> {
   const res = await api.put<Response<null>>(
     '/api/announcements/admin/setting',
     { guest_popup: guestPopup }

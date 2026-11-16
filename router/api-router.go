@@ -71,6 +71,7 @@ func SetApiRouter(router *gin.Engine) {
 				announcementAdminRoute.GET("", controller.AdminGetAnnouncements)
 				announcementAdminRoute.POST("", controller.AdminCreateAnnouncement)
 				announcementAdminRoute.PUT("/setting", controller.AdminUpdateAnnouncementSetting)
+				announcementAdminRoute.PUT("/:id/pin", controller.AdminPinAnnouncement)
 				announcementAdminRoute.PUT("/:id", controller.AdminUpdateAnnouncement)
 				announcementAdminRoute.DELETE("/:id", controller.AdminDeleteAnnouncement)
 			}
