@@ -19,12 +19,16 @@ For commercial licensing, please contact support@quantumnous.com
 import type { ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
 
+import { CopyButton } from '@/components/copy-button'
 import { StatusBadge } from '@/components/status-badge'
 import { TableId } from '@/components/table-id'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { INVOICE_STATUS_META } from '@/features/invoice/lib/invoice'
 import type { Invoice } from '@/features/invoice/types'
 import { formatTimestampToDate } from '@/lib/format'
+
+import { formatInvoiceCopy } from '../lib/invoice-copy'
 
 export function useInvoiceColumns(
   onOpen: (invoice: Invoice) => void,
@@ -32,6 +36,28 @@ export function useInvoiceColumns(
 ): ColumnDef<Invoice>[] {
   const { t } = useTranslation()
   return [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          indeterminate={table.getIsSomePageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label={t('Select all')}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label={t('Select row')}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
     {
       accessorKey: 'id',
       header: t('ID'),
@@ -126,6 +152,15 @@ export function useInvoiceColumns(
       header: () => <span className='sr-only'>{t('Actions')}</span>,
       cell: ({ row }) => (
         <div className='flex items-center gap-2'>
+          <CopyButton
+            value={formatInvoiceCopy(row.original, t)}
+            variant='outline'
+            size='sm'
+            notify
+            aria-label={t('Copy')}
+          >
+            {t('Copy')}
+          </CopyButton>
           <Button
             variant='outline'
             size='sm'
@@ -147,7 +182,7 @@ export function useInvoiceColumns(
         </div>
       ),
       enableHiding: false,
-      size: 180,
+      size: 260,
     },
   ]
 }

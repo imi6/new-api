@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { getRouteApi } from '@tanstack/react-router'
+import type { RowSelectionState } from '@tanstack/react-table'
 import { RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,6 +33,7 @@ import type { Invoice, InvoiceStatus } from '@/features/invoice/types'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 
+import { InvoiceBulkActions } from './components/invoice-bulk-actions'
 import { useInvoiceColumns } from './components/invoice-columns'
 import { InvoiceDeleteDialog } from './components/invoice-delete-dialog'
 import { InvoiceDetailDrawer } from './components/invoice-detail-drawer'
@@ -48,6 +50,16 @@ export function InvoiceManagement() {
   const refresh = useRefreshAdminInvoices()
   const [detailId, setDetailId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null)
+  const [batchDeleteTargets, setBatchDeleteTargets] = useState<
+    Invoice[] | null
+  >(null)
+  const [selection, setSelection] = useState<{
+    scope: string
+    rows: RowSelectionState
+  }>({
+    scope: '',
+    rows: {},
+  })
   const columns = useInvoiceColumns(
     (invoice) => setDetailId(invoice.id),
     setDeleteTarget
@@ -73,6 +85,16 @@ export function InvoiceManagement() {
       | string[]
       | undefined) ?? []
   const status = statusFilter[0] as InvoiceStatus | undefined
+  const selectionScope = JSON.stringify([
+    pagination.pageIndex,
+    pagination.pageSize,
+    status ?? '',
+    globalFilter?.trim() ?? '',
+  ])
+  // 选择仅作用于当前页和当前筛选，切换后不保留隐藏的勾选。
+  if (selection.scope !== selectionScope) {
+    setSelection({ scope: selectionScope, rows: {} })
+  }
 
   const query = useAdminInvoices({
     page: pagination.pageIndex + 1,
@@ -82,8 +104,16 @@ export function InvoiceManagement() {
   })
 
   const { table } = useDataTable({
-    data: query.data?.items ?? [],
+    data: query.isPlaceholderData ? [] : (query.data?.items ?? []),
     columns,
+    enableRowSelection: true,
+    rowSelection: selection.scope === selectionScope ? selection.rows : {},
+    onRowSelectionChange: (updater) => {
+      setSelection((previous) => ({
+        scope: selectionScope,
+        rows: typeof updater === 'function' ? updater(previous.rows) : updater,
+      }))
+    },
     getRowId: (row) => String(row.id),
     columnFilters,
     globalFilter,
@@ -125,7 +155,7 @@ export function InvoiceManagement() {
         <DataTablePage
           table={table}
           columns={columns}
-          isLoading={query.isLoading}
+          isLoading={query.isLoading || query.isPlaceholderData}
           isFetching={query.isFetching}
           emptyTitle={t('No applications found')}
           emptyDescription={t(
@@ -133,6 +163,14 @@ export function InvoiceManagement() {
           )}
           skeletonKeyPrefix='invoice-management-skeleton'
           applyHeaderSize
+          mobileProps={{ enableRowSelection: true }}
+          showMobileBulkActions
+          bulkActions={
+            <InvoiceBulkActions
+              table={table}
+              onDelete={setBatchDeleteTargets}
+            />
+          }
           toolbarProps={{
             searchPlaceholder: t(
               'Search by ID, user ID, title, tax number or tax order number'
@@ -166,6 +204,37 @@ export function InvoiceManagement() {
             onDeleted={(id) => {
               setDeleteTarget(null)
               setDetailId((current) => (current === id ? null : current))
+              table.setRowSelection((previous) => {
+                const next = { ...previous }
+                delete next[String(id)]
+                return next
+              })
+            }}
+          />
+        )}
+        {batchDeleteTargets && (
+          <InvoiceDeleteDialog
+            mode='batch'
+            invoices={batchDeleteTargets}
+            onOpenChange={(open) => {
+              if (!open) setBatchDeleteTargets(null)
+            }}
+            onDeleted={(ids) => {
+              const deletedIds = new Set(ids)
+              setDetailId((current) =>
+                current !== null && deletedIds.has(current) ? null : current
+              )
+              table.setRowSelection((previous) => {
+                const next = { ...previous }
+                for (const id of ids) delete next[String(id)]
+                return next
+              })
+              setBatchDeleteTargets((previous) => {
+                const remaining =
+                  previous?.filter((invoice) => !deletedIds.has(invoice.id)) ??
+                  []
+                return remaining.length > 0 ? remaining : null
+              })
             }}
           />
         )}
