@@ -87,6 +87,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/user/sessions/revoke-others":        accessTokenSessionRule,
 	"GET /api/user/self/groups":                    accessTokenScopeRule("profile:read"),
 	"GET /api/user/self":                           accessTokenScopeRule("profile:read"),
+	"GET /api/user/self/telegram-bot/trial":        accessTokenSessionRule,
 	"GET /api/user/models":                         accessTokenScopeRule("profile:read"),
 	"GET /api/user/intelligence-check":             accessTokenSessionRule,
 	"POST /api/user/intelligence-check/grade":      accessTokenSessionRule,
