@@ -14,6 +14,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
@@ -78,6 +79,119 @@ func setupTelegramBotServiceTest(t *testing.T) (*model.User, *model.TelegramBotC
 		return nil, errors.New("unexpected network request")
 	})}
 	return user, cfg, conn
+}
+
+func TestTelegramTrialWebhookCreditsBoundAccountDirectlyWithoutEmailDelivery(t *testing.T) {
+	user, cfg, _ := setupTelegramBotServiceTest(t)
+	require.NoError(t, model.DB.AutoMigrate(&model.TelegramBotTrialConfig{}, &model.TelegramBotTrialDay{}, &model.TelegramBotTrialClaim{}))
+	user.Email = "trial@example.test"
+	require.NoError(t, model.DB.Save(user).Error)
+	_, err := model.SaveTelegramBotTrialConfig(model.TelegramBotTrialConfig{Enabled: true, Quota: 500, DailyLimit: 1000, TotalLimit: 1000})
+	require.NoError(t, err)
+	// 发信服务不可用也应直接领取，不发送验证码或依赖邮件配置。
+	common.OptionMapRWMutex.Lock()
+	common.OptionMap["EmailProvider"] = "test-disabled-provider"
+	common.OptionMapRWMutex.Unlock()
+	payload := []byte(fmt.Sprintf(`{"update_id":1000,"message":{"from":{"id":42},"chat":{"id":42,"type":"private"},"date":%d,"text":"/trial"}}`, time.Now().Unix()))
+	require.ErrorIs(t, ReceiveTelegramBotUpdate(cfg, "wrong-secret", payload), model.ErrTelegramBotExpired)
+	require.NoError(t, ReceiveTelegramBotUpdate(cfg, cfg.WebhookSecret, payload))
+	row, err := model.ClaimTelegramBotInbox("trial-test-worker")
+	require.NoError(t, err)
+	require.NotNil(t, row)
+	assert.Empty(t, row.Argument)
+	require.NoError(t, processTelegramBotInbox(cfg, row))
+	claim, err := model.GetTelegramTrialClaimForInbox(row.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 500, claim.Quota)
+	var reply model.TelegramBotOutbox
+	require.NoError(t, model.DB.Where("kind = ?", "reply").First(&reply).Error)
+	assert.NotEqual(t, "telegram.bot.trial_success", reply.Payload)
+	assert.Equal(t, i18n.Translate(i18n.LangZhCN, "telegram.bot.trial_success", map[string]any{"Amount": logger.FormatQuota(claim.Quota)}), reply.Payload)
+	// Telegram 重投同一消息和工作进程重试回复均不能重复发放。
+	require.NoError(t, ReceiveTelegramBotUpdate(cfg, cfg.WebhookSecret, payload))
+	require.NoError(t, processTelegramBotInbox(cfg, row))
+	var after model.User
+	require.NoError(t, model.DB.First(&after, user.Id).Error)
+	assert.Equal(t, user.Quota+500, after.Quota)
+	var count int64
+	require.NoError(t, model.DB.Model(&model.TelegramBotTrialClaim{}).Count(&count).Error)
+	assert.EqualValues(t, 1, count)
+}
+
+func TestTelegramTrialMembershipFailsClosedUnlessBotAndUserAreMembers(t *testing.T) {
+	for _, tc := range []struct {
+		name, chatType, botStatus, userStatus          string
+		enabled, restrictedMember, apiFailure, allowed bool
+	}{
+		{name: "disabled", allowed: true},
+		{name: "administrator_and_member", enabled: true, chatType: "supergroup", botStatus: "administrator", userStatus: "member", allowed: true},
+		{name: "restricted_member", enabled: true, chatType: "supergroup", botStatus: "administrator", userStatus: "restricted", restrictedMember: true, allowed: true},
+		{name: "bot_without_admin_permission", enabled: true, chatType: "channel", botStatus: "member", userStatus: "member"},
+		{name: "user_left", enabled: true, chatType: "channel", botStatus: "administrator", userStatus: "left"},
+		{name: "restricted_nonmember", enabled: true, chatType: "supergroup", botStatus: "administrator", userStatus: "restricted"},
+		{name: "private_chat", enabled: true, chatType: "private"},
+		{name: "telegram_unavailable", enabled: true, apiFailure: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, cfg, conn := setupTelegramBotServiceTest(t)
+			trial := &model.TelegramBotTrialConfig{RequireMembership: tc.enabled, ChatID: "-100123456", Version: 2}
+			telegramBotHTTPClient = &http.Client{Transport: telegramBotRoundTripper(func(req *http.Request) (*http.Response, error) {
+				require.True(t, tc.enabled, "关闭入群门槛时不应请求 Telegram")
+				if tc.apiFailure {
+					return nil, errors.New("test network failure")
+				}
+				var payload struct {
+					ChatID string `json:"chat_id"`
+					UserID int64  `json:"user_id"`
+				}
+				require.NoError(t, common.DecodeJson(req.Body, &payload))
+				assert.Equal(t, trial.ChatID, payload.ChatID)
+				body := ""
+				if strings.HasSuffix(req.URL.Path, "/getChat") {
+					body = fmt.Sprintf(`{"ok":true,"result":{"type":%q}}`, tc.chatType)
+				} else if payload.UserID == cfg.BotID {
+					body = fmt.Sprintf(`{"ok":true,"result":{"status":%q}}`, tc.botStatus)
+				} else {
+					require.EqualValues(t, 42, payload.UserID)
+					body = fmt.Sprintf(`{"ok":true,"result":{"status":%q,"is_member":%t}}`, tc.userStatus, tc.restrictedMember)
+				}
+				return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+			})}
+			proof, err := telegramTrialMembership(cfg, trial, conn.TelegramID)
+			if !tc.allowed {
+				assert.Error(t, err)
+				assert.False(t, proof.Confirmed)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, trial.Version, proof.ConfigVersion)
+			assert.Equal(t, tc.enabled, proof.Confirmed)
+		})
+	}
+}
+
+func TestTelegramTrialRejectsMissingEmailAndArgumentsWithoutCrediting(t *testing.T) {
+	for _, tc := range []struct{ name, email, argument, message string }{
+		{name: "missing_email", message: "telegram.bot.trial_email_required"},
+		{name: "old_verification_request", email: "trial@example.test", argument: strings.Repeat("a", 32) + ":" + strings.Repeat("b", 64), message: "telegram.bot.trial_usage"},
+		{name: "unsupported_arguments", email: "trial@example.test", argument: "invalid", message: "telegram.bot.trial_usage"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			user, cfg, conn := setupTelegramBotServiceTest(t)
+			require.NoError(t, model.DB.AutoMigrate(&model.TelegramBotTrialConfig{}, &model.TelegramBotTrialDay{}, &model.TelegramBotTrialClaim{}))
+			user.Email = tc.email
+			require.NoError(t, model.DB.Save(user).Error)
+			_, err := model.SaveTelegramBotTrialConfig(model.TelegramBotTrialConfig{Enabled: true, Quota: 500, DailyLimit: 1000, TotalLimit: 1000})
+			require.NoError(t, err)
+			row := &model.TelegramBotInbox{ID: 101, UserID: user.Id, TelegramID: conn.TelegramID, ConnectionVersion: conn.Version, Argument: tc.argument}
+			reply, err := processTelegramTrial(cfg, row, user)
+			require.NoError(t, err)
+			assert.Equal(t, i18n.Translate(i18n.LangZhCN, tc.message, map[string]any{"URL": strings.TrimRight(system_setting.ServerAddress, "/") + "/security"}), reply)
+			var after model.User
+			require.NoError(t, model.DB.First(&after, user.Id).Error)
+			assert.Equal(t, user.Quota, after.Quota)
+		})
+	}
 }
 
 func TestTelegramBotConfigChangesKeepOnlyTheCurrentIdentity(t *testing.T) {
