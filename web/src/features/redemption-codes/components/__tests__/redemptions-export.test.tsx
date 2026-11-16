@@ -52,11 +52,11 @@ function captureDownloads() {
       revokeObjectURL: vi.fn(),
     })
   )
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
-    function (this: HTMLAnchorElement) {
-      downloads.push({ filename: this.download, blob: currentBlob })
-    }
-  )
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement
+  ) {
+    downloads.push({ filename: this.download, blob: currentBlob })
+  })
   return downloads
 }
 
@@ -129,7 +129,7 @@ test.each([
       await user.click(screen.getByRole('checkbox', { name: 'Save as a file' }))
       await user.click(
         screen.getByRole('radio', {
-          name: format === 'txt' ? 'Save as TXT' : 'Save as Markdown',
+          name: format === 'txt' ? 'Plain text (TXT)' : 'Markdown',
         })
       )
       const name = screen.getByRole('checkbox', { name: 'Include name' })
@@ -171,7 +171,7 @@ test('keeps names containing table delimiters and markup inside one Markdown cel
     />
   )
   await user.click(screen.getByRole('checkbox', { name: 'Save as a file' }))
-  await user.click(screen.getByRole('radio', { name: 'Save as Markdown' }))
+  await user.click(screen.getByRole('radio', { name: 'Markdown' }))
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(await readDownload(downloads[0])).toBe(
     '| Name | Code | Quota |\n| --- | --- | --- |\n| A \\| \\[B\\] \\<x\\> | codeA | $10 |\n'
@@ -222,7 +222,7 @@ test('successful batch creation opens export with returned codes and the configu
     within(exportDialog).getByRole('checkbox', { name: 'Save as a file' })
   )
   await user.click(
-    within(exportDialog).getByRole('radio', { name: 'Save as TXT' })
+    within(exportDialog).getByRole('radio', { name: 'Plain text (TXT)' })
   )
   expect(downloads).toHaveLength(0)
   await user.click(within(exportDialog).getByRole('button', { name: 'Done' }))
@@ -270,19 +270,15 @@ test('completion defaults to no file and closes without downloading', async () =
   expect(
     screen.getByRole('checkbox', { name: 'Save as a file' })
   ).not.toBeChecked()
-  expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
-  expect(
-    screen.queryByRole('checkbox', { name: 'Include name' })
-  ).not.toBeInTheDocument()
-  expect(
-    screen.queryByRole('checkbox', { name: 'Include quota' })
-  ).not.toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Format' })).toBeVisible()
+  expect(screen.getByRole('checkbox', { name: 'Include name' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Include quota' })).toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(downloads).toEqual([])
   expect(onClose).toHaveBeenCalledOnce()
 })
 
-test('unchecking save as a file hides export settings and completes without downloading', async () => {
+test('unchecking save as a file keeps format settings available and completes without downloading', async () => {
   const downloads = captureDownloads()
   const user = userEvent.setup()
   const onClose = vi.fn()
@@ -295,16 +291,13 @@ test('unchecking save as a file hides export settings and completes without down
   const saveFile = screen.getByRole('checkbox', { name: 'Save as a file' })
   saveFile.focus()
   await user.keyboard(' ')
-  expect(screen.getByRole('radio', { name: 'Save as TXT' })).toBeChecked()
-  await user.click(screen.getByRole('radio', { name: 'Save as Markdown' }))
+  expect(screen.getByRole('radio', { name: 'Plain text (TXT)' })).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: 'Markdown' }))
   await user.click(saveFile)
-  expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
-  expect(
-    screen.queryByRole('checkbox', { name: 'Include name' })
-  ).not.toBeInTheDocument()
-  expect(
-    screen.queryByRole('checkbox', { name: 'Include quota' })
-  ).not.toBeInTheDocument()
+  expect(screen.getByRole('radiogroup', { name: 'Format' })).toBeVisible()
+  expect(screen.getByRole('radio', { name: 'Markdown' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Include name' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Include quota' })).toBeChecked()
   await user.click(screen.getByRole('button', { name: 'Done' }))
   expect(downloads).toEqual([])
   expect(onClose).toHaveBeenCalledOnce()
