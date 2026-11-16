@@ -17,10 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { TFunction } from 'i18next'
-import { Bell, Megaphone, Newspaper } from 'lucide-react'
+import { Bell, Megaphone, Newspaper, Pin } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { RichContent } from '@/components/rich-content'
+import { StatusBadge } from '@/components/status-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -295,8 +296,8 @@ function AnnouncementsContent({
 }
 
 /**
- * The announcements that pop up, newest first; unread ones have a dot.
- * Opening one shows it in full and counts as reading it.
+ * 公告按服务端顺序展示：置顶优先，其次为最新公告；未读公告显示圆点。
+ * 打开公告展示完整内容，并标记为已读。
  */
 function BulletinsContent({
   onOpen,
@@ -336,10 +337,24 @@ function BulletinsContent({
               aria-hidden='true'
             />
             <span className='flex min-w-0 flex-1 flex-col gap-1'>
-              <span
-                className={cn('text-sm break-words', !item.read && 'font-semibold')}
-              >
-                {item.title}
+              <span className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                {item.pinned && (
+                  <StatusBadge
+                    icon={Pin}
+                    label={t('Pinned')}
+                    variant='warning'
+                    copyable={false}
+                    className='shrink-0'
+                  />
+                )}
+                <span
+                  className={cn(
+                    'min-w-0 text-sm break-words',
+                    !item.read && 'font-semibold'
+                  )}
+                >
+                  {item.title}
+                </span>
               </span>
               {item.shown_at > 0 && (
                 <span className='text-muted-foreground text-xs font-normal'>
