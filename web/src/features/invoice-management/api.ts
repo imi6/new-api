@@ -39,6 +39,18 @@ export interface DeleteInvoiceResult {
   file_cleanup_pending: boolean
 }
 
+export interface BatchDeleteInvoiceItem extends DeleteInvoiceResult {
+  id: number
+  success: boolean
+  message?: string
+  message_key?: string
+  message_params?: Record<string, unknown>
+}
+
+export interface BatchDeleteInvoiceResult {
+  results: BatchDeleteInvoiceItem[]
+}
+
 export async function getAdminInvoices(params: {
   page: number
   pageSize: number
@@ -93,5 +105,13 @@ export async function deleteAdminInvoice(
   reason: string
 ): Promise<ApiResponse<DeleteInvoiceResult>> {
   const res = await api.post(`/api/invoice/admin/${id}/delete`, { reason })
+  return res.data
+}
+
+export async function batchDeleteAdminInvoices(
+  ids: number[],
+  reason: string
+): Promise<ApiResponse<BatchDeleteInvoiceResult>> {
+  const res = await api.post('/api/invoice/admin/batch/delete', { ids, reason })
   return res.data
 }
