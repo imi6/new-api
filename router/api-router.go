@@ -101,6 +101,8 @@ func SetApiRouter(router *gin.Engine) {
 		telegramBotAdmin := apiRouter.Group("/telegram-bot", middleware.AdminAuth(), middleware.DisableCache())
 		telegramBotAdmin.GET("/config", controller.GetTelegramBotConfig)
 		telegramBotAdmin.PUT("/config", middleware.RootAuth(), middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), controller.SaveTelegramBotConfig)
+		telegramBotAdmin.GET("/trial/config", controller.GetTelegramBotTrialConfig)
+		telegramBotAdmin.PUT("/trial/config", middleware.RootAuth(), middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), controller.SaveTelegramBotTrialConfig)
 		telegramBotAdmin.POST("/test", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("telegram-bot-test"), controller.TestTelegramBot)
 		// :env separates test vs prod URLs so the operator can register each
 		// in Pancake's matching webhook slot; handler enforces env match.
