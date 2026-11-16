@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-
 // Announcements that pop up or show in the notification bell. The web code
 // calls them bulletins so they are not mistaken for the announcement
 // timeline of the console settings; the API calls them announcements.
@@ -39,6 +38,7 @@ export type Bulletin = {
   title: string
   content: string
   notify_mode: BulletinNotifyMode
+  pinned: boolean
   /** Unix seconds: its start time, else when it was first published. */
   shown_at: number
   /** Whether the signed-in user read it; a visitor's reads stay local. */
@@ -58,6 +58,7 @@ export type ManagedBulletin = {
   content: string
   status: BulletinStatus
   notify_mode: BulletinNotifyMode
+  pinned: boolean
   /** Unix seconds; 0 means no limit. */
   starts_at: number
   ends_at: number
@@ -76,6 +77,7 @@ export type BulletinInput = {
   content: string
   status: BulletinStatus
   notify_mode: BulletinNotifyMode
+  pinned: boolean
   starts_at: number
   ends_at: number
 }

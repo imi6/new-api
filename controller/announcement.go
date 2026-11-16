@@ -26,6 +26,7 @@ type announcementView struct {
 	Title      string `json:"title"`
 	Content    string `json:"content"`
 	NotifyMode string `json:"notify_mode"`
+	Pinned     bool   `json:"pinned"`
 	ShownAt    int64  `json:"shown_at"`
 	// Read is only true for a signed-in user who read it; a visitor's reads
 	// are kept in the browser.
@@ -53,6 +54,7 @@ func GetPublicAnnouncements(c *gin.Context) {
 			Title:      item.Title,
 			Content:    item.Content,
 			NotifyMode: item.NotifyMode,
+			Pinned:     item.Pinned,
 			ShownAt:    item.ShownAt(),
 			Read:       read[item.Id],
 		})
@@ -94,6 +96,7 @@ type announcementRequest struct {
 	Content    string `json:"content"`
 	Status     string `json:"status"`
 	NotifyMode string `json:"notify_mode"`
+	Pinned     *bool  `json:"pinned"`
 	StartsAt   int64  `json:"starts_at"`
 	EndsAt     int64  `json:"ends_at"`
 }
@@ -118,6 +121,10 @@ func validateAnnouncement(req announcementRequest, item *model.Announcement) err
 	}
 	item.Status = req.Status
 	item.NotifyMode = req.NotifyMode
+	// 老版本客户端未传此字段时，保留已有置顶状态。
+	if req.Pinned != nil {
+		item.Pinned = *req.Pinned
+	}
 	item.StartsAt = req.StartsAt
 	item.EndsAt = req.EndsAt
 	return nil
@@ -188,11 +195,32 @@ func AdminUpdateAnnouncement(c *gin.Context) {
 	if item.Status == model.AnnouncementStatusPublished && item.PublishedAt == 0 {
 		item.PublishedAt = item.UpdatedAt
 	}
-	if err := model.UpdateAnnouncement(item); err != nil {
+	if err := model.UpdateAnnouncement(item, req.Pinned != nil); err != nil {
 		respondStoreError(c, err, "update announcement", "Failed to save")
 		return
 	}
 	common.ApiSuccess(c, item)
+}
+
+// AdminPinAnnouncement 单独调整公告置顶，不改变发布状态、有效期或已读记录。
+func AdminPinAnnouncement(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	var req struct {
+		Pinned *bool `json:"pinned"`
+	}
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil || req.Pinned == nil {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	if err := model.SetAnnouncementPinned(id, *req.Pinned, c.GetInt("id")); err != nil {
+		respondStoreError(c, err, "pin announcement", "Failed to save")
+		return
+	}
+	common.ApiSuccess(c, nil)
 }
 
 func AdminDeleteAnnouncement(c *gin.Context) {
