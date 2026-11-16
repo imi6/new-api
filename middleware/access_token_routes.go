@@ -68,6 +68,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/announcements/admin":         accessTokenScopeRule("option:read"),
 	"POST /api/announcements/admin":        accessTokenScopeRule("option:write"),
 	"PUT /api/announcements/admin/setting": accessTokenScopeRule("option:write"),
+	"PUT /api/announcements/admin/:id/pin": accessTokenScopeRule("option:write"),
 	"PUT /api/announcements/admin/:id":     accessTokenScopeRule("option:write"),
 	"DELETE /api/announcements/admin/:id":  accessTokenScopeRule("option:write"),
 	"POST /api/oauth/state":                accessTokenSessionRule,
