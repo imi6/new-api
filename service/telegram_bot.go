@@ -332,7 +332,7 @@ func ReceiveTelegramBotUpdate(cfg *model.TelegramBotConfig, secret string, data 
 		}
 		command, _, _ := strings.Cut(strings.ToLower(parts[0]), "@")
 		switch command {
-		case "/start", "/help", "/balance", "/usage", "/subs", "/checkin", "/notify":
+		case "/start", "/help", "/balance", "/usage", "/subs", "/checkin", "/notify", "/trial":
 			inbox.Command = command
 		default:
 			return nil
@@ -351,6 +351,10 @@ func ReceiveTelegramBotUpdate(cfg *model.TelegramBotConfig, secret string, data 
 				return nil
 			}
 			inbox.Argument = strconv.Itoa(page)
+		}
+		if command == "/trial" && len(parts) != 1 {
+			// 仅接受无参数领取命令，不保存用户误发的验证码或其他文本。
+			inbox.Argument = "invalid"
 		}
 	}
 	return model.AcceptTelegramBotInbox(inbox)
@@ -537,6 +541,15 @@ func processTelegramBotInbox(cfg *model.TelegramBotConfig, row *model.TelegramBo
 	now := time.Now().Unix()
 	var previousCheckin model.Checkin
 	hasCheckinResult := false
+	var previousTrial *model.TelegramBotTrialClaim
+	if row.Command == "/trial" {
+		claim, err := model.GetTelegramTrialClaimForInbox(row.ID)
+		if err == nil && claim.UserID == user.Id {
+			previousTrial = claim
+		} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	}
 	if row.Command == "/checkin" {
 		err := model.DB.Where("user_id = ? AND checkin_date = ?", user.Id, row.BusinessDate).First(&previousCheckin).Error
 		if err == nil {
@@ -545,10 +558,10 @@ func processTelegramBotInbox(cfg *model.TelegramBotConfig, row *model.TelegramBo
 			return err
 		}
 	}
-	if !hasCheckinResult && (row.MessageAt > now+30 || now-row.MessageAt > 300) {
+	if !hasCheckinResult && previousTrial == nil && (row.MessageAt > now+30 || now-row.MessageAt > 300) {
 		return nil
 	}
-	if !hasCheckinResult {
+	if !hasCheckinResult && previousTrial == nil {
 		accepted, err := model.AcceptTelegramBotCommand(row)
 		if err != nil {
 			return err
@@ -608,6 +621,15 @@ func processTelegramBotInbox(cfg *model.TelegramBotConfig, row *model.TelegramBo
 		text = i18n.Translate(lang, "telegram.bot.checkin_success", map[string]any{"Date": checkin.CheckinDate, "Amount": logger.FormatQuota(checkin.QuotaAwarded)})
 	case "/notify":
 		return telegramBotUpdateNotification(cfg, row, conn, lang)
+	case "/trial":
+		if previousTrial != nil {
+			text = i18n.Translate(lang, "telegram.bot.trial_success", map[string]any{"Amount": logger.FormatQuota(previousTrial.Quota)})
+			break
+		}
+		text, err = processTelegramTrial(cfg, row, user)
+		if err != nil {
+			return err
+		}
 	default:
 		return nil
 	}

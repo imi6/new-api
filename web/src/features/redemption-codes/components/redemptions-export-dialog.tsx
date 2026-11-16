@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { CopyButton } from '@/components/copy-button'
 import { Dialog } from '@/components/dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -44,41 +45,42 @@ export function RedemptionsExportDialog(props: RedemptionsExportDialogProps) {
   const [includeName, setIncludeName] = useState(true)
   const [includeQuota, setIncludeQuota] = useState(true)
 
+  const headers: string[] = []
+  if (includeName) headers.push(t('Name'))
+  headers.push(t('Code'))
+  if (includeQuota) headers.push(t('Quota'))
+
+  const rows = props.data.keys.map((key) => {
+    const row: string[] = []
+    if (includeName) row.push(props.data.name)
+    row.push(key)
+    if (includeQuota) row.push(props.data.quota)
+    return row.map((value) => value.replaceAll(/[\t\r\n]+/g, ' '))
+  })
+
+  // 复制和下载共用同一份内容，确保格式及字段选择完全一致。
+  let content = `${rows.map((row) => row.join('\t')).join('\n')}\n`
+  if (format === 'md') {
+    const markdownRows = [headers, headers.map(() => '---'), ...rows]
+    const markdownLines = markdownRows.map((row, index) => {
+      const cells =
+        index === 1
+          ? row
+          : row.map((value) =>
+              value
+                .replaceAll('&', '&amp;')
+                .replaceAll(/[\\`*_[\]|<>]/g, '\\$&')
+            )
+      return `| ${cells.join(' | ')} |`
+    })
+    content = `${markdownLines.join('\n')}\n`
+  }
+
   const handleComplete = () => {
     if (!saveToFile) {
       props.onClose()
       return
     }
-    const headers: string[] = []
-    if (includeName) headers.push(t('Name'))
-    headers.push(t('Code'))
-    if (includeQuota) headers.push(t('Quota'))
-
-    const rows = props.data.keys.map((key) => {
-      const row: string[] = []
-      if (includeName) row.push(props.data.name)
-      row.push(key)
-      if (includeQuota) row.push(props.data.quota)
-      return row.map((value) => value.replaceAll(/[\t\r\n]+/g, ' '))
-    })
-
-    let content = `${rows.map((row) => row.join('\t')).join('\n')}\n`
-    if (format === 'md') {
-      const markdownRows = [headers, headers.map(() => '---'), ...rows]
-      const markdownLines = markdownRows.map((row, index) => {
-        const cells =
-          index === 1
-            ? row
-            : row.map((value) =>
-                value
-                  .replaceAll('&', '&amp;')
-                  .replaceAll(/[\\`*_[\]|<>]/g, '\\$&')
-              )
-        return `| ${cells.join(' | ')} |`
-      })
-      content = `${markdownLines.join('\n')}\n`
-    }
-
     const blob = new Blob([content], {
       type:
         format === 'md'
@@ -108,7 +110,20 @@ export function RedemptionsExportDialog(props: RedemptionsExportDialogProps) {
       })}
       contentClassName='sm:max-w-md'
       bodyClassName='space-y-5'
-      footer={<Button onClick={handleComplete}>{t('Done')}</Button>}
+      footer={
+        <>
+          <CopyButton
+            value={content}
+            variant='outline'
+            size='default'
+            notify
+            aria-label={t('Copy all redemption codes')}
+          >
+            {t('Copy all redemption codes')}
+          </CopyButton>
+          <Button onClick={handleComplete}>{t('Done')}</Button>
+        </>
+      }
     >
       <div className='flex items-center gap-2'>
         <Checkbox
@@ -118,51 +133,52 @@ export function RedemptionsExportDialog(props: RedemptionsExportDialogProps) {
         />
         <Label htmlFor={`${id}-save-file`}>{t('Save as a file')}</Label>
       </div>
-      {saveToFile && (
-        <div className='space-y-4 pl-6'>
-          <RadioGroup
-            value={format}
-            onValueChange={(value) => {
-              if (value === 'txt' || value === 'md') {
-                setFormat(value)
-              }
-            }}
-            aria-label={t('Save redemption codes')}
-            className='flex flex-wrap gap-x-5 gap-y-3'
-          >
-            {[
-              { value: 'txt', label: t('Save as TXT') },
-              { value: 'md', label: t('Save as Markdown') },
-            ].map((option) => (
-              <div key={option.value} className='flex items-center gap-2'>
-                <RadioGroupItem
-                  value={option.value}
-                  id={`${id}-${option.value}`}
-                />
-                <Label htmlFor={`${id}-${option.value}`}>{option.label}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-          <div className='flex flex-wrap gap-6'>
-            <div className='flex items-center gap-2'>
-              <Checkbox
-                id={`${id}-name`}
-                checked={includeName}
-                onCheckedChange={setIncludeName}
+      <div className='space-y-4'>
+        <p id={`${id}-format`} className='text-sm font-medium'>
+          {t('Format')}
+        </p>
+        <RadioGroup
+          value={format}
+          onValueChange={(value) => {
+            if (value === 'txt' || value === 'md') {
+              setFormat(value)
+            }
+          }}
+          aria-labelledby={`${id}-format`}
+          className='flex flex-wrap gap-x-5 gap-y-3'
+        >
+          {[
+            { value: 'txt', label: t('Plain text (TXT)') },
+            { value: 'md', label: t('Markdown') },
+          ].map((option) => (
+            <div key={option.value} className='flex items-center gap-2'>
+              <RadioGroupItem
+                value={option.value}
+                id={`${id}-${option.value}`}
               />
-              <Label htmlFor={`${id}-name`}>{t('Include name')}</Label>
+              <Label htmlFor={`${id}-${option.value}`}>{option.label}</Label>
             </div>
-            <div className='flex items-center gap-2'>
-              <Checkbox
-                id={`${id}-quota`}
-                checked={includeQuota}
-                onCheckedChange={setIncludeQuota}
-              />
-              <Label htmlFor={`${id}-quota`}>{t('Include quota')}</Label>
-            </div>
+          ))}
+        </RadioGroup>
+        <div className='flex flex-wrap gap-6'>
+          <div className='flex items-center gap-2'>
+            <Checkbox
+              id={`${id}-name`}
+              checked={includeName}
+              onCheckedChange={setIncludeName}
+            />
+            <Label htmlFor={`${id}-name`}>{t('Include name')}</Label>
+          </div>
+          <div className='flex items-center gap-2'>
+            <Checkbox
+              id={`${id}-quota`}
+              checked={includeQuota}
+              onCheckedChange={setIncludeQuota}
+            />
+            <Label htmlFor={`${id}-quota`}>{t('Include quota')}</Label>
           </div>
         </div>
-      )}
+      </div>
     </Dialog>
   )
 }
