@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/QuantumNous/new-api/common"
@@ -616,4 +619,63 @@ func AdminDeleteInvoice(c *gin.Context) {
 		common.SysError(common.LogText("failed to clean up deleted invoice attachment invoice_id=%d: %s", id, err.Error()))
 	}
 	common.ApiSuccess(c, gin.H{"file_cleanup_pending": cleanupPending})
+}
+
+// AdminBatchDeleteInvoices 逐项复用单条删除规则，返回每条结果，避免部分失败被误报为全部成功。
+func AdminBatchDeleteInvoices(c *gin.Context) {
+	var req struct {
+		IDs    []int  `json:"ids"`
+		Reason string `json:"reason"`
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+	if err := common.DecodeJsonBody(c.Request.Body, &req); err != nil || len(req.IDs) == 0 || len(req.IDs) > 100 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	ids := make([]int, 0, len(req.IDs))
+	seen := make(map[int]struct{}, len(req.IDs))
+	for _, id := range req.IDs {
+		if id <= 0 {
+			common.ApiErrorT(c, "Invalid parameters")
+			return
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	req.Reason = strings.TrimSpace(req.Reason)
+	if req.Reason == "" {
+		common.ApiErrorT(c, "Enter the deletion reason")
+		return
+	}
+	if utf8.RuneCountInString(req.Reason) > 500 {
+		common.ApiErrorT(c, "The deletion reason can have at most {{max}} characters", map[string]any{"max": 500})
+		return
+	}
+
+	results := make([]gin.H, 0, len(ids))
+	for _, id := range ids {
+		result := gin.H{"id": id, "success": false, "file_cleanup_pending": false}
+		deletion, err := model.DeleteIssuedInvoice(id, c.GetInt("id"), req.Reason)
+		if err != nil {
+			var message *common.Message
+			if !errors.As(err, &message) {
+				common.SysError(common.LogText("failed to delete invoice application invoice_id=%d: %s", id, err.Error()))
+				message = common.NewMessage("Failed to delete the invoice application")
+			}
+			result["message"] = message.Error()
+			maps.Copy(result, message.Fields())
+			results = append(results, result)
+			continue
+		}
+		result["success"] = true
+		if err := service.CleanupDeletedInvoiceFile(deletion); err != nil {
+			result["file_cleanup_pending"] = true
+			common.SysError(common.LogText("failed to clean up deleted invoice attachment invoice_id=%d: %s", id, err.Error()))
+		}
+		results = append(results, result)
+	}
+	common.ApiSuccess(c, gin.H{"results": results})
 }
