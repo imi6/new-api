@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { SettingsSwitchField } from '@/features/system-settings/components/settings-form-layout'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { createBulletin, updateBulletin } from '../api'
@@ -60,7 +61,10 @@ import {
   type ManagedBulletin,
 } from '../types'
 import { BulletinDialog, type BulletinDialogItem } from './bulletin-dialog'
-import { BULLETIN_NOTIFY_LABEL_KEYS, BULLETIN_STATUS_LABEL_KEYS } from './labels'
+import {
+  BULLETIN_NOTIFY_LABEL_KEYS,
+  BULLETIN_STATUS_LABEL_KEYS,
+} from './labels'
 
 // The same limits the server enforces.
 const TITLE_LIMIT = 200
@@ -72,6 +76,7 @@ const EMPTY_INPUT: BulletinInput = {
   content: '',
   status: 'draft',
   notify_mode: 'popup',
+  pinned: false,
   starts_at: 0,
   ends_at: 0,
 }
@@ -100,14 +105,21 @@ export function BulletinFormDialog(props: BulletinFormDialogProps) {
             .string()
             .trim()
             .min(1, t('Enter a title'))
-            .max(TITLE_LIMIT, t('At most {{max}} characters', { max: TITLE_LIMIT })),
+            .max(
+              TITLE_LIMIT,
+              t('At most {{max}} characters', { max: TITLE_LIMIT })
+            ),
           content: z
             .string()
             .trim()
             .min(1, t('Enter the content'))
-            .max(CONTENT_LIMIT, t('At most {{max}} characters', { max: CONTENT_LIMIT })),
+            .max(
+              CONTENT_LIMIT,
+              t('At most {{max}} characters', { max: CONTENT_LIMIT })
+            ),
           status: z.enum(BULLETIN_STATUSES),
           notify_mode: z.enum(BULLETIN_NOTIFY_MODES),
+          pinned: z.boolean(),
           starts_at: z.number().int().min(0),
           ends_at: z.number().int().min(0),
         })
@@ -144,6 +156,7 @@ export function BulletinFormDialog(props: BulletinFormDialogProps) {
             content: editing.content,
             status: editing.status,
             notify_mode: editing.notify_mode,
+            pinned: editing.pinned ?? false,
             starts_at: editing.starts_at,
             ends_at: editing.ends_at,
           }
@@ -250,10 +263,13 @@ export function BulletinFormDialog(props: BulletinFormDialogProps) {
                   </TabsContent>
                 </Tabs>
                 <FormDescription>
-                  {t('Supports Markdown. {{count}} of at most {{max}} characters.', {
-                    count: content.length,
-                    max: CONTENT_LIMIT,
-                  })}
+                  {t(
+                    'Supports Markdown. {{count}} of at most {{max}} characters.',
+                    {
+                      count: content.length,
+                      max: CONTENT_LIMIT,
+                    }
+                  )}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -334,6 +350,25 @@ export function BulletinFormDialog(props: BulletinFormDialogProps) {
               )}
             />
           </div>
+          <FormField
+            control={form.control}
+            name='pinned'
+            render={({ field }) => (
+              <FormItem>
+                <SettingsSwitchField
+                  controlId={`${FORM_ID}-pinned`}
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={save.isPending}
+                  label={t('Pin announcement')}
+                  description={t(
+                    'Pinned announcements appear before other announcements.'
+                  )}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <div className='grid gap-4 sm:grid-cols-2'>
             {(['starts_at', 'ends_at'] as const).map((name) => (
               <FormField
