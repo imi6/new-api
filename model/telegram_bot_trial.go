@@ -78,6 +78,81 @@ type TelegramTrialMembershipProof struct {
 	Confirmed     bool
 }
 
+// TelegramTrialStatus 只公开当前账号的领取提示，不包含领取凭据或后台预算明细。
+type TelegramTrialStatus struct {
+	Enabled           bool   `json:"enabled"`
+	Quota             int    `json:"quota"`
+	Claimed           bool   `json:"claimed"`
+	EmailBound        bool   `json:"email_bound"`
+	BotConnected      bool   `json:"bot_connected"`
+	BudgetAvailable   bool   `json:"budget_available"`
+	RequireMembership bool   `json:"require_membership"`
+	JoinURL           string `json:"join_url"`
+	BotURL            string `json:"bot_url"`
+}
+
+// GetTelegramTrialStatus 仅查询登录用户的领取条件，实际领取仍由机器人命令事务重新校验。
+func GetTelegramTrialStatus(userID int) (*TelegramTrialStatus, error) {
+	if userID <= 0 {
+		return nil, common.NewMessage("Invalid parameters")
+	}
+	var user User
+	if err := DB.Select("id", "status", "email", "telegram_id").First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	var bot TelegramBotConfig
+	if err := DB.Select("enabled", "bot_id", "bot_username", "version").First(&bot, 1).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	trial, err := GetTelegramBotTrialConfig()
+	if err != nil {
+		return nil, err
+	}
+	connection, err := GetTelegramBotConnection(userID)
+	if err != nil {
+		return nil, err
+	}
+	email := NormalizeEmail(user.Email)
+	address, emailErr := mail.ParseAddress(email)
+	emailBound := email != "" && emailErr == nil && address.Address == email
+	claims := DB.Model(&TelegramBotTrialClaim{}).Where("user_id = ?", userID)
+	if user.TelegramId != "" {
+		claims = claims.Or("telegram_id = ?", user.TelegramId)
+	}
+	if emailBound {
+		claims = claims.Or("email_hash = ?", TelegramTrialEmailHash(email))
+	}
+	var claimCount int64
+	if err := claims.Count(&claimCount).Error; err != nil {
+		return nil, err
+	}
+
+	validQuota := trial.Quota > 0 && trial.Quota <= common.MaxWalletQuota
+	validBudget := validQuota && trial.DailyLimit >= trial.Quota && trial.DailyLimit <= common.MaxWalletQuota &&
+		trial.TotalLimit >= trial.Quota && trial.TotalLimit <= common.MaxWalletQuota
+	botAvailable := bot.Enabled && bot.BotID > 0 && bot.Version > 0 && telegramTrialUsername.MatchString("@"+bot.BotUsername)
+	status := &TelegramTrialStatus{
+		Enabled: trial.Enabled && validQuota && validBudget && botAvailable,
+		Claimed: claimCount > 0, EmailBound: emailBound,
+		BotConnected: botAvailable && user.Status == common.UserStatusEnabled && user.TelegramId != "" &&
+			connection.Status == TelegramBotConnected && connection.BotID == bot.BotID &&
+			connection.TelegramID == user.TelegramId && connection.ChatID == user.TelegramId && connection.Version > 0,
+		BudgetAvailable: validBudget && trial.TodayGranted >= 0 && trial.TotalGranted >= 0 &&
+			trial.TodayGranted <= int64(trial.DailyLimit-trial.Quota) && trial.TotalGranted <= int64(trial.TotalLimit-trial.Quota),
+		RequireMembership: trial.RequireMembership,
+	}
+	if validQuota {
+		status.Quota = trial.Quota
+	}
+	if status.RequireMembership {
+		status.JoinURL = trial.JoinURL
+	}
+	if botAvailable {
+		status.BotURL = "https://t.me/" + bot.BotUsername
+	}
+	return status, nil
+}
+
 func GetTelegramBotTrialConfig() (*TelegramBotTrialConfig, error) {
 	config := TelegramBotTrialConfig{ID: 1}
 	err := DB.First(&config, 1).Error
