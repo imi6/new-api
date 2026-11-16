@@ -28,6 +28,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
+import { TrialRewardAction } from '@/features/telegram-bot/trial-reward-action'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
@@ -280,7 +281,11 @@ export function PublicHeader(props: PublicHeaderProps) {
                   </Link>
                 )
               })}
+            </div>
 
+            <TrialRewardAction />
+
+            <div className='hidden shrink-0 items-center gap-0.5 lg:flex'>
               {(showLanguageSwitcher ||
                 showThemeSwitch ||
                 showNotifications) && (
