@@ -313,6 +313,7 @@ func SetApiRouter(router *gin.Engine) {
 			invoiceAdminRoute.POST("/:id/issue", controller.AdminIssueInvoice)
 			invoiceAdminRoute.POST("/:id/reject", controller.AdminRejectInvoice)
 			invoiceAdminRoute.POST("/:id/delete", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.AdminDeleteInvoice)
+			invoiceAdminRoute.POST("/batch/delete", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.AdminBatchDeleteInvoices)
 		}
 		// Invoice tax payment callbacks (no auth)
 		apiRouter.POST("/invoice/epay/notify", anonymousRequestBodyLimit, controller.InvoiceEpayNotify)
