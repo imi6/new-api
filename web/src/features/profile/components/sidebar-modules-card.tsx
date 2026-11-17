@@ -112,6 +112,11 @@ export function SidebarModulesCard() {
           title: t('Task Logs'),
           description: t('System task records'),
         },
+        {
+          key: 'announcements',
+          title: t('System Announcements'),
+          description: t('Latest platform updates and notices'),
+        },
       ],
     },
     {
