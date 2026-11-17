@@ -117,6 +117,7 @@ telegram.bot.checkin_success: "{{.Date}} 已签到，奖励 {{.Amount}}。每天
 telegram.bot.trial_unavailable: "本站暂未开放试用额度领取。"
 telegram.bot.trial_already_claimed: "当前站内账号、Telegram 账号或邮箱已领取过试用额度，无法再次领取。"
 telegram.bot.trial_email_required: "请先在网站绑定邮箱，再发送 /trial 领取试用额度：{{.URL}}"
+telegram.bot.trial_user_id_required: "你的账号未达到本次试用奖励的用户 ID 门槛，无法领取。"
 telegram.bot.trial_join_required: "请先加入指定群或频道，然后重新发送 /trial：{{.URL}}"
 telegram.bot.trial_membership_unavailable: "暂时无法核实群或频道成员身份，请稍后重试或联系管理员。"
 telegram.bot.trial_success: "已领取试用额度 {{.Amount}}，已加入平台余额。每个站内账号、Telegram 账号和邮箱均只能领取一次。"
