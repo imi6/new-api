@@ -122,6 +122,10 @@ export function SidebarModulesSection({
         title: t('Task logs'),
         description: t('Background job tracker for queued work.'),
       },
+      announcements: {
+        title: t('System Announcements'),
+        description: t('Latest platform updates and notices'),
+      },
     },
     personal: {
       topup: {
