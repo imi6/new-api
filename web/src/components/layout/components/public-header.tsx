@@ -100,9 +100,7 @@ export function PublicHeader(props: PublicHeaderProps) {
   const isAuthenticated = !!user
   const displaySiteName = customSiteName || systemName
   const links = (dynamicLinks.length > 0 ? dynamicLinks : navLinks).filter(
-    (link) =>
-      link.external ||
-      !['/dashboard', '/about'].includes(link.href.replace(/\/+$/, ''))
+    (link) => link.external || link.href.replace(/\/+$/, '') !== '/about'
   )
 
   let logoContent: ReactNode = (
