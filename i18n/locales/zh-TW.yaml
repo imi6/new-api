@@ -118,6 +118,7 @@ telegram.bot.checkin_success: "{{.Date}} 已簽到，獎勵 {{.Amount}}。每天
 telegram.bot.trial_unavailable: "本站暫未開放試用額度領取。"
 telegram.bot.trial_already_claimed: "目前的站內帳號、Telegram 帳號或電子信箱已領取過試用額度，無法再次領取。"
 telegram.bot.trial_email_required: "請先在網站綁定電子郵件，再傳送 /trial 領取試用額度：{{.URL}}"
+telegram.bot.trial_user_id_required: "你的帳號未達到本次試用獎勵的使用者 ID 門檻，無法領取。"
 telegram.bot.trial_join_required: "請先加入指定群組或頻道，然後重新傳送 /trial：{{.URL}}"
 telegram.bot.trial_membership_unavailable: "暫時無法確認群組或頻道成員身分，請稍後重試或聯絡管理員。"
 telegram.bot.trial_success: "已領取試用額度 {{.Amount}}，已加入平台餘額。每個站內帳號、Telegram 帳號及電子信箱均只能領取一次。"

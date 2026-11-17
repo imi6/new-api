@@ -24,6 +24,8 @@ import type {
   TelegramBotPreferences,
   TelegramBotRecovery,
   TelegramBotStatus,
+  TelegramTrialClaimsPage,
+  TelegramTrialClaimsParams,
   TelegramTrialConfig,
   TelegramTrialConfigInput,
   TelegramTrialStatus,
@@ -139,6 +141,17 @@ export async function updateTelegramTrialConfig(
   const response = await api.put<TelegramResponse<TelegramTrialConfig>>(
     '/api/telegram-bot/trial/config',
     payload
+  )
+  return requireServerSuccess(response.data).data
+}
+
+export async function getTelegramTrialClaims(
+  params: TelegramTrialClaimsParams,
+  signal?: AbortSignal
+) {
+  const response = await api.get<TelegramResponse<TelegramTrialClaimsPage>>(
+    '/api/telegram-bot/trial/claims',
+    { params, signal }
   )
   return requireServerSuccess(response.data).data
 }

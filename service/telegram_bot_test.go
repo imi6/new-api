@@ -86,7 +86,7 @@ func TestTelegramTrialWebhookCreditsBoundAccountDirectlyWithoutEmailDelivery(t *
 	require.NoError(t, model.DB.AutoMigrate(&model.TelegramBotTrialConfig{}, &model.TelegramBotTrialDay{}, &model.TelegramBotTrialClaim{}))
 	user.Email = "trial@example.test"
 	require.NoError(t, model.DB.Save(user).Error)
-	_, err := model.SaveTelegramBotTrialConfig(model.TelegramBotTrialConfig{Enabled: true, Quota: 500, DailyLimit: 1000, TotalLimit: 1000})
+	_, err := model.SaveTelegramBotTrialConfig(model.TelegramBotTrialConfig{Enabled: true, MinUserID: 1, Quota: 500, DailyLimit: 1000, TotalLimit: 1000})
 	require.NoError(t, err)
 	// 发信服务不可用也应直接领取，不发送验证码或依赖邮件配置。
 	common.OptionMapRWMutex.Lock()
@@ -181,7 +181,7 @@ func TestTelegramTrialRejectsMissingEmailAndArgumentsWithoutCrediting(t *testing
 			require.NoError(t, model.DB.AutoMigrate(&model.TelegramBotTrialConfig{}, &model.TelegramBotTrialDay{}, &model.TelegramBotTrialClaim{}))
 			user.Email = tc.email
 			require.NoError(t, model.DB.Save(user).Error)
-			_, err := model.SaveTelegramBotTrialConfig(model.TelegramBotTrialConfig{Enabled: true, Quota: 500, DailyLimit: 1000, TotalLimit: 1000})
+			_, err := model.SaveTelegramBotTrialConfig(model.TelegramBotTrialConfig{Enabled: true, MinUserID: 1, Quota: 500, DailyLimit: 1000, TotalLimit: 1000})
 			require.NoError(t, err)
 			row := &model.TelegramBotInbox{ID: 101, UserID: user.Id, TelegramID: conn.TelegramID, ConnectionVersion: conn.Version, Argument: tc.argument}
 			reply, err := processTelegramTrial(cfg, row, user)
