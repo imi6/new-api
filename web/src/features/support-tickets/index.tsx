@@ -17,13 +17,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table'
-import { LifeBuoy, Plus, RefreshCw } from 'lucide-react'
+import {
+  getCoreRowModel,
+  useReactTable,
+  type RowSelectionState,
+} from '@tanstack/react-table'
+import { LifeBuoy, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
+  DataTableBulkActions,
   DataTablePagination,
   StaticDataTable,
   type StaticDataTableColumn,
@@ -34,6 +39,7 @@ import { ErrorState } from '@/components/error-state'
 import { SectionPageLayout } from '@/components/layout'
 import { LoadingState } from '@/components/loading-state'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -49,6 +55,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { getTickets, submitTicket } from './api'
 import { ticketCategoryLabel, ticketStatusLabel } from './labels'
 import { TicketComposer } from './ticket-composer'
+import { TicketDeleteDialog } from './ticket-delete-dialog'
 import { TicketDetailDialog } from './ticket-detail-dialog'
 import { TicketStatusBadge } from './ticket-status-badge'
 import {
@@ -88,6 +95,11 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
   const [createBusy, setCreateBusy] = useState(false)
   const [detailId, setDetailId] = useState<number | null>(null)
   const [userIdInput, setUserIdInput] = useState('')
+  const [selection, setSelection] = useState<{
+    filters: TicketFilters
+    rows: RowSelectionState
+  } | null>(null)
+  const [deleteTargets, setDeleteTargets] = useState<number[] | null>(null)
   const rootKey = ['support-tickets', props.userId, props.admin] as const
   const query = useQuery({
     queryKey: [...rootKey, 'list', filters],
@@ -97,13 +109,23 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
     meta: { errorToast: false, errorRedirect: false },
   })
   const tickets = query.data?.items ?? EMPTY_TICKETS
+  // 翻页或切换筛选后立即清空当前选择，批量操作仅作用于本页可见工单。
+  const rowSelection = selection?.filters === filters ? selection.rows : {}
   const table = useReactTable({
     data: tickets,
     columns: [],
+    getRowId: (ticket) => String(ticket.id),
     getCoreRowModel: getCoreRowModel(),
+    enableRowSelection: props.admin,
+    onRowSelectionChange: (updater) =>
+      setSelection({
+        filters,
+        rows: typeof updater === 'function' ? updater(rowSelection) : updater,
+      }),
     manualPagination: true,
     rowCount: query.data?.total ?? 0,
     state: {
+      rowSelection,
       pagination: { pageIndex: filters.page - 1, pageSize: filters.pageSize },
     },
     onPaginationChange: (updater) =>
@@ -181,6 +203,29 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
       id: 'user_id',
       header: t('User ID'),
       cell: (ticket) => ticket.user_id,
+    })
+    columns.unshift({
+      id: 'select',
+      className: 'w-12',
+      header: (
+        <Checkbox
+          aria-label={t('Select all')}
+          checked={table.getIsAllPageRowsSelected()}
+          indeterminate={table.getIsSomePageRowsSelected()}
+          onCheckedChange={(checked) =>
+            table.toggleAllPageRowsSelected(checked)
+          }
+        />
+      ),
+      cell: (ticket) => (
+        <Checkbox
+          aria-label={t('Select ticket #{{id}}', { id: ticket.id })}
+          checked={table.getRow(String(ticket.id)).getIsSelected()}
+          onCheckedChange={(checked) =>
+            table.getRow(String(ticket.id)).toggleSelected(checked)
+          }
+        />
+      ),
     })
   }
   const filterStatusItems = [
@@ -281,7 +326,7 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
         )}
       </SectionPageLayout.Actions>
       <SectionPageLayout.Content>
-        <div className='mx-auto w-full max-w-6xl space-y-5'>
+        <div className='mx-auto w-full max-w-7xl space-y-5'>
           {!props.admin && (
             <p className='text-muted-foreground text-sm'>
               {t('Support hours: 09:00–22:00 daily. Replies will appear here.')}
@@ -372,11 +417,50 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
               </>
             )}
           </div>
+          {props.admin && (
+            <DataTableBulkActions
+              table={table}
+              placement='inline'
+              entityName={t('Support tickets')}
+            >
+              <Button
+                type='button'
+                size='sm'
+                variant='destructive'
+                onClick={() =>
+                  setDeleteTargets(
+                    table
+                      .getFilteredSelectedRowModel()
+                      .rows.map((row) => row.original.id)
+                  )
+                }
+              >
+                <Trash2 aria-hidden='true' />
+                {t('Delete selected tickets')}
+              </Button>
+            </DataTableBulkActions>
+          )}
           {content}
           {query.data && (query.data.total > 0 || filters.page > 1) && (
             <DataTablePagination table={table} />
           )}
         </div>
+        {props.admin && deleteTargets && (
+          <TicketDeleteDialog
+            ids={deleteTargets}
+            onOpenChange={(open) => {
+              if (!open) setDeleteTargets(null)
+            }}
+            onDeleted={(ids) => {
+              setDetailId((current) =>
+                current !== null && ids.includes(current) ? null : current
+              )
+              setSelection(null)
+              setDeleteTargets(null)
+              setFilters((previous) => ({ ...previous, page: 1 }))
+            }}
+          />
+        )}
         {!props.admin && createOpen && (
           <Dialog
             open

@@ -25,6 +25,7 @@ const (
 	SupportTicketMaxMessages = 100
 	SupportTicketMaxOpen     = 10
 	SupportTicketMaxDaily    = 20
+	SupportTicketMaxBatch    = 100
 )
 
 var (
@@ -231,6 +232,9 @@ func findSupportTicketSubmission(tx *gorm.DB, userID int, requestID, requestHash
 			return nil, nil
 		}
 		return nil, err
+	}
+	if message.RequestKind == "deleted" {
+		return nil, ErrSupportSubmissionConflict
 	}
 	kind := "reply"
 	if creating {
@@ -511,4 +515,65 @@ func SetSupportTicketStatus(ticketID, userID int, admin bool, status string) (*S
 		return tx.First(ticket, ticketID).Error
 	})
 	return ticket, err
+}
+
+// DeleteSupportTickets 与创建、回复共用全站写锁，提交后才能删除截图文件。
+func DeleteSupportTickets(ticketIDs []int, adminID int) ([]int, []SupportTicketAttachment, error) {
+	if len(ticketIDs) == 0 || len(ticketIDs) > SupportTicketMaxBatch {
+		return nil, nil, ErrSupportSubmission
+	}
+	ids := slices.Clone(ticketIDs)
+	for _, id := range ids {
+		if id <= 0 {
+			return nil, nil, ErrSupportSubmission
+		}
+	}
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	var attachments []SupportTicketAttachment
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockSupportTicketStorage(tx); err != nil {
+			return err
+		}
+		var admin User
+		if err := lockForUpdate(tx).Select("id", "role").Where("id = ? AND status = ?", adminID, common.UserStatusEnabled).First(&admin).Error; err != nil {
+			return err
+		}
+		if admin.Role < common.RoleAdminUser {
+			return common.NewMessage("Unauthorized, insufficient privileges")
+		}
+		var tickets []SupportTicket
+		if err := lockForUpdate(tx).Where("id IN ?", ids).Order("id ASC").Find(&tickets).Error; err != nil {
+			return err
+		}
+		if len(tickets) == 0 {
+			return nil
+		}
+		existingIDs := make([]int, 0, len(tickets))
+		for _, ticket := range tickets {
+			existingIDs = append(existingIDs, ticket.ID)
+		}
+		if err := tx.Where("ticket_id IN ?", existingIDs).Find(&attachments).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("ticket_id IN ?", existingIDs).Delete(&SupportTicketAttachment{}).Error; err != nil {
+			return err
+		}
+		// 只保留已删除创建请求的不可见幂等标识，避免旧请求重试重新创建工单。
+		// 清空正文与工单关联，即使未来复用工单 ID，也不能将旧请求连到新工单。
+		if err := tx.Model(&SupportTicketMessage{}).
+			Where("ticket_id IN ? AND request_kind = ? AND request_id IS NOT NULL", existingIDs, "create").
+			Updates(map[string]any{"ticket_id": 0, "is_admin": false, "content": "", "created_at": 0, "request_hash": "", "request_kind": "deleted"}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("ticket_id IN ?", existingIDs).Delete(&SupportTicketMessage{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id IN ?", existingIDs).Delete(&SupportTicket{}).Error
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	// 已删除的 ID 也视为完成，使响应丢失后的同一批重试保持幂等。
+	return ids, attachments, nil
 }

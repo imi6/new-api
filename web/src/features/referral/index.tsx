@@ -179,7 +179,7 @@ export function ReferralPage() {
         </Button>
       </SectionPageLayout.Actions>
       <SectionPageLayout.Content>
-        <div className='mx-auto flex w-full max-w-5xl flex-col gap-4'>
+        <div className='mx-auto flex w-full max-w-7xl flex-col gap-4'>
           <p className='text-muted-foreground text-sm'>
             {t(
               'Share your invitation and choose how to claim your consumption rebate.'
