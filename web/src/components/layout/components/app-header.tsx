@@ -21,6 +21,7 @@ import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
+import { ServiceCenterMenu } from '@/components/service-center-menu'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
 import { TrialRewardAction } from '@/features/telegram-bot/trial-reward-action'
 import { useNotifications } from '@/hooks/use-notifications'
@@ -107,7 +108,11 @@ export function AppHeader({
 }: AppHeaderProps) {
   // Prioritize dynamically generated links from backend
   const dynamicLinks = useTopNavLinks()
-  const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const links = (dynamicLinks.length > 0 ? dynamicLinks : navLinks).filter(
+    (link) =>
+      link.external ||
+      !['/dashboard', '/about'].includes(link.href.replace(/\/+$/, ''))
+  )
 
   // Notifications hook
   const notifications = useNotifications()
@@ -126,9 +131,12 @@ export function AppHeader({
       {rightContent ?? (
         <div className='ms-auto flex shrink-0 items-center gap-1 sm:gap-2'>
           {showTopNav && (
-            <div className='me-1 hidden lg:block'>
-              <TopNav links={links} />
-            </div>
+            <>
+              <div className='me-1 hidden lg:block'>
+                <TopNav links={links} />
+              </div>
+              <ServiceCenterMenu />
+            </>
           )}
           {showSearch && (
             <Search className='w-8 flex-none [&>span]:hidden sm:[&>span]:inline' />

@@ -53,6 +53,7 @@ const _systemInfoSchema = z.object({
   Logo: z.string().url().optional().or(z.literal('')),
   Footer: z.string().optional(),
   About: z.string().optional(),
+  Contact: z.string().optional(),
   HomePageContent: z.string().optional(),
   general_setting: z.object({
     docs_link: z.string(),
@@ -85,6 +86,7 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
     Logo: normalizeValue(defaultValues.Logo),
     Footer: normalizeValue(defaultValues.Footer),
     About: normalizeValue(defaultValues.About),
+    Contact: normalizeValue(defaultValues.Contact),
     HomePageContent: normalizeValue(defaultValues.HomePageContent),
     general_setting: {
       docs_link: normalizeValue(defaultValues.general_setting?.docs_link),
@@ -109,6 +111,7 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
     Logo: z.string().url().optional().or(z.literal('')),
     Footer: z.string().optional(),
     About: z.string().optional(),
+    Contact: z.string().optional(),
     HomePageContent: z.string().optional(),
     general_setting: z.object({
       docs_link: z.string(),
@@ -295,6 +298,31 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                     <FormDescription>
                       {t(
                         'Supports HTML markup or iframe embedding. Enter HTML code directly, or provide a complete URL to automatically embed it as an iframe.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='Contact'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Contact Us')}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder={t(
+                          'Enter contact details, support hours, and useful links'
+                        )}
+                        rows={8}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Supports Markdown and HTML. Add your email, Telegram, QQ group, or other contact details.'
                       )}
                     </FormDescription>
                     <FormMessage />
