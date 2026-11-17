@@ -21,7 +21,6 @@ import {
   ChevronDown,
   Gift,
   Info,
-  LayoutDashboard,
   LifeBuoy,
   Mail,
   Megaphone,
@@ -42,12 +41,7 @@ import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import { cn } from '@/lib/utils'
 
 type ServiceCenterItem = {
-  href:
-    | '/dashboard'
-    | '/referral'
-    | '/system-announcements'
-    | '/contact'
-    | '/about'
+  href: '/referral' | '/system-announcements' | '/contact' | '/about'
   title: string
   description: string
   icon: LucideIcon
@@ -85,7 +79,6 @@ export function ServiceCenterMenu(props: ServiceCenterMenuProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const consoleVisible = useIsSidebarModuleVisible('/dashboard')
   const referralVisible = useIsSidebarModuleVisible('/referral')
   const announcementsVisible = useIsSidebarModuleVisible(
     '/system-announcements'
@@ -96,14 +89,6 @@ export function ServiceCenterMenu(props: ServiceCenterMenuProps) {
   const items: ServiceCenterItem[] = []
 
   if (modules.console !== false) {
-    if (consoleVisible) {
-      items.push({
-        href: '/dashboard',
-        title: t('Console'),
-        description: t('Manage API keys, balance and usage'),
-        icon: LayoutDashboard,
-      })
-    }
     if (referralVisible) {
       items.push({
         href: '/referral',
