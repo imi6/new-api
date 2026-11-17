@@ -2,6 +2,7 @@ package model
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"net/mail"
@@ -23,6 +24,7 @@ var (
 	ErrTelegramTrialBudgetExceeded     = common.NewMessage("The Telegram trial distribution budget has been reached")
 	ErrTelegramTrialChanged            = common.NewMessage("Telegram trial settings changed. Please try again")
 	ErrTelegramTrialMembershipRequired = common.NewMessage("Join the required Telegram group or channel before claiming a trial")
+	ErrTelegramTrialUserIDRequired     = common.NewMessage("Your account does not meet the minimum user ID requirement for trial credit")
 	ErrInvalidTelegramTrialConfig      = common.NewMessage("Invalid Telegram trial settings")
 	telegramTrialUsername              = regexp.MustCompile(`^@[A-Za-z][A-Za-z0-9_]{4,31}$`)
 )
@@ -31,6 +33,8 @@ var (
 type TelegramBotTrialConfig struct {
 	ID                int    `json:"-" gorm:"primaryKey;autoIncrement:false"`
 	Enabled           bool   `json:"enabled"`
+	MinUserID         int    `json:"min_user_id" gorm:"type:bigint"`
+	CurrentMaxUserID  int    `json:"current_max_user_id" gorm:"-:all"`
 	Quota             int    `json:"quota" gorm:"type:bigint"`
 	DailyLimit        int    `json:"daily_limit" gorm:"type:bigint"`
 	TotalLimit        int    `json:"total_limit" gorm:"type:bigint"`
@@ -81,6 +85,8 @@ type TelegramTrialMembershipProof struct {
 // TelegramTrialStatus 只公开当前账号的领取提示，不包含领取凭据或后台预算明细。
 type TelegramTrialStatus struct {
 	Enabled           bool   `json:"enabled"`
+	MinUserID         int    `json:"min_user_id"`
+	UserIDEligible    bool   `json:"user_id_eligible"`
 	Quota             int    `json:"quota"`
 	Claimed           bool   `json:"claimed"`
 	EmailBound        bool   `json:"email_bound"`
@@ -132,7 +138,8 @@ func GetTelegramTrialStatus(userID int) (*TelegramTrialStatus, error) {
 		trial.TotalLimit >= trial.Quota && trial.TotalLimit <= common.MaxWalletQuota
 	botAvailable := bot.Enabled && bot.BotID > 0 && bot.Version > 0 && telegramTrialUsername.MatchString("@"+bot.BotUsername)
 	status := &TelegramTrialStatus{
-		Enabled: trial.Enabled && validQuota && validBudget && botAvailable,
+		Enabled:   trial.Enabled && trial.MinUserID > 0 && validQuota && validBudget && botAvailable,
+		MinUserID: trial.MinUserID, UserIDEligible: trial.MinUserID > 0 && user.Id >= trial.MinUserID,
 		Claimed: claimCount > 0, EmailBound: emailBound,
 		BotConnected: botAvailable && user.Status == common.UserStatusEnabled && user.TelegramId != "" &&
 			connection.Status == TelegramBotConnected && connection.BotID == bot.BotID &&
@@ -173,7 +180,7 @@ func GetTelegramBotTrialConfig() (*TelegramBotTrialConfig, error) {
 
 func SaveTelegramBotTrialConfig(input TelegramBotTrialConfig) (*TelegramBotTrialConfig, error) {
 	input.ChatID, input.JoinURL = strings.TrimSpace(input.ChatID), strings.TrimSpace(input.JoinURL)
-	if input.Version < 0 || input.Quota < 0 || input.Quota > common.MaxWalletQuota ||
+	if input.Version < 0 || input.MinUserID <= 0 || int64(input.MinUserID) > 1<<53-1 || input.Quota < 0 || input.Quota > common.MaxWalletQuota ||
 		input.DailyLimit < 0 || input.DailyLimit > common.MaxWalletQuota ||
 		input.TotalLimit < 0 || input.TotalLimit > common.MaxWalletQuota || len(input.ChatID) > 64 || len(input.JoinURL) > 255 {
 		return nil, ErrInvalidTelegramTrialConfig
@@ -204,7 +211,7 @@ func SaveTelegramBotTrialConfig(input TelegramBotTrialConfig) (*TelegramBotTrial
 			return ErrInvalidTelegramTrialConfig
 		}
 		return tx.Model(config).Updates(map[string]any{
-			"enabled": input.Enabled, "quota": input.Quota, "daily_limit": input.DailyLimit, "total_limit": input.TotalLimit,
+			"enabled": input.Enabled, "min_user_id": input.MinUserID, "quota": input.Quota, "daily_limit": input.DailyLimit, "total_limit": input.TotalLimit,
 			"require_membership": input.RequireMembership, "chat_id": input.ChatID, "join_url": input.JoinURL,
 			"version": config.Version + 1, "updated_at": time.Now().Unix(),
 		}).Error
@@ -213,6 +220,104 @@ func SaveTelegramBotTrialConfig(input TelegramBotTrialConfig) (*TelegramBotTrial
 		return nil, err
 	}
 	return GetTelegramBotTrialConfig()
+}
+
+// GetTelegramTrialCurrentMaxUserID 同时考虑现存账号和永久编号，已注销账号不会让建议门槛回退。
+func GetTelegramTrialCurrentMaxUserID() (int, error) {
+	var usersMaximum, reservedMaximum sql.NullInt64
+	if err := DB.Unscoped().Model(&User{}).Select("MAX(id)").Scan(&usersMaximum).Error; err != nil {
+		return 0, err
+	}
+	if err := DB.Model(&UserIDReservation{}).Select("MAX(id)").Scan(&reservedMaximum).Error; err != nil {
+		return 0, err
+	}
+	return int(max(usersMaximum.Int64, reservedMaximum.Int64)), nil
+}
+
+type TelegramTrialClaimFilter struct {
+	Keyword   string
+	StartTime int64
+	EndTime   int64
+}
+
+// TelegramTrialClaimDetail 仅供管理员查看；用户名、邮箱及注册时间来自当前账号资料。
+type TelegramTrialClaimDetail struct {
+	ID            int64  `json:"id"`
+	UserID        int    `json:"user_id"`
+	Username      string `json:"username"`
+	EmailMasked   string `json:"email_masked"`
+	UserCreatedAt int64  `json:"user_created_at"`
+	TelegramID    string `json:"telegram_id"`
+	Quota         int    `json:"quota"`
+	ClaimedAt     int64  `json:"claimed_at"`
+	UserDeleted   bool   `json:"user_deleted"`
+}
+
+// ListTelegramTrialClaims 保留已注销账号的发放记录，分页后批量关联资料，避免逐行查询。
+func ListTelegramTrialClaims(filter TelegramTrialClaimFilter, page *common.PageInfo) ([]TelegramTrialClaimDetail, int64, error) {
+	filter.Keyword = strings.TrimSpace(filter.Keyword)
+	if page == nil || page.Page < 1 || page.Page > 1_000_000 || page.PageSize < 1 || page.PageSize > 100 ||
+		len(filter.Keyword) > 128 || strings.ContainsRune(filter.Keyword, '\x00') || filter.StartTime < 0 || filter.EndTime < 0 ||
+		filter.EndTime > 0 && filter.StartTime > filter.EndTime {
+		return nil, 0, common.NewMessage("Invalid parameters")
+	}
+	query := DB.Model(&TelegramBotTrialClaim{})
+	if filter.Keyword != "" {
+		pattern := "%" + strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(filter.Keyword) + "%"
+		userIDs := DB.Model(&User{}).Select("id").Where("username LIKE ? ESCAPE '!'", pattern)
+		matches := DB.Where("telegram_id = ?", filter.Keyword).Or("user_id IN (?)", userIDs)
+		if userID, err := strconv.Atoi(filter.Keyword); err == nil && userID > 0 {
+			matches = matches.Or("user_id = ?", userID)
+		}
+		query = query.Where(matches)
+	}
+	if filter.StartTime > 0 {
+		query = query.Where("claimed_at >= ?", filter.StartTime)
+	}
+	if filter.EndTime > 0 {
+		query = query.Where("claimed_at <= ?", filter.EndTime)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	claims := make([]TelegramBotTrialClaim, 0, page.PageSize)
+	if err := query.Select("id", "user_id", "telegram_id", "quota", "claimed_at").Order("claimed_at DESC").Order("id DESC").
+		Offset(page.GetStartIdx()).Limit(page.PageSize).Find(&claims).Error; err != nil {
+		return nil, 0, err
+	}
+	details := make([]TelegramTrialClaimDetail, 0, len(claims))
+	if len(claims) == 0 {
+		return details, total, nil
+	}
+	userIDs := make([]int, 0, len(claims))
+	for i := range claims {
+		userIDs = append(userIDs, claims[i].UserID)
+	}
+	var users []User
+	if err := DB.Select("id", "username", "email", "created_at").Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+	usersByID := make(map[int]User, len(users))
+	for i := range users {
+		usersByID[users[i].Id] = users[i]
+	}
+	for i := range claims {
+		claim := &claims[i]
+		user, found := usersByID[claim.UserID]
+		detail := TelegramTrialClaimDetail{
+			ID: claim.ID, UserID: claim.UserID, TelegramID: claim.TelegramID, Quota: claim.Quota,
+			ClaimedAt: claim.ClaimedAt, UserDeleted: !found,
+		}
+		if found {
+			detail.Username, detail.UserCreatedAt = user.Username, user.CreatedAt
+			if user.Email != "" {
+				detail.EmailMasked = common.MaskEmail(user.Email)
+			}
+		}
+		details = append(details, detail)
+	}
+	return details, total, nil
 }
 
 // lockTelegramTrialConfig 固定配置→用户→连接的锁序；首条写语句避免 SQLite 读事务升级冲突。
@@ -360,8 +465,11 @@ func lockTelegramTrialAccount(tx *gorm.DB, identity TelegramTrialIdentity) (*Tel
 }
 
 func validateTelegramTrialEligibility(tx *gorm.DB, config *TelegramBotTrialConfig, user *User, identity TelegramTrialIdentity, membership TelegramTrialMembershipProof) error {
-	if !config.Enabled || config.Quota <= 0 || config.Quota > common.MaxWalletQuota || config.DailyLimit < config.Quota || config.DailyLimit > common.MaxWalletQuota || config.TotalLimit < config.Quota || config.TotalLimit > common.MaxWalletQuota {
+	if !config.Enabled || config.MinUserID <= 0 || config.Quota <= 0 || config.Quota > common.MaxWalletQuota || config.DailyLimit < config.Quota || config.DailyLimit > common.MaxWalletQuota || config.TotalLimit < config.Quota || config.TotalLimit > common.MaxWalletQuota {
 		return ErrTelegramTrialUnavailable
+	}
+	if user.Id < config.MinUserID {
+		return ErrTelegramTrialUserIDRequired
 	}
 	email := NormalizeEmail(user.Email)
 	address, err := mail.ParseAddress(email)
