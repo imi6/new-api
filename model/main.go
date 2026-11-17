@@ -409,6 +409,10 @@ func migrateDB() error {
 		&GroupRatioChange{},
 		&PartnerSite{},
 		&PartnerOffer{},
+		&SupportTicket{},
+		&SupportTicketMessage{},
+		&SupportTicketAttachment{},
+		&SupportTicketStorageLock{},
 		&Announcement{},
 		&AnnouncementRead{},
 	)

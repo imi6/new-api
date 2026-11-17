@@ -2,6 +2,8 @@ package router
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
@@ -17,6 +19,25 @@ import (
 func SetApiRouter(router *gin.Engine) {
 	apiRouter := router.Group("/api")
 	apiRouter.Use(middleware.RouteTag("api"))
+	apiRouter.Use(func(c *gin.Context) {
+		if c.Request.Method != http.MethodPost || !strings.HasPrefix(c.FullPath(), "/api/support/") {
+			return
+		}
+		// 在响应包装和鉴权之前限制读取时间，提前拒绝的请求也不能无限拖住请求体排空。
+		control := http.NewResponseController(c.Writer)
+		if err := control.SetReadDeadline(time.Now().Add(90 * time.Second)); err != nil {
+			c.AbortWithStatus(http.StatusServiceUnavailable)
+			return
+		}
+		defer func() {
+			_ = control.SetReadDeadline(time.Now())
+			if c.Request.Body != nil {
+				_ = c.Request.Body.Close()
+			}
+			_ = control.SetReadDeadline(time.Time{})
+		}()
+		c.Next()
+	})
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
 	apiRouter.Use(middleware.AccessTokenAudit())
 	apiRouter.Use(middleware.BodyStorageCleanup()) // 清理请求体存储
@@ -290,6 +311,25 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/gateway/:id/notify", controller.SubscriptionEpayNotifyByGateway)
 		apiRouter.GET("/subscription/epay/gateway/:id/return", controller.SubscriptionEpayReturnByGateway)
 		apiRouter.POST("/subscription/epay/gateway/:id/return", anonymousRequestBodyLimit, controller.SubscriptionEpayReturnByGateway)
+
+		// 工单正文与截图都只允许浏览器会话，读取附件同样校验所属用户。
+		supportRoute := apiRouter.Group("/support/tickets", middleware.UserAuth(), middleware.DisableCache())
+		{
+			supportRoute.GET("", controller.ListSupportTickets)
+			supportRoute.GET("/:id", controller.GetSupportTicket)
+			supportRoute.GET("/:id/attachments/:attachment_id", controller.DownloadSupportTicketAttachment)
+			supportRoute.POST("", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.CreateSupportTicket)
+			supportRoute.POST("/:id/messages", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.ReplySupportTicket)
+			supportRoute.POST("/:id/close", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.CloseSupportTicket)
+		}
+		supportAdminRoute := apiRouter.Group("/support/admin/tickets", middleware.AdminAuth(), middleware.DisableCache())
+		{
+			supportAdminRoute.GET("", controller.AdminListSupportTickets)
+			supportAdminRoute.GET("/:id", controller.AdminGetSupportTicket)
+			supportAdminRoute.GET("/:id/attachments/:attachment_id", controller.AdminDownloadSupportTicketAttachment)
+			supportAdminRoute.POST("/:id/messages", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminReplySupportTicket)
+			supportAdminRoute.POST("/:id/status", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminSetSupportTicketStatus)
+		}
 
 		// Invoice center
 		invoiceRoute := apiRouter.Group("/invoice")
