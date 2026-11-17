@@ -73,8 +73,11 @@ func processTelegramTrial(cfg *model.TelegramBotConfig, row *model.TelegramBotIn
 	if err != nil {
 		return "", err
 	}
-	if !trial.Enabled || trial.Quota <= 0 {
+	if !trial.Enabled || trial.MinUserID <= 0 || trial.Quota <= 0 {
 		return i18n.Translate(lang, "telegram.bot.trial_unavailable"), nil
+	}
+	if user.Id < trial.MinUserID {
+		return telegramTrialFailure(model.ErrTelegramTrialUserIDRequired)
 	}
 	membership, err := telegramTrialMembership(cfg, trial, row.TelegramID)
 	if err != nil {
@@ -101,6 +104,8 @@ func telegramTrialFailure(err error) (string, error) {
 		key = "telegram.bot.trial_unavailable"
 	case errors.Is(err, model.ErrTelegramTrialAlreadyClaimed):
 		key = "telegram.bot.trial_already_claimed"
+	case errors.Is(err, model.ErrTelegramTrialUserIDRequired):
+		key = "telegram.bot.trial_user_id_required"
 	case errors.Is(err, model.ErrTelegramTrialEmailRequired):
 		return i18n.Translate(i18n.LangZhCN, "telegram.bot.trial_email_required", map[string]any{"URL": strings.TrimRight(system_setting.ServerAddress, "/") + "/security"}), nil
 	case errors.Is(err, model.ErrTelegramTrialBudgetExceeded):
