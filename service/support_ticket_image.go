@@ -332,24 +332,28 @@ func RemoveUnreferencedSupportScreenshots(attachments []model.SupportTicketAttac
 	RemoveSupportScreenshots(unreferenced)
 }
 
-func RemoveSupportScreenshots(attachments []model.SupportTicketAttachment) {
+func RemoveSupportScreenshots(attachments []model.SupportTicketAttachment) error {
 	if len(attachments) == 0 {
-		return
+		return nil
 	}
 	root, err := openSupportImageRoot()
 	if err != nil {
 		common.SysError(common.LogText("failed to open support screenshot storage: %s", err.Error()))
-		return
+		return err
 	}
 	defer root.Close()
+	var cleanupErrors []error
 	for i := range attachments {
 		if !validSupportImageKey(attachments[i].FileKey) {
+			cleanupErrors = append(cleanupErrors, errors.New("invalid support screenshot file key"))
 			continue
 		}
 		if err := root.Remove(attachments[i].FileKey); err != nil && !errors.Is(err, os.ErrNotExist) {
 			common.SysError(common.LogText("failed to remove uncommitted support screenshot: %s", err.Error()))
+			cleanupErrors = append(cleanupErrors, err)
 		}
 	}
+	return errors.Join(cleanupErrors...)
 }
 
 func OpenSupportScreenshot(key string) (io.ReadCloser, int64, error) {

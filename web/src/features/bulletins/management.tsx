@@ -17,17 +17,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pin, PinOff, Plus } from 'lucide-react'
-import { useState } from 'react'
+import {
+  getCoreRowModel,
+  useReactTable,
+  type RowSelectionState,
+} from '@tanstack/react-table'
+import { Pin, PinOff, Plus, Trash2 } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { StaticDataTable } from '@/components/data-table/static/static-data-table'
+import { DataTableBulkActions, StaticDataTable } from '@/components/data-table'
 import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
 import { SectionPageLayout } from '@/components/layout'
 import { StatusBadge, type StatusVariant } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenuItem,
   DropdownMenuShortcut,
@@ -36,6 +42,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SettingsSwitchField } from '@/features/system-settings/components/settings-form-layout'
 import { formatTimestampToDate } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
+import { getServerErrorMessage } from '@/lib/server-error-message'
 
 import {
   deleteBulletin,
@@ -53,6 +60,14 @@ import {
   MANAGED_BULLETINS_QUERY_KEY,
 } from './hooks/use-bulletins'
 import type { ManagedBulletin } from './types'
+
+const EMPTY_BULLETINS: ManagedBulletin[] = []
+const BULLETIN_BATCH_LIMIT = 100
+
+type BulletinBulkInput = {
+  action: 'pin' | 'unpin' | 'delete'
+  ids: number[]
+}
 
 /**
  * The status shown in the table. A published announcement outside its
@@ -85,6 +100,9 @@ export function BulletinManagement() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ManagedBulletin | null>(null)
   const [deleting, setDeleting] = useState<ManagedBulletin | null>(null)
+  const [bulkDeleting, setBulkDeleting] = useState<number[] | null>(null)
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const operationInFlight = useRef(false)
 
   const query = useQuery({
     queryKey: MANAGED_BULLETINS_QUERY_KEY,
@@ -92,6 +110,19 @@ export function BulletinManagement() {
   })
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: BULLETINS_QUERY_KEY })
+  const items = query.data?.items ?? EMPTY_BULLETINS
+  const table = useReactTable({
+    data: items,
+    columns: [],
+    getRowId: (item) => String(item.id),
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    enableRowSelection: true,
+  })
+  const selectedIds = table
+    .getFilteredSelectedRowModel()
+    .rows.map((row) => row.original.id)
 
   const pin = useMutation({
     mutationFn: (input: { id: number; pinned: boolean }) =>
@@ -103,19 +134,96 @@ export function BulletinManagement() {
       return refresh()
     },
     onError: (error) => handleServerError(error),
+    onSettled: () => {
+      operationInFlight.current = false
+    },
     meta: { errorToast: false },
   })
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteBulletin(id),
-    onSuccess: () => {
+    onSuccess: async (_, id) => {
       toast.success(t('Deleted'))
       setDeleting(null)
-      refresh()
+      setRowSelection((previous) => {
+        const next = { ...previous }
+        delete next[String(id)]
+        return next
+      })
+      await refresh()
     },
     onError: (error) => handleServerError(error),
+    onSettled: () => {
+      operationInFlight.current = false
+    },
     meta: { errorToast: false },
   })
+
+  const bulk = useMutation({
+    mutationFn: async (input: BulletinBulkInput) => {
+      const succeeded: number[] = []
+      const failed: { id: number; error: unknown }[] = []
+      // 沿用单条接口逐项执行，保留其权限、已读清理和缓存失效规则。
+      for (const id of input.ids) {
+        try {
+          if (input.action === 'delete') await deleteBulletin(id)
+          else await setBulletinPinned(id, input.action === 'pin')
+          succeeded.push(id)
+        } catch (error) {
+          failed.push({ id, error })
+        }
+      }
+      return { succeeded, failed }
+    },
+    onSuccess: async (result, input) => {
+      const succeeded = new Set(result.succeeded.map(String))
+      setRowSelection((previous) =>
+        Object.fromEntries(
+          Object.entries(previous).filter(([id]) => !succeeded.has(id))
+        )
+      )
+      setBulkDeleting(null)
+      if (result.succeeded.length > 0) {
+        toast.success(
+          input.action === 'delete'
+            ? t('Deleted {{count}} announcements', {
+                count: result.succeeded.length,
+              })
+            : t('Updated {{count}} announcements', {
+                count: result.succeeded.length,
+              })
+        )
+      }
+      if (result.failed.length > 0) {
+        toast.error(
+          t(
+            'Failed to process {{count}} announcements. Review the errors and retry.',
+            { count: result.failed.length }
+          )
+        )
+      }
+      // 全部失败也刷新，可能是其他管理员已删除了选中的公告。
+      await refresh()
+    },
+    onError: (error) => handleServerError(error),
+    onSettled: () => {
+      operationInFlight.current = false
+    },
+    meta: { errorToast: false },
+  })
+  const busy = pin.isPending || remove.isPending || bulk.isPending
+
+  const runBulk = (input: BulletinBulkInput) => {
+    if (
+      operationInFlight.current ||
+      input.ids.length === 0 ||
+      input.ids.length > BULLETIN_BATCH_LIMIT
+    ) {
+      return
+    }
+    operationInFlight.current = true
+    bulk.mutate(input)
+  }
 
   const guestPopup = useMutation({
     mutationFn: (value: boolean) => setBulletinGuestPopup(value),
@@ -128,6 +236,7 @@ export function BulletinManagement() {
   })
 
   const openForm = (item: ManagedBulletin | null) => {
+    if (operationInFlight.current) return
     setEditing(item)
     setFormOpen(true)
   }
@@ -138,7 +247,7 @@ export function BulletinManagement() {
         {t('Announcement management')}
       </SectionPageLayout.Title>
       <SectionPageLayout.Actions>
-        <Button size='sm' onClick={() => openForm(null)}>
+        <Button size='sm' onClick={() => openForm(null)} disabled={busy}>
           <Plus aria-hidden='true' />
           {t('New announcement')}
         </Button>
@@ -156,16 +265,100 @@ export function BulletinManagement() {
               )}
             />
           </div>
+          <DataTableBulkActions
+            table={table}
+            entityName={t('Announcements')}
+            placement='inline'
+          >
+            <Button
+              size='sm'
+              variant='outline'
+              disabled={busy || selectedIds.length > BULLETIN_BATCH_LIMIT}
+              onClick={() => runBulk({ action: 'pin', ids: selectedIds })}
+            >
+              <Pin aria-hidden='true' />
+              {t('Pin selected announcements')}
+            </Button>
+            <Button
+              size='sm'
+              variant='outline'
+              disabled={busy || selectedIds.length > BULLETIN_BATCH_LIMIT}
+              onClick={() => runBulk({ action: 'unpin', ids: selectedIds })}
+            >
+              <PinOff aria-hidden='true' />
+              {t('Unpin selected announcements')}
+            </Button>
+            <Button
+              size='sm'
+              variant='destructive'
+              disabled={busy || selectedIds.length > BULLETIN_BATCH_LIMIT}
+              onClick={() => setBulkDeleting(selectedIds)}
+            >
+              <Trash2 aria-hidden='true' />
+              {t('Delete selected announcements')}
+            </Button>
+            {selectedIds.length > BULLETIN_BATCH_LIMIT && (
+              <span className='text-muted-foreground text-xs'>
+                {t('Select at most {{count}} announcements per operation.', {
+                  count: BULLETIN_BATCH_LIMIT,
+                })}
+              </span>
+            )}
+          </DataTableBulkActions>
+          {!bulk.isPending && (bulk.data?.failed.length ?? 0) > 0 && (
+            <div
+              role='alert'
+              className='bg-destructive/10 text-destructive max-h-40 overflow-auto rounded-xl p-3 text-sm'
+            >
+              <ul className='space-y-1'>
+                {bulk.data?.failed.map((item) => (
+                  <li key={item.id}>
+                    {t('Announcement #{{id}}', { id: item.id })}:{' '}
+                    {getServerErrorMessage(item.error)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {query.isLoading ? (
             <Skeleton className='h-48 w-full' />
           ) : (
             <StaticDataTable
-              data={query.data?.items ?? []}
+              data={items}
               getRowKey={(item) => item.id}
               emptyContent={t(
                 'No announcements yet. Click "New announcement" to create one.'
               )}
               columns={[
+                {
+                  id: 'select',
+                  header: (
+                    <Checkbox
+                      checked={table.getIsAllRowsSelected()}
+                      indeterminate={table.getIsSomeRowsSelected()}
+                      onCheckedChange={(checked) =>
+                        table.toggleAllRowsSelected(checked === true)
+                      }
+                      disabled={busy || items.length === 0}
+                      aria-label={t('Select all')}
+                    />
+                  ),
+                  className: 'w-12',
+                  cell: (item) => (
+                    <Checkbox
+                      checked={table.getRow(String(item.id)).getIsSelected()}
+                      onCheckedChange={(checked) =>
+                        table
+                          .getRow(String(item.id))
+                          .toggleSelected(checked === true)
+                      }
+                      disabled={busy}
+                      aria-label={t('Select row {{number}}', {
+                        number: item.id,
+                      })}
+                    />
+                  ),
+                },
                 {
                   id: 'title',
                   header: t('Title'),
@@ -230,14 +423,16 @@ export function BulletinManagement() {
                       menuLabel={t('Open menu')}
                       onEdit={() => openForm(item)}
                       onDelete={() => setDeleting(item)}
-                      editDisabled={pin.isPending}
-                      deleteDisabled={pin.isPending}
+                      editDisabled={busy}
+                      deleteDisabled={busy}
                     >
                       <DropdownMenuItem
-                        disabled={pin.isPending}
-                        onClick={() =>
+                        disabled={busy}
+                        onClick={() => {
+                          if (operationInFlight.current) return
+                          operationInFlight.current = true
                           pin.mutate({ id: item.id, pinned: !item.pinned })
-                        }
+                        }}
                       >
                         {item.pinned
                           ? t('Unpin announcement')
@@ -265,16 +460,37 @@ export function BulletinManagement() {
         <ConfirmDialog
           open={deleting !== null}
           onOpenChange={(open) => {
-            if (!open) setDeleting(null)
+            if (!open && !operationInFlight.current) setDeleting(null)
           }}
           title={t('Delete announcement')}
           desc={t(
             'The announcement is deleted for everyone. To only take it down, set it to Archived instead.'
           )}
           handleConfirm={() => {
-            if (deleting) remove.mutate(deleting.id)
+            if (!deleting || operationInFlight.current) return
+            operationInFlight.current = true
+            remove.mutate(deleting.id)
           }}
           isLoading={remove.isPending}
+          destructive
+          confirmText={t('Delete')}
+        />
+        <ConfirmDialog
+          open={bulkDeleting !== null}
+          onOpenChange={(open) => {
+            if (!open && !operationInFlight.current) setBulkDeleting(null)
+          }}
+          title={t('Delete {{count}} announcements?', {
+            count: bulkDeleting?.length ?? 0,
+          })}
+          desc={t(
+            '{{count}} announcements will be permanently deleted, including their read records. This cannot be undone.',
+            { count: bulkDeleting?.length ?? 0 }
+          )}
+          handleConfirm={() => {
+            if (bulkDeleting) runBulk({ action: 'delete', ids: bulkDeleting })
+          }}
+          isLoading={bulk.isPending}
           destructive
           confirmText={t('Delete')}
         />
