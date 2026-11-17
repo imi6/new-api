@@ -134,6 +134,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
           },
+          {
+            title: t('System Announcements'),
+            url: '/system-announcements',
+            icon: Megaphone,
+          },
         ],
       },
       {
