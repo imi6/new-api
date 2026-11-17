@@ -38,6 +38,28 @@ interface TicketResponse<T> {
 export const ticketBase = (admin: boolean) =>
   admin ? '/api/support/admin/tickets' : '/api/support/tickets'
 
+export interface BatchDeleteTicketsResult {
+  deleted_ids: number[]
+  file_cleanup_pending: boolean
+}
+
+export async function deleteAdminTickets(
+  ids: number[]
+): Promise<BatchDeleteTicketsResult> {
+  const response = await api.post<TicketResponse<BatchDeleteTicketsResult>>(
+    `${ticketBase(true)}/batch-delete`,
+    { ids }
+  )
+  const result = requireServerSuccess(response.data).data
+  if (
+    !Array.isArray(result?.deleted_ids) ||
+    !ids.every((id) => result.deleted_ids.includes(id))
+  ) {
+    throw new Error('Failed to delete tickets')
+  }
+  return result
+}
+
 export async function getTickets(
   admin: boolean,
   filters: TicketFilters,

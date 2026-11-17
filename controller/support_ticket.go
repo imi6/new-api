@@ -361,6 +361,31 @@ func AdminSetSupportTicketStatus(c *gin.Context) {
 	setSupportTicketStatus(c, true)
 }
 
+func AdminBatchDeleteSupportTickets(c *gin.Context) {
+	if _, ok := requireBrowserSession(c); !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+	var input struct {
+		IDs []int `json:"ids"`
+	}
+	if err := common.DecodeJsonBody(c.Request.Body, &input); err != nil {
+		common.ApiErrorT(c, "Invalid support ticket request")
+		return
+	}
+	ids, attachments, err := model.DeleteSupportTickets(input.IDs, c.GetInt("id"))
+	if err != nil {
+		supportTicketError(c, err)
+		return
+	}
+	cleanupPending := false
+	if err := service.RemoveSupportScreenshots(attachments); err != nil {
+		cleanupPending = true
+		common.SysError(common.LogText("failed to remove deleted support ticket screenshots: %s", err.Error()))
+	}
+	common.ApiSuccess(c, gin.H{"deleted_ids": ids, "file_cleanup_pending": cleanupPending})
+}
+
 func setSupportTicketStatus(c *gin.Context, admin bool) {
 	if _, ok := requireBrowserSession(c); !ok {
 		return
