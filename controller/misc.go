@@ -194,6 +194,13 @@ func GetAbout(c *gin.Context) {
 	serveRevalidatedJSON(c, about)
 }
 
+func GetContact(c *gin.Context) {
+	common.OptionMapRWMutex.RLock()
+	contact := common.OptionMap["Contact"]
+	common.OptionMapRWMutex.RUnlock()
+	serveRevalidatedJSON(c, contact)
+}
+
 func GetUserAgreement(c *gin.Context) {
 	serveRevalidatedJSON(c, system_setting.GetLegalSettings().UserAgreement)
 }

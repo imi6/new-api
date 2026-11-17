@@ -24,6 +24,7 @@ import { Dialog } from '@/components/dialog'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
+import { ServiceCenterMenu } from '@/components/service-center-menu'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -98,7 +99,11 @@ export function PublicHeader(props: PublicHeaderProps) {
   const user = auth.user
   const isAuthenticated = !!user
   const displaySiteName = customSiteName || systemName
-  const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const links = (dynamicLinks.length > 0 ? dynamicLinks : navLinks).filter(
+    (link) =>
+      link.external ||
+      !['/dashboard', '/about'].includes(link.href.replace(/\/+$/, ''))
+  )
 
   let logoContent: ReactNode = (
     <HeaderLogo
@@ -281,6 +286,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                   </Link>
                 )
               })}
+              <ServiceCenterMenu />
             </div>
 
             <TrialRewardAction />
@@ -357,6 +363,8 @@ export function PublicHeader(props: PublicHeaderProps) {
 
       {/* Mobile full-screen overlay */}
       <div
+        inert={!mobileOpen}
+        aria-hidden={!mobileOpen}
         className={cn(
           'bg-background/98 fixed inset-0 z-40 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:pointer-events-none lg:hidden',
           mobileOpen
@@ -364,8 +372,8 @@ export function PublicHeader(props: PublicHeaderProps) {
             : 'pointer-events-none opacity-0'
         )}
       >
-        <div className='flex h-full flex-col justify-between px-8 pt-20 pb-10'>
-          <nav className='flex flex-col gap-1'>
+        <div className='flex h-full flex-col justify-between gap-6 overflow-y-auto px-8 pt-20 pb-10'>
+          <nav className='flex shrink-0 flex-col gap-1'>
             {links.map((link, i) => {
               const isActive = pathname === link.href
               const linkClassName = cn(
@@ -409,6 +417,11 @@ export function PublicHeader(props: PublicHeaderProps) {
                 </Link>
               )
             })}
+            <ServiceCenterMenu
+              variant='inline'
+              onNavigate={() => setMobileOpen(false)}
+              className='mt-4'
+            />
           </nav>
 
           <div
