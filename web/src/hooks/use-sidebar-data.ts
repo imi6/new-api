@@ -30,6 +30,7 @@ import {
   Key,
   LayoutDashboard,
   ListTodo,
+  LifeBuoy,
   Megaphone,
   MessageSquare,
   PlugZap,
@@ -168,6 +169,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
               ]
             : []),
           {
+            title: t('My support tickets'),
+            url: '/support-tickets',
+            icon: LifeBuoy,
+          },
+          {
             title: t('Profile'),
             url: '/profile',
             icon: User,
@@ -217,6 +223,11 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             title: t('Invoice management'),
             url: '/invoice-management',
             icon: FileCheck,
+          },
+          {
+            title: t('Support ticket management'),
+            url: '/support-ticket-management',
+            icon: LifeBuoy,
           },
           {
             title: t('Supplier quotes'),
