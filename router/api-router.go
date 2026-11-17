@@ -326,6 +326,7 @@ func SetApiRouter(router *gin.Engine) {
 		supportAdminRoute := apiRouter.Group("/support/admin/tickets", middleware.AdminAuth(), middleware.DisableCache())
 		{
 			supportAdminRoute.GET("", controller.AdminListSupportTickets)
+			supportAdminRoute.POST("/batch-delete", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminBatchDeleteSupportTickets)
 			supportAdminRoute.GET("/:id", controller.AdminGetSupportTicket)
 			supportAdminRoute.GET("/:id/attachments/:attachment_id", controller.AdminDownloadSupportTicketAttachment)
 			supportAdminRoute.POST("/:id/messages", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminReplySupportTicket)
