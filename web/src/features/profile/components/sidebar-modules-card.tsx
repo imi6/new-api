@@ -134,6 +134,11 @@ export function SidebarModulesCard() {
           title: t('Security & Access'),
           description: t('Manage your security settings and account access'),
         },
+        {
+          key: 'support',
+          title: t('My support tickets'),
+          description: t('Submit support tickets and view replies.'),
+        },
       ],
     },
   ]

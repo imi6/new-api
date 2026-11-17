@@ -54,10 +54,12 @@ import { Route as AuthenticatedPartnerOffersIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
-import { Route as AuthenticatedRequestProcessingIndexRouteImport } from './routes/_authenticated/request-processing/index'
 import { Route as AuthenticatedReferralIndexRouteImport } from './routes/_authenticated/referral/index'
+import { Route as AuthenticatedRequestProcessingIndexRouteImport } from './routes/_authenticated/request-processing/index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
+import { Route as AuthenticatedSupportTicketManagementIndexRouteImport } from './routes/_authenticated/support-ticket-management/index'
+import { Route as AuthenticatedSupportTicketsIndexRouteImport } from './routes/_authenticated/support-tickets/index'
 import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
 import { Route as AuthenticatedTaskPluginsIndexRouteImport } from './routes/_authenticated/task-plugins/index'
@@ -325,16 +327,16 @@ const AuthenticatedRedemptionCodesIndexRoute =
     path: '/redemption-codes/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedRequestProcessingIndexRoute =
-  AuthenticatedRequestProcessingIndexRouteImport.update({
-    id: '/request-processing/',
-    path: '/request-processing/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedReferralIndexRoute =
   AuthenticatedReferralIndexRouteImport.update({
     id: '/referral/',
     path: '/referral/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRequestProcessingIndexRoute =
+  AuthenticatedRequestProcessingIndexRouteImport.update({
+    id: '/request-processing/',
+    path: '/request-processing/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSecurityIndexRoute =
@@ -347,6 +349,18 @@ const AuthenticatedSubscriptionsIndexRoute =
   AuthenticatedSubscriptionsIndexRouteImport.update({
     id: '/subscriptions/',
     path: '/subscriptions/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSupportTicketManagementIndexRoute =
+  AuthenticatedSupportTicketManagementIndexRouteImport.update({
+    id: '/support-ticket-management/',
+    path: '/support-ticket-management/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSupportTicketsIndexRoute =
+  AuthenticatedSupportTicketsIndexRouteImport.update({
+    id: '/support-tickets/',
+    path: '/support-tickets/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSystemInfoIndexRoute =
@@ -550,10 +564,12 @@ export interface FileRoutesByFullPath {
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
-  '/request-processing/': typeof AuthenticatedRequestProcessingIndexRoute
   '/referral/': typeof AuthenticatedReferralIndexRoute
+  '/request-processing/': typeof AuthenticatedRequestProcessingIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
+  '/support-ticket-management/': typeof AuthenticatedSupportTicketManagementIndexRoute
+  '/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
   '/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/task-plugins/': typeof AuthenticatedTaskPluginsIndexRoute
@@ -624,10 +640,12 @@ export interface FileRoutesByTo {
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
-  '/request-processing': typeof AuthenticatedRequestProcessingIndexRoute
   '/referral': typeof AuthenticatedReferralIndexRoute
+  '/request-processing': typeof AuthenticatedRequestProcessingIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
+  '/support-ticket-management': typeof AuthenticatedSupportTicketManagementIndexRoute
+  '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
   '/system-info': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings': typeof AuthenticatedSystemSettingsIndexRoute
   '/task-plugins': typeof AuthenticatedTaskPluginsIndexRoute
@@ -702,10 +720,12 @@ export interface FileRoutesById {
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
-  '/_authenticated/request-processing/': typeof AuthenticatedRequestProcessingIndexRoute
   '/_authenticated/referral/': typeof AuthenticatedReferralIndexRoute
+  '/_authenticated/request-processing/': typeof AuthenticatedRequestProcessingIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
+  '/_authenticated/support-ticket-management/': typeof AuthenticatedSupportTicketManagementIndexRoute
+  '/_authenticated/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
   '/_authenticated/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/_authenticated/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/_authenticated/task-plugins/': typeof AuthenticatedTaskPluginsIndexRoute
@@ -779,10 +799,12 @@ export interface FileRouteTypes {
     | '/playground/'
     | '/profile/'
     | '/redemption-codes/'
-    | '/request-processing/'
     | '/referral/'
+    | '/request-processing/'
     | '/security/'
     | '/subscriptions/'
+    | '/support-ticket-management/'
+    | '/support-tickets/'
     | '/system-info/'
     | '/system-settings/'
     | '/task-plugins/'
@@ -853,10 +875,12 @@ export interface FileRouteTypes {
     | '/playground'
     | '/profile'
     | '/redemption-codes'
-    | '/request-processing'
     | '/referral'
+    | '/request-processing'
     | '/security'
     | '/subscriptions'
+    | '/support-ticket-management'
+    | '/support-tickets'
     | '/system-info'
     | '/system-settings'
     | '/task-plugins'
@@ -930,10 +954,12 @@ export interface FileRouteTypes {
     | '/_authenticated/playground/'
     | '/_authenticated/profile/'
     | '/_authenticated/redemption-codes/'
-    | '/_authenticated/request-processing/'
     | '/_authenticated/referral/'
+    | '/_authenticated/request-processing/'
     | '/_authenticated/security/'
     | '/_authenticated/subscriptions/'
+    | '/_authenticated/support-ticket-management/'
+    | '/_authenticated/support-tickets/'
     | '/_authenticated/system-info/'
     | '/_authenticated/system-settings/'
     | '/_authenticated/task-plugins/'
@@ -1298,18 +1324,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRedemptionCodesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/request-processing/': {
-      id: '/_authenticated/request-processing/'
-      path: '/request-processing'
-      fullPath: '/request-processing/'
-      preLoaderRoute: typeof AuthenticatedRequestProcessingIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/referral/': {
       id: '/_authenticated/referral/'
       path: '/referral'
       fullPath: '/referral/'
       preLoaderRoute: typeof AuthenticatedReferralIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/request-processing/': {
+      id: '/_authenticated/request-processing/'
+      path: '/request-processing'
+      fullPath: '/request-processing/'
+      preLoaderRoute: typeof AuthenticatedRequestProcessingIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/security/': {
@@ -1324,6 +1350,20 @@ declare module '@tanstack/react-router' {
       path: '/subscriptions'
       fullPath: '/subscriptions/'
       preLoaderRoute: typeof AuthenticatedSubscriptionsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/support-ticket-management/': {
+      id: '/_authenticated/support-ticket-management/'
+      path: '/support-ticket-management'
+      fullPath: '/support-ticket-management/'
+      preLoaderRoute: typeof AuthenticatedSupportTicketManagementIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/support-tickets/': {
+      id: '/_authenticated/support-tickets/'
+      path: '/support-tickets'
+      fullPath: '/support-tickets/'
+      preLoaderRoute: typeof AuthenticatedSupportTicketsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/system-info/': {
@@ -1623,10 +1663,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
-  AuthenticatedRequestProcessingIndexRoute: typeof AuthenticatedRequestProcessingIndexRoute
   AuthenticatedReferralIndexRoute: typeof AuthenticatedReferralIndexRoute
+  AuthenticatedRequestProcessingIndexRoute: typeof AuthenticatedRequestProcessingIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
+  AuthenticatedSupportTicketManagementIndexRoute: typeof AuthenticatedSupportTicketManagementIndexRoute
+  AuthenticatedSupportTicketsIndexRoute: typeof AuthenticatedSupportTicketsIndexRoute
   AuthenticatedSystemInfoIndexRoute: typeof AuthenticatedSystemInfoIndexRoute
   AuthenticatedTaskPluginsIndexRoute: typeof AuthenticatedTaskPluginsIndexRoute
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
@@ -1663,11 +1705,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
+  AuthenticatedReferralIndexRoute: AuthenticatedReferralIndexRoute,
   AuthenticatedRequestProcessingIndexRoute:
     AuthenticatedRequestProcessingIndexRoute,
-  AuthenticatedReferralIndexRoute: AuthenticatedReferralIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
   AuthenticatedSubscriptionsIndexRoute: AuthenticatedSubscriptionsIndexRoute,
+  AuthenticatedSupportTicketManagementIndexRoute:
+    AuthenticatedSupportTicketManagementIndexRoute,
+  AuthenticatedSupportTicketsIndexRoute: AuthenticatedSupportTicketsIndexRoute,
   AuthenticatedSystemInfoIndexRoute: AuthenticatedSystemInfoIndexRoute,
   AuthenticatedTaskPluginsIndexRoute: AuthenticatedTaskPluginsIndexRoute,
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
