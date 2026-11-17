@@ -109,9 +109,7 @@ export function AppHeader({
   // Prioritize dynamically generated links from backend
   const dynamicLinks = useTopNavLinks()
   const links = (dynamicLinks.length > 0 ? dynamicLinks : navLinks).filter(
-    (link) =>
-      link.external ||
-      !['/dashboard', '/about'].includes(link.href.replace(/\/+$/, ''))
+    (link) => link.external || link.href.replace(/\/+$/, '') !== '/about'
   )
 
   // Notifications hook
