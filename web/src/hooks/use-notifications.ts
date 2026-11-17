@@ -16,13 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
-import { useState, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo, useCallback } from 'react'
 
 import { useBulletins } from '@/features/bulletins/hooks/use-bulletins'
 import { useStatus } from '@/hooks/use-status'
 import { getNotice } from '@/lib/api'
 import { requireServerSuccess } from '@/lib/server-error-message'
+import { STATUS_QUERY_KEY } from '@/lib/status-query'
 import { useNotificationStore } from '@/stores/notification-store'
 
 function hashString(input: string): string {
@@ -66,7 +67,8 @@ export type NotificationTab = 'notice' | 'bulletins' | 'announcements'
  * Hook to manage notifications (Notice + Announcements)
  * Provides unread counts and read status management
  */
-export function useNotifications() {
+export function useNotifications(options: { timelineLimit?: number } = {}) {
+  const queryClient = useQueryClient()
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<NotificationTab>('notice')
   // The announcements that pop up count in the badge too.
@@ -76,6 +78,7 @@ export function useNotifications() {
   const {
     data: noticeResponse,
     isLoading: noticeLoading,
+    error: noticeError,
     refetch: refetchNotice,
   } = useQuery({
     queryKey: ['notice'],
@@ -84,22 +87,21 @@ export function useNotifications() {
   })
 
   // Fetch Announcements from status
-  const { status, loading: statusLoading } = useStatus()
+  const { status, loading: statusLoading, error: statusError } = useStatus()
   const announcementsEnabled = status?.announcements_enabled ?? false
+  const timelineLimit = options.timelineLimit ?? 20
   const announcements = useMemo<Record<string, unknown>[]>(() => {
     if (!announcementsEnabled) return []
-    return ((status?.announcements || []) as Record<string, unknown>[]).slice(
-      0,
-      20
-    )
-  }, [announcementsEnabled, status?.announcements])
+    const items = (status?.announcements || []) as Record<string, unknown>[]
+    return timelineLimit > 0 ? items.slice(0, timelineLimit) : items
+  }, [announcementsEnabled, status?.announcements, timelineLimit])
 
   // Notification store
   const {
     lastReadNotice,
+    readAnnouncementKeys,
     markNoticeRead,
     markAnnouncementsRead,
-    isAnnouncementRead,
   } = useNotificationStore()
 
   // Extract notice content
@@ -112,10 +114,11 @@ export function useNotifications() {
     const noticeUnread =
       noticeContent && noticeContent !== lastReadNotice ? 1 : 0
 
+    const readKeys = new Set(readAnnouncementKeys)
     const announcementsUnread = announcements.filter(
       (item: Record<string, unknown>) => {
         const key = getAnnouncementKey(item)
-        return !isAnnouncementRead(key)
+        return !readKeys.has(key)
       }
     ).length
 
@@ -128,18 +131,23 @@ export function useNotifications() {
     noticeContent,
     lastReadNotice,
     announcements,
-    isAnnouncementRead,
+    readAnnouncementKeys,
     bulletinUnread,
   ])
 
-  const markAnnouncementsAsRead = () => {
-    if (announcements.length > 0) {
-      const allKeys = announcements.map((item: Record<string, unknown>) =>
-        getAnnouncementKey(item)
-      )
-      markAnnouncementsRead(allKeys)
+  const markNoticeAsRead = useCallback(() => {
+    if (noticeContent && noticeContent !== lastReadNotice) {
+      markNoticeRead(noticeContent)
     }
-  }
+  }, [noticeContent, lastReadNotice, markNoticeRead])
+
+  const markAnnouncementsAsRead = useCallback(() => {
+    const readKeys = new Set(readAnnouncementKeys)
+    const unreadKeys = announcements
+      .map(getAnnouncementKey)
+      .filter((key) => !readKeys.has(key))
+    if (unreadKeys.length > 0) markAnnouncementsRead(unreadKeys)
+  }, [announcements, readAnnouncementKeys, markAnnouncementsRead])
 
   // Handle popover open
   const handleOpenPopover = (tab?: NotificationTab) => {
@@ -170,7 +178,7 @@ export function useNotifications() {
   const handleTabChange = (tab: NotificationTab) => {
     setActiveTab(tab)
 
-    if (tab === 'announcements') {
+    if (tab === 'announcements' && !statusLoading && !statusError) {
       markAnnouncementsAsRead()
     }
   }
@@ -180,10 +188,15 @@ export function useNotifications() {
     notice: noticeContent,
     announcements,
     loading: noticeLoading || statusLoading,
+    noticeLoading,
+    noticeError,
+    timelineLoading: statusLoading,
+    timelineError: statusError,
 
     // Unread counts
     unreadCount: unreadCounts.total,
     unreadNoticeCount: unreadCounts.notice,
+    unreadBulletinCount: bulletinUnread,
     unreadAnnouncementsCount: unreadCounts.announcements,
 
     // Popover state
@@ -196,5 +209,9 @@ export function useNotifications() {
     openPopover: handleOpenPopover,
     closePopover: () => setPopoverOpen(false),
     refetchNotice,
+    refetchTimeline: () =>
+      queryClient.refetchQueries({ queryKey: STATUS_QUERY_KEY, exact: true }),
+    markNoticeAsRead,
+    markAnnouncementsAsRead,
   }
 }

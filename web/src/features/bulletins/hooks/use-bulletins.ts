@@ -31,7 +31,10 @@ const BULLETIN_REFRESH_MS = 10 * 60 * 1000
 
 export const BULLETINS_QUERY_KEY = ['bulletins'] as const
 /** Under BULLETINS_QUERY_KEY, so invalidating that refreshes both lists. */
-export const MANAGED_BULLETINS_QUERY_KEY = [...BULLETINS_QUERY_KEY, 'admin'] as const
+export const MANAGED_BULLETINS_QUERY_KEY = [
+  ...BULLETINS_QUERY_KEY,
+  'admin',
+] as const
 
 /**
  * The live announcements, with which ones this user has read. A read counts
@@ -66,6 +69,8 @@ export function useBulletins(options: { enabled?: boolean } = {}) {
     signedIn: userId > 0,
     isLoading: query.isLoading,
     isSuccess: query.isSuccess,
+    isError: query.isError,
+    refetch: query.refetch,
   }
 }
 
