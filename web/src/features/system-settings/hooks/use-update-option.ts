@@ -91,6 +91,10 @@ export function useUpdateOption() {
         // Always refresh system-options
         queryClient.invalidateQueries({ queryKey: ['system-options'] })
 
+        if (variables.key === 'Contact') {
+          queryClient.invalidateQueries({ queryKey: ['contact-content'] })
+        }
+
         // If updating frontend-display-related config, also refresh status
         if (STATUS_RELATED_KEYS.has(variables.key)) {
           queryClient.invalidateQueries({ queryKey: ['status'] })

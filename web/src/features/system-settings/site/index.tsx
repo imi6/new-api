@@ -30,6 +30,7 @@ const defaultSiteSettings: SiteSettings = {
   Logo: '',
   Footer: '',
   About: '',
+  Contact: '',
   HomePageContent: '',
   ServerAddress: '',
   TaskPublicAddress: '',
