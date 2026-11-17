@@ -95,7 +95,8 @@ function UserTrialRewardAction(props: {
     refetchOnWindowFocus: 'always',
     meta: { errorToast: false, errorRedirect: false },
   })
-  const visible = status.data?.enabled && !status.data.claimed
+  const visible =
+    status.data?.enabled && status.data.user_id_eligible && !status.data.claimed
   if (!visible && !open) return null
 
   let content = <LoadingState className='min-h-40' />
@@ -123,7 +124,11 @@ function UserTrialRewardAction(props: {
         void status.refetch()
       }}
       title={t('Claim trial credit')}
-      description={t('Open the bot and send /trial to claim your reward.')}
+      description={
+        status.data?.user_id_eligible
+          ? t('Open the bot and send /trial to claim your reward.')
+          : undefined
+      }
       contentClassName='sm:max-w-md'
       trigger={visible ? props.trigger : undefined}
     >
@@ -146,6 +151,21 @@ function TrialRewardDetails(props: {
         <CheckCircle2 className='text-success size-10' aria-hidden='true' />
         <p className='font-medium'>{t('Reward already claimed')}</p>
       </div>
+    )
+  }
+  if (status.min_user_id > 0 && !status.user_id_eligible) {
+    return (
+      <p
+        className='text-muted-foreground py-6 text-center text-sm'
+        role='status'
+      >
+        {t(
+          'Trial credit is only available to accounts with user ID {{id}} or higher.',
+          {
+            id: status.min_user_id,
+          }
+        )}
+      </p>
     )
   }
   if (!status.enabled || !status.budget_available) {

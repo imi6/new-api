@@ -83,6 +83,8 @@ export interface TelegramBotRecovery {
 
 export interface TelegramTrialConfig {
   enabled: boolean
+  min_user_id: number
+  current_max_user_id: number
   quota: number
   daily_limit: number
   total_limit: number
@@ -96,6 +98,8 @@ export interface TelegramTrialConfig {
 
 export interface TelegramTrialStatus {
   enabled: boolean
+  min_user_id: number
+  user_id_eligible: boolean
   quota: number
   claimed: boolean
   email_bound: boolean
@@ -108,5 +112,32 @@ export interface TelegramTrialStatus {
 
 export type TelegramTrialConfigInput = Omit<
   TelegramTrialConfig,
-  'total_granted' | 'today_granted'
+  'total_granted' | 'today_granted' | 'current_max_user_id'
 >
+
+export interface TelegramTrialClaim {
+  id: number
+  user_id: number
+  username: string
+  email_masked: string
+  user_created_at: number
+  telegram_id: string
+  quota: number
+  claimed_at: number
+  user_deleted: boolean
+}
+
+export interface TelegramTrialClaimsParams {
+  p: number
+  page_size: number
+  keyword?: string
+  start_time?: number
+  end_time?: number
+}
+
+export interface TelegramTrialClaimsPage {
+  items: TelegramTrialClaim[]
+  total: number
+  page: number
+  page_size: number
+}

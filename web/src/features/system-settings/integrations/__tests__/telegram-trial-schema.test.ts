@@ -25,6 +25,7 @@ const t = ((key: string) => key) as TFunction
 const schema = createTelegramTrialSchema(t)
 const config = {
   enabled: true,
+  min_user_id: 1000,
   quota: 500000,
   daily_limit: 1000000,
   total_limit: 5000000,
@@ -35,6 +36,21 @@ const config = {
 }
 
 describe('Telegram 试用设置', () => {
+  test('用户 ID 门槛只接受包含边界的安全正整数', () => {
+    for (const min_user_id of [1, 1000, Number.MAX_SAFE_INTEGER]) {
+      expect(schema.safeParse({ ...config, min_user_id }).success).toBe(true)
+    }
+    for (const min_user_id of [
+      0,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]) {
+      expect(schema.safeParse({ ...config, min_user_id }).success).toBe(false)
+    }
+  })
+
   test('启用时额度和预算必须为安全正整数，预算至少覆盖一次领取', () => {
     expect(schema.safeParse(config).success).toBe(true)
     for (const quota of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
@@ -110,7 +126,12 @@ describe('Telegram 试用设置', () => {
 
   test('提交设置剔除发放统计等服务端只读字段', () => {
     expect(
-      schema.parse({ ...config, total_granted: 5, today_granted: 2 })
+      schema.parse({
+        ...config,
+        total_granted: 5,
+        today_granted: 2,
+        current_max_user_id: 2000,
+      })
     ).toEqual(config)
   })
 })

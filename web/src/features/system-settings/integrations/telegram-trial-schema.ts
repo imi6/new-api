@@ -29,6 +29,13 @@ export function createTelegramTrialSchema(t: TFunction) {
   return z
     .object({
       enabled: z.boolean(),
+      min_user_id: z
+        .number({ error: () => t('Enter a positive whole-number user ID.') })
+        .int({ error: () => t('Enter a positive whole-number user ID.') })
+        .min(1, { error: () => t('Enter a positive whole-number user ID.') })
+        .max(Number.MAX_SAFE_INTEGER, {
+          error: () => t('Enter a positive whole-number user ID.'),
+        }),
       quota,
       daily_limit: quota,
       total_limit: quota,
