@@ -60,6 +60,7 @@ import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
 import { Route as AuthenticatedSupportTicketManagementIndexRouteImport } from './routes/_authenticated/support-ticket-management/index'
 import { Route as AuthenticatedSupportTicketsIndexRouteImport } from './routes/_authenticated/support-tickets/index'
+import { Route as AuthenticatedSystemAnnouncementsIndexRouteImport } from './routes/_authenticated/system-announcements/index'
 import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
 import { Route as AuthenticatedTaskPluginsIndexRouteImport } from './routes/_authenticated/task-plugins/index'
@@ -363,6 +364,12 @@ const AuthenticatedSupportTicketsIndexRoute =
     path: '/support-tickets/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemAnnouncementsIndexRoute =
+  AuthenticatedSystemAnnouncementsIndexRouteImport.update({
+    id: '/system-announcements/',
+    path: '/system-announcements/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemInfoIndexRoute =
   AuthenticatedSystemInfoIndexRouteImport.update({
     id: '/system-info/',
@@ -570,6 +577,7 @@ export interface FileRoutesByFullPath {
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/support-ticket-management/': typeof AuthenticatedSupportTicketManagementIndexRoute
   '/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
+  '/system-announcements/': typeof AuthenticatedSystemAnnouncementsIndexRoute
   '/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/task-plugins/': typeof AuthenticatedTaskPluginsIndexRoute
@@ -646,6 +654,7 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
   '/support-ticket-management': typeof AuthenticatedSupportTicketManagementIndexRoute
   '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
+  '/system-announcements': typeof AuthenticatedSystemAnnouncementsIndexRoute
   '/system-info': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings': typeof AuthenticatedSystemSettingsIndexRoute
   '/task-plugins': typeof AuthenticatedTaskPluginsIndexRoute
@@ -726,6 +735,7 @@ export interface FileRoutesById {
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/_authenticated/support-ticket-management/': typeof AuthenticatedSupportTicketManagementIndexRoute
   '/_authenticated/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
+  '/_authenticated/system-announcements/': typeof AuthenticatedSystemAnnouncementsIndexRoute
   '/_authenticated/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/_authenticated/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/_authenticated/task-plugins/': typeof AuthenticatedTaskPluginsIndexRoute
@@ -805,6 +815,7 @@ export interface FileRouteTypes {
     | '/subscriptions/'
     | '/support-ticket-management/'
     | '/support-tickets/'
+    | '/system-announcements/'
     | '/system-info/'
     | '/system-settings/'
     | '/task-plugins/'
@@ -881,6 +892,7 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/support-ticket-management'
     | '/support-tickets'
+    | '/system-announcements'
     | '/system-info'
     | '/system-settings'
     | '/task-plugins'
@@ -960,6 +972,7 @@ export interface FileRouteTypes {
     | '/_authenticated/subscriptions/'
     | '/_authenticated/support-ticket-management/'
     | '/_authenticated/support-tickets/'
+    | '/_authenticated/system-announcements/'
     | '/_authenticated/system-info/'
     | '/_authenticated/system-settings/'
     | '/_authenticated/task-plugins/'
@@ -1366,6 +1379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSupportTicketsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system-announcements/': {
+      id: '/_authenticated/system-announcements/'
+      path: '/system-announcements'
+      fullPath: '/system-announcements/'
+      preLoaderRoute: typeof AuthenticatedSystemAnnouncementsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system-info/': {
       id: '/_authenticated/system-info/'
       path: '/system-info'
@@ -1669,6 +1689,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
   AuthenticatedSupportTicketManagementIndexRoute: typeof AuthenticatedSupportTicketManagementIndexRoute
   AuthenticatedSupportTicketsIndexRoute: typeof AuthenticatedSupportTicketsIndexRoute
+  AuthenticatedSystemAnnouncementsIndexRoute: typeof AuthenticatedSystemAnnouncementsIndexRoute
   AuthenticatedSystemInfoIndexRoute: typeof AuthenticatedSystemInfoIndexRoute
   AuthenticatedTaskPluginsIndexRoute: typeof AuthenticatedTaskPluginsIndexRoute
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
@@ -1713,6 +1734,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSupportTicketManagementIndexRoute:
     AuthenticatedSupportTicketManagementIndexRoute,
   AuthenticatedSupportTicketsIndexRoute: AuthenticatedSupportTicketsIndexRoute,
+  AuthenticatedSystemAnnouncementsIndexRoute:
+    AuthenticatedSystemAnnouncementsIndexRoute,
   AuthenticatedSystemInfoIndexRoute: AuthenticatedSystemInfoIndexRoute,
   AuthenticatedTaskPluginsIndexRoute: AuthenticatedTaskPluginsIndexRoute,
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
