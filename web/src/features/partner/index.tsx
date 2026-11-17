@@ -43,7 +43,7 @@ export function PartnerApply() {
     <SectionPageLayout>
       <SectionPageLayout.Title>{t('Supplier application')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
-        <div className='mx-auto w-full max-w-5xl'>
+        <div className='mx-auto w-full max-w-7xl'>
           <PartnerBoard />
         </div>
       </SectionPageLayout.Content>

@@ -182,7 +182,7 @@ export function InvoiceCenter(props: InvoiceCenterProps) {
         </Button>
       </SectionPageLayout.Actions>
       <SectionPageLayout.Content>
-        <div className='mx-auto w-full max-w-6xl'>{renderContent()}</div>
+        <div className='mx-auto w-full max-w-7xl'>{renderContent()}</div>
       </SectionPageLayout.Content>
     </SectionPageLayout>
   )
