@@ -29,6 +29,7 @@ import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
 import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_authenticated/system-settings/route'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
+import { Route as ContactIndexRouteImport } from './routes/contact/index'
 import { Route as HealthIndexRouteImport } from './routes/health/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
@@ -185,6 +186,11 @@ const AuthenticatedSystemSettingsRouteRoute =
 const AboutIndexRoute = AboutIndexRouteImport.update({
   id: '/about/',
   path: '/about/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactIndexRoute = ContactIndexRouteImport.update({
+  id: '/contact/',
+  path: '/contact/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthIndexRoute = HealthIndexRouteImport.update({
@@ -545,6 +551,7 @@ export interface FileRoutesByFullPath {
   '/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/contact/': typeof ContactIndexRoute
   '/health/': typeof HealthIndexRoute
   '/partner/': typeof PartnerIndexRoute
   '/pricing/': typeof PricingIndexRoute
@@ -622,6 +629,7 @@ export interface FileRoutesByTo {
   '/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
+  '/contact': typeof ContactIndexRoute
   '/health': typeof HealthIndexRoute
   '/partner': typeof PartnerIndexRoute
   '/pricing': typeof PricingIndexRoute
@@ -703,6 +711,7 @@ export interface FileRoutesById {
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/contact/': typeof ContactIndexRoute
   '/health/': typeof HealthIndexRoute
   '/partner/': typeof PartnerIndexRoute
   '/pricing/': typeof PricingIndexRoute
@@ -783,6 +792,7 @@ export interface FileRouteTypes {
     | '/chat2link'
     | '/oauth/$provider'
     | '/about/'
+    | '/contact/'
     | '/health/'
     | '/partner/'
     | '/pricing/'
@@ -860,6 +870,7 @@ export interface FileRouteTypes {
     | '/chat2link'
     | '/oauth/$provider'
     | '/about'
+    | '/contact'
     | '/health'
     | '/partner'
     | '/pricing'
@@ -940,6 +951,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chat2link'
     | '/oauth/$provider'
     | '/about/'
+    | '/contact/'
     | '/health/'
     | '/partner/'
     | '/pricing/'
@@ -1012,6 +1024,7 @@ export interface RootRouteChildren {
   errors503Route: typeof errors503Route
   OauthProviderRoute: typeof OauthProviderRoute
   AboutIndexRoute: typeof AboutIndexRoute
+  ContactIndexRoute: typeof ContactIndexRoute
   HealthIndexRoute: typeof HealthIndexRoute
   PartnerIndexRoute: typeof PartnerIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
@@ -1160,6 +1173,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about/'
       preLoaderRoute: typeof AboutIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact/': {
+      id: '/contact/'
+      path: '/contact'
+      fullPath: '/contact/'
+      preLoaderRoute: typeof ContactIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health/': {
@@ -1761,6 +1781,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors503Route: errors503Route,
   OauthProviderRoute: OauthProviderRoute,
   AboutIndexRoute: AboutIndexRoute,
+  ContactIndexRoute: ContactIndexRoute,
   HealthIndexRoute: HealthIndexRoute,
   PartnerIndexRoute: PartnerIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
