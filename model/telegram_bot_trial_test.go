@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -88,9 +89,9 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 				require.NoError(t, db.AutoMigrate(tables...))
 			}
 			require.NoError(t, db.Migrator().DropTable(added...))
-			bot := TelegramBotConfig{ID: 1, Enabled: true, BotID: 123, Version: 1}
+			bot := TelegramBotConfig{ID: 1, Enabled: true, BotID: 123, BotUsername: "trial_test_bot", Version: 1}
 			require.NoError(t, db.Create(&bot).Error)
-			legacy, _ := telegramTrialAccountFixture(t, 1)
+			legacy, legacyIdentity := telegramTrialAccountFixture(t, 1)
 			for range 2 {
 				require.NoError(t, db.AutoMigrate(tables...))
 			}
@@ -104,12 +105,32 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 			assert.Zero(t, initial.TotalGranted)
 			initial.Enabled, initial.Quota, initial.DailyLimit, initial.TotalLimit = true, 100, 100000, 100000
 			_, err = SaveTelegramBotTrialConfig(*initial)
+			require.ErrorIs(t, err, ErrInvalidTelegramTrialConfig)
+			initial.MinUserID = legacy.Id + 1
+			_, err = SaveTelegramBotTrialConfig(*initial)
 			require.NoError(t, err)
+			config, err := GetTelegramBotTrialConfig()
+			require.NoError(t, err)
+			_, granted, err := GrantTelegramTrial(legacyIdentity, 19, config.Version, TelegramTrialMembershipProof{})
+			require.ErrorIs(t, err, ErrTelegramTrialUserIDRequired)
+			assert.False(t, granted)
+			status, err := GetTelegramTrialStatus(legacy.Id)
+			require.NoError(t, err)
+			assert.True(t, status.Enabled)
+			assert.False(t, status.UserIDEligible)
+			assert.Equal(t, config.MinUserID, status.MinUserID)
+			require.NoError(t, db.First(&migrated, legacy.Id).Error)
+			assert.Equal(t, legacy.Quota, migrated.Quota)
+			assert.Equal(t, legacy.UnpaidQuotaBalance, migrated.UnpaidQuotaBalance)
 
 			t.Run("direct_claim_credits_gift_once_and_reply_retry_preserves_history", func(t *testing.T) {
 				user, identity := telegramTrialAccountFixture(t, 2)
 				config, err := GetTelegramBotTrialConfig()
 				require.NoError(t, err)
+				assert.Equal(t, config.MinUserID, user.Id)
+				status, err := GetTelegramTrialStatus(user.Id)
+				require.NoError(t, err)
+				assert.True(t, status.UserIDEligible)
 				claim, granted, err := GrantTelegramTrial(identity, 21, config.Version, TelegramTrialMembershipProof{})
 				require.NoError(t, err)
 				assert.True(t, granted)
@@ -125,6 +146,7 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 				assert.EqualValues(t, 100, config.TotalGranted)
 				assert.EqualValues(t, 100, config.TodayGranted)
 				config.Enabled = false
+				config.MinUserID = user.Id + 1
 				_, err = SaveTelegramBotTrialConfig(*config)
 				require.NoError(t, err)
 				retry, granted, err := GrantTelegramTrial(identity, 21, config.Version, TelegramTrialMembershipProof{})
@@ -140,6 +162,7 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 				require.NoError(t, err)
 				assert.EqualValues(t, 100, config.TotalGranted)
 				config.Enabled = true
+				config.MinUserID = user.Id
 				config, err = SaveTelegramBotTrialConfig(*config)
 				require.NoError(t, err)
 				_, _, err = GrantTelegramTrial(identity, 22, config.Version, TelegramTrialMembershipProof{})
@@ -150,6 +173,30 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 				identity.TelegramID = "65009999"
 				_, _, err = GrantTelegramTrial(identity, 23, config.Version, TelegramTrialMembershipProof{})
 				assert.ErrorIs(t, err, ErrTelegramTrialAlreadyClaimed)
+				page := &common.PageInfo{Page: 1, PageSize: 10}
+				// 明细使用当前资料，领取时的 Telegram ID 和发放金额保留原值。
+				items, total, err := ListTelegramTrialClaims(TelegramTrialClaimFilter{
+					Keyword: strconv.Itoa(user.Id), StartTime: claim.ClaimedAt, EndTime: claim.ClaimedAt,
+				}, page)
+				require.NoError(t, err)
+				require.Len(t, items, 1)
+				assert.EqualValues(t, 1, total)
+				assert.Equal(t, user.Id, items[0].UserID)
+				assert.Equal(t, user.Username, items[0].Username)
+				assert.Equal(t, "***@example.com", items[0].EmailMasked)
+				assert.Equal(t, user.TelegramId, items[0].TelegramID)
+				assert.Equal(t, claim.Quota, items[0].Quota)
+				assert.False(t, items[0].UserDeleted)
+				items, total, err = ListTelegramTrialClaims(TelegramTrialClaimFilter{Keyword: "%"}, page)
+				require.NoError(t, err)
+				assert.Empty(t, items)
+				assert.Zero(t, total)
+				items, _, err = ListTelegramTrialClaims(TelegramTrialClaimFilter{Keyword: "trial-2"}, page)
+				require.NoError(t, err)
+				require.Len(t, items, 1)
+				items, _, err = ListTelegramTrialClaims(TelegramTrialClaimFilter{StartTime: claim.ClaimedAt + 1}, page)
+				require.NoError(t, err)
+				assert.Empty(t, items)
 			})
 
 			t.Run("email_connection_versions_and_wallet_limits_are_checked_before_credit", func(t *testing.T) {
@@ -300,6 +347,15 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 				_, _, err = GrantTelegramTrial(identity, 401, config.Version, TelegramTrialMembershipProof{})
 				require.NoError(t, err)
 				require.NoError(t, db.Unscoped().Delete(user).Error)
+				items, total, err := ListTelegramTrialClaims(TelegramTrialClaimFilter{Keyword: identity.TelegramID}, &common.PageInfo{Page: 1, PageSize: 10})
+				require.NoError(t, err)
+				require.Len(t, items, 1)
+				assert.EqualValues(t, 1, total)
+				assert.True(t, items[0].UserDeleted)
+				assert.Equal(t, user.Id, items[0].UserID)
+				assert.Equal(t, identity.TelegramID, items[0].TelegramID)
+				assert.Empty(t, items[0].Username)
+				assert.Empty(t, items[0].EmailMasked)
 				for index, reuse := range []string{"telegram", "email"} {
 					other, otherIdentity := telegramTrialAccountFixture(t, 41+index)
 					if reuse == "telegram" {
@@ -324,6 +380,7 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 			assert.Equal(t, before.TotalGranted, after.TotalGranted)
 			assert.Equal(t, before.TodayGranted, after.TodayGranted)
 			assert.Equal(t, before.Version, after.Version)
+			assert.Equal(t, before.MinUserID, after.MinUserID)
 			var claims int64
 			require.NoError(t, db.Model(&TelegramBotTrialClaim{}).Count(&claims).Error)
 			assert.EqualValues(t, 6, claims)

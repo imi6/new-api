@@ -116,6 +116,7 @@ telegram.bot.checkin_success: "Check-in recorded for {{.Date}}. Reward: {{.Amoun
 telegram.bot.trial_unavailable: "Trial credit claims are not currently available on this site."
 telegram.bot.trial_already_claimed: "This site account, Telegram account or email has already received trial credit and cannot claim again."
 telegram.bot.trial_email_required: "Bind an email address on the site, then send /trial to receive trial quota: {{.URL}}"
+telegram.bot.trial_user_id_required: "Your account does not meet the minimum user ID requirement for this trial reward and cannot claim it."
 telegram.bot.trial_join_required: "Join the required group or channel, then send /trial again: {{.URL}}"
 telegram.bot.trial_membership_unavailable: "Group or channel membership could not be verified. Try again later or contact an administrator."
 telegram.bot.trial_success: "Trial credit of {{.Amount}} has been added to your platform balance. Each site account, Telegram account and email can claim only once."

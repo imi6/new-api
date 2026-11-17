@@ -19,10 +19,12 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ErrorState } from '@/components/error-state'
 import { LoadingState } from '@/components/loading-state'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -57,6 +59,7 @@ import {
   SettingsSwitchItem,
 } from '../components/settings-form-layout'
 import { useResetForm } from '../hooks/use-reset-form'
+import { TelegramTrialClaims } from './telegram-trial-claims'
 import {
   createTelegramTrialSchema,
   type TelegramTrialValues,
@@ -109,6 +112,7 @@ export function TelegramTrialSettings() {
           canEdit={role >= ROLE.SUPER_ADMIN}
         />
       )}
+      <TelegramTrialClaims />
     </section>
   )
 }
@@ -121,6 +125,8 @@ function TelegramTrialForm(props: {
   const queryClient = useQueryClient()
   useSystemConfigStore((state) => state.config.currency)
   const currency = getCurrencyLabel()
+  const [pendingValues, setPendingValues] =
+    useState<TelegramTrialValues | null>(null)
   const form = useForm<TelegramTrialValues>({
     resolver: zodResolver(createTelegramTrialSchema(t)),
     defaultValues: props.initial,
@@ -130,14 +136,31 @@ function TelegramTrialForm(props: {
     onSuccess: (saved) => {
       form.reset(saved)
       queryClient.setQueryData(trialQueryKey, saved)
+      setPendingValues(null)
+      void queryClient.invalidateQueries({
+        queryKey: ['telegram-bot', 'self'],
+        predicate: (query) => query.queryKey[3] === 'trial',
+      })
       toast.success(t('Saved successfully'))
+    },
+  })
+  const newUsers = useMutation({
+    mutationFn: () => getTelegramTrialConfig(),
+    onSuccess: (latest) => {
+      queryClient.setQueryData(trialQueryKey, latest)
+      form.setValue('min_user_id', latest.current_max_user_id + 1, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
     },
   })
   useResetForm(
     form,
-    form.formState.isDirty || save.isPending ? undefined : props.initial
+    form.formState.isDirty || save.isPending || newUsers.isPending
+      ? undefined
+      : props.initial
   )
-  const disabled = !props.canEdit || save.isPending
+  const disabled = !props.canEdit || save.isPending || newUsers.isPending
   const requireMembership = form.watch('require_membership')
   const amounts = [
     {
@@ -176,9 +199,27 @@ function TelegramTrialForm(props: {
           </p>
         </AlertDescription>
       </Alert>
+      {props.initial.min_user_id <= 0 && (
+        <Alert>
+          <AlertDescription>
+            {t(
+              'Minimum user ID has not been configured. Trial claims are paused.'
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       <Form {...form}>
         <SettingsForm
-          onSubmit={form.handleSubmit((values) => save.mutate(values))}
+          onSubmit={form.handleSubmit((values) => {
+            if (
+              props.initial.min_user_id > 0 &&
+              values.min_user_id < props.initial.min_user_id
+            ) {
+              setPendingValues(values)
+              return
+            }
+            save.mutate(values)
+          })}
         >
           <FormField
             control={form.control}
@@ -201,6 +242,58 @@ function TelegramTrialForm(props: {
                   />
                 </FormControl>
               </SettingsSwitchItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name='min_user_id'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('Minimum user ID for trial claims')}</FormLabel>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      inputMode='numeric'
+                      step={1}
+                      min={1}
+                      max={Number.MAX_SAFE_INTEGER}
+                      className='w-full sm:w-52'
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={Number.isFinite(field.value) ? field.value : ''}
+                      onChange={(event) =>
+                        field.onChange(event.currentTarget.valueAsNumber)
+                      }
+                      disabled={disabled}
+                    />
+                  </FormControl>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    disabled={
+                      disabled ||
+                      props.initial.current_max_user_id >=
+                        Number.MAX_SAFE_INTEGER
+                    }
+                    onClick={() => newUsers.mutate()}
+                  >
+                    {t('Only allow users registered from now on')}
+                  </Button>
+                </div>
+                <FormDescription>
+                  {t(
+                    'Only accounts with a user ID greater than or equal to this value can claim. Registration time is not checked.'
+                  )}
+                </FormDescription>
+                <p className='text-muted-foreground text-xs'>
+                  {t('Current highest user ID: {{id}}', {
+                    id: props.initial.current_max_user_id,
+                  })}
+                </p>
+                <FormMessage />
+              </FormItem>
             )}
           />
           <SettingsFormGrid>
@@ -322,7 +415,9 @@ function TelegramTrialForm(props: {
             <Button
               type='button'
               variant='outline'
-              disabled={save.isPending || !form.formState.isDirty}
+              disabled={
+                save.isPending || newUsers.isPending || !form.formState.isDirty
+              }
               onClick={() => form.reset(props.initial)}
             >
               {t('Reset')}
@@ -330,6 +425,25 @@ function TelegramTrialForm(props: {
           </div>
         </SettingsForm>
       </Form>
+      <ConfirmDialog
+        open={pendingValues !== null}
+        onOpenChange={(open) => {
+          if (!open && !save.isPending) setPendingValues(null)
+        }}
+        title={t('Lower the trial user ID requirement?')}
+        desc={t(
+          'Lowering the minimum user ID from {{previous}} to {{next}} allows more existing accounts to claim. Previous claims remain unchanged.',
+          {
+            previous: props.initial.min_user_id,
+            next: pendingValues?.min_user_id,
+          }
+        )}
+        confirmText={t('Save trial settings')}
+        handleConfirm={() => {
+          if (pendingValues && !save.isPending) save.mutate(pendingValues)
+        }}
+        isLoading={save.isPending}
+      />
       <dl className='grid gap-4 rounded-xl border p-4 sm:grid-cols-2'>
         {[
           {
