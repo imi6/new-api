@@ -84,7 +84,7 @@ export function SystemAnnouncements() {
         {t('System Announcements')}
       </SectionPageLayout.Title>
       <SectionPageLayout.Content>
-        <div className='mx-auto w-full max-w-5xl space-y-5'>
+        <div className='mx-auto w-full max-w-7xl space-y-5'>
           <p className='text-muted-foreground text-sm'>
             {t('Latest platform updates and notices')}
           </p>

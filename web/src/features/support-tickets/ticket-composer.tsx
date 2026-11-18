@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   CircleHelp,
@@ -31,6 +31,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -41,9 +42,13 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Textarea } from '@/components/ui/textarea'
+import { getUserProfile } from '@/features/profile/api'
 import { toIntlLocale } from '@/i18n/languages'
-import { formatNumber } from '@/lib/format'
+import { formatNumber, quotaUnitsToDollars } from '@/lib/format'
+import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { ticketCategoryLabel } from './labels'
 import { ScreenshotPicker } from './screenshot-picker'
@@ -70,8 +75,12 @@ export function TicketComposer(props: TicketComposerProps) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const [images, setImages] = useState<File[]>([])
+  const userId = useAuthStore((state) => state.auth.user?.id)
+  // 换算函数读取共享货币配置，订阅变化后及时重算退款资格。
+  useSystemConfigStore((state) => state.config.currency)
   const submitting = useRef(false)
   const submission = useRef<TicketSubmission | null>(null)
+  const submissionOwner = useRef<number | undefined>(undefined)
   const schema = z.object({
     category: z.enum(TICKET_CATEGORIES),
     content: z
@@ -88,6 +97,42 @@ export function TicketComposer(props: TicketComposerProps) {
     defaultValues: { category: 'other', content: '' },
   })
   const content = form.watch('content')
+  const category = form.watch('category')
+  const refund = props.creating === true && category === 'refund'
+  const balance = useQuery({
+    queryKey: ['support-refund-balance', userId],
+    queryFn: async () => {
+      const response = requireServerSuccess(await getUserProfile())
+      const quota = response.data?.quota
+      if (
+        response.data?.id !== userId ||
+        typeof quota !== 'number' ||
+        !Number.isFinite(quota)
+      ) {
+        throw new Error('Failed to load wallet balance. Please try again.')
+      }
+      return quota
+    },
+    enabled: refund && userId !== undefined,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    meta: { errorToast: false },
+  })
+  const walletBalance = quotaUnitsToDollars(balance.data ?? Number.NaN)
+  const refundEligible =
+    balance.isSuccess &&
+    !balance.isFetching &&
+    Number.isFinite(walletBalance) &&
+    walletBalance > 500
+  // 已发送请求的原样重试交由后端幂等检查，余额变化不能阻止找回成功结果。
+  const sameSubmission =
+    submissionOwner.current === userId &&
+    submission.current !== null &&
+    submission.current.category === category &&
+    submission.current.content === content.trim() &&
+    submission.current.images.length === images.length &&
+    submission.current.images.every((image, index) => image === images[index])
+  const refundBlocked = refund && !refundEligible && !sameSubmission
   const count = [...content].length
   const mutation = useMutation({
     mutationFn: props.submit,
@@ -95,6 +140,7 @@ export function TicketComposer(props: TicketComposerProps) {
     onSuccess: async () => {
       await props.onSuccess()
       submission.current = null
+      submissionOwner.current = undefined
       form.reset()
       setImages([])
     },
@@ -110,11 +156,12 @@ export function TicketComposer(props: TicketComposerProps) {
       <form
         className='space-y-4'
         onSubmit={form.handleSubmit((values) => {
-          if (disabled || submitting.current) return
+          if (disabled || submitting.current || refundBlocked) return
           // 响应丢失后的原样重试沿用同一请求号；实际内容或附件变化后才开始新提交。
           let payload = submission.current
           if (
             !payload ||
+            submissionOwner.current !== userId ||
             payload.content !== values.content ||
             payload.category !== values.category ||
             payload.images.length !== images.length ||
@@ -127,6 +174,7 @@ export function TicketComposer(props: TicketComposerProps) {
             }
           }
           submission.current = payload
+          submissionOwner.current = userId
           submitting.current = true
           mutation.mutate(payload)
         })}
@@ -176,6 +224,37 @@ export function TicketComposer(props: TicketComposerProps) {
               </FormItem>
             )}
           />
+        )}
+        {refund && (
+          <Alert variant={refundBlocked ? 'destructive' : 'default'}>
+            <AlertDescription className='space-y-2'>
+              <div>
+                {t(
+                  'Your wallet balance must be greater than {{amount}} to submit a refund ticket.',
+                  { amount: formatNumber(500, locale) }
+                )}
+              </div>
+              {balance.isFetching && (
+                <div role='status'>{t('Checking wallet balance...')}</div>
+              )}
+              {balance.isError && !balance.isFetching && (
+                <div className='flex flex-wrap items-center gap-2'>
+                  <span>
+                    {t('Failed to load wallet balance. Please try again.')}
+                  </span>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    disabled={disabled}
+                    onClick={() => void balance.refetch()}
+                  >
+                    {t('Retry')}
+                  </Button>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
         <ScreenshotPicker
           files={images}
@@ -240,7 +319,9 @@ export function TicketComposer(props: TicketComposerProps) {
           )}
           <Button
             type='submit'
-            disabled={disabled || count > 5000 || !content.trim()}
+            disabled={
+              disabled || refundBlocked || count > 5000 || !content.trim()
+            }
           >
             <Send className='size-4' aria-hidden='true' />
             {props.creating ? t('Submit') : t('Send reply')}

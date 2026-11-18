@@ -1068,6 +1068,10 @@ export const STATIC_I18N_KEYS = [
   'Invalid group settings',
   'Group settings changed; reload the page before saving',
   'This group is still in use; use Rename group instead of deleting it',
+  'The default group cannot be deleted',
+  'The group {{group}} is still assigned to channels; remove it from all channels before deleting it',
+  'The group {{group}} has unfinished tasks; wait for them to finish before deleting it',
+  'The group {{group}} is still referenced by a subscription plan or record and cannot be deleted',
   'A group rename is in progress; save group settings after it finishes',
   'Another group rename is in progress; wait for it to finish',
   'Group rename state is managed by the rename process',
@@ -1076,4 +1080,8 @@ export const STATIC_I18N_KEYS = [
   'The group name {{group}} was renamed recently and cannot be used again yet',
   'The group setting {{key}} is invalid; fix it before renaming',
   'The group {{group}} does not exist',
+  // 退款工单的余额门槛和余额读取状态。
+  'Your wallet balance must be greater than {{amount}} to submit a refund ticket.',
+  'Checking wallet balance...',
+  'Failed to load wallet balance. Please try again.',
 ] as const
