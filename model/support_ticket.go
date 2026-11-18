@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/hex"
 	"errors"
+	"math"
 	"os"
 	"slices"
 	"strconv"
@@ -11,7 +12,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -26,6 +29,7 @@ const (
 	SupportTicketMaxOpen     = 10
 	SupportTicketMaxDaily    = 20
 	SupportTicketMaxBatch    = 100
+	SupportRefundMinBalance  = 500
 )
 
 var (
@@ -370,7 +374,7 @@ func CreateSupportTicket(userID int, category, content string, attachments []Sup
 			return err
 		}
 		var user User
-		if err := lockForUpdate(tx).Select("id").Where("id = ? AND status = ?", userID, common.UserStatusEnabled).First(&user).Error; err != nil {
+		if err := lockForUpdate(tx).Select("id", "quota").Where("id = ? AND status = ?", userID, common.UserStatusEnabled).First(&user).Error; err != nil {
 			return err
 		}
 		previous, err := findSupportTicketSubmission(tx, userID, requestID, requestHash, 0, true)
@@ -383,6 +387,22 @@ func CreateSupportTicket(userID int, category, content string, attachments []Sup
 			}
 			replayed = true
 			return nil
+		}
+		if category == "refund" {
+			// 按钱包展示单位比较原始余额，不使用显示舍入值，也不扣款或冻结余额。
+			balance := decimal.NewFromInt(int64(user.Quota))
+			minimum := decimal.NewFromInt(SupportRefundMinBalance)
+			if operation_setting.GetQuotaDisplayType() != operation_setting.QuotaDisplayTypeTokens {
+				rate := operation_setting.GetUsdToCurrencyRate(operation_setting.USDExchangeRate)
+				if rate <= 0 || math.IsNaN(rate) || math.IsInf(rate, 0) || common.QuotaPerUnit <= 0 || math.IsNaN(common.QuotaPerUnit) || math.IsInf(common.QuotaPerUnit, 0) {
+					return common.NewMessage("Failed to process support ticket request")
+				}
+				balance = balance.Mul(decimal.NewFromFloat(rate))
+				minimum = minimum.Mul(decimal.NewFromFloat(common.QuotaPerUnit))
+			}
+			if balance.LessThanOrEqual(minimum) {
+				return common.NewMessage("Your wallet balance must be greater than {{amount}} to submit a refund ticket.", map[string]any{"amount": strconv.Itoa(SupportRefundMinBalance)})
+			}
 		}
 		var count int64
 		if err := tx.Model(&SupportTicket{}).Where("user_id = ? AND status <> ?", userID, SupportTicketClosed).Count(&count).Error; err != nil {
