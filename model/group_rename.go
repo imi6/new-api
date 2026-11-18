@@ -263,7 +263,7 @@ func UpdateGroupOption(key, value, expectedRevision string) error {
 	return nil
 }
 
-// checkGroupRatioChanges 拒绝删除仍被使用的分组（应该改名），也拒绝复用刚改掉的旧名。
+// checkGroupRatioChanges 保护仍参与路由或结算的分组，也拒绝复用刚改掉的旧名。
 func checkGroupRatioChanges(tx *gorm.DB, config *common.GroupRenameAliasConfig, raw string) error {
 	var proposed map[string]float64
 	if common.UnmarshalJsonStr(raw, &proposed) != nil {
@@ -284,12 +284,80 @@ func checkGroupRatioChanges(tx *gorm.DB, config *common.GroupRenameAliasConfig, 
 		if _, kept := proposed[name]; kept {
 			continue
 		}
-		used, err := groupReferencedInDatabase(tx, name)
-		if err != nil {
+		if err := checkGroupDeletion(tx, config, name); err != nil {
 			return err
 		}
-		if used {
-			return common.NewMessage("This group is still in use; use Rename group instead of deleting it")
+	}
+	return nil
+}
+
+// checkGroupDeletion 只保护删除后会影响渠道、订阅或未完成任务的引用。
+// 用户和密钥保留原分组，不自动转移权限或倍率；失效分组在请求入口拒绝使用。
+// 重命名仍使用完整的引用检查，避免把已有用户或密钥合并到另一个分组。
+func checkGroupDeletion(tx *gorm.DB, config *common.GroupRenameAliasConfig, name string) error {
+	if name == "default" {
+		return common.NewMessage("The default group cannot be deleted")
+	}
+	// 旧缓存可能在改名收尾后继续按别名写入任务，必须检查事务内保留的整条改名链。
+	names := []string{name}
+	for _, alias := range config.Aliases {
+		if !config.SameChain(name, alias.Old) {
+			continue
+		}
+		for _, aliasName := range []string{alias.Old, alias.New} {
+			if !slices.Contains(names, aliasName) {
+				names = append(names, aliasName)
+			}
+		}
+	}
+	groupConditions := make([]clause.Expression, 0, len(names))
+	for _, groupName := range names {
+		groupConditions = append(groupConditions, groupExactMatch("group", groupName))
+	}
+	references := []struct {
+		model   any
+		columns []string
+		message string
+	}{
+		{&Ability{}, []string{"group"}, "The group {{group}} is still assigned to channels; remove it from all channels before deleting it"},
+		{&SubscriptionPlan{}, []string{"upgrade_group", "downgrade_group"}, "The group {{group}} is still referenced by a subscription plan or record and cannot be deleted"},
+		{&UserSubscription{}, []string{"upgrade_group", "downgrade_group", "prev_user_group"}, "The group {{group}} is still referenced by a subscription plan or record and cannot be deleted"},
+	}
+	for _, reference := range references {
+		conditions := make([]clause.Expression, 0, len(reference.columns)*len(names))
+		for _, column := range reference.columns {
+			for _, groupName := range names {
+				conditions = append(conditions, groupExactMatch(column, groupName))
+			}
+		}
+		var count int64
+		if err := tx.Unscoped().Model(reference.model).Where(clause.Or(conditions...)).Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return common.NewMessage(reference.message, map[string]any{"group": name})
+		}
+	}
+
+	// 旧任务可能未记录分组，结算时会读取所属用户的分组，删除时同样需要保护。
+	users := tx.Unscoped().Model(&User{}).Select("id").Where(clause.Or(groupConditions...))
+	legacyTasks := tx.Where(clause.Or(groupExactMatch("group", ""), clause.Eq{Column: clause.Column{Name: "group"}, Value: nil})).Where("user_id IN (?)", users)
+	var unfinished int64
+	if err := tx.Model(&Task{}).Where(tx.Where(clause.Or(groupConditions...)).Or(legacyTasks)).Where("(status NOT IN ? OR status IS NULL)", finishedTaskStatuses).Count(&unfinished).Error; err != nil {
+		return err
+	}
+	if unfinished > 0 {
+		return common.NewMessage("The group {{group}} has unfinished tasks; wait for them to finish before deleting it", map[string]any{"group": name})
+	}
+	var channels []Channel
+	if err := tx.Select("id", "group").Find(&channels).Error; err != nil {
+		return err
+	}
+	for _, channel := range channels {
+		for item := range strings.SplitSeq(channel.Group, ",") {
+			if slices.Contains(names, strings.TrimSpace(item)) {
+				return common.NewMessage("The group {{group}} is still assigned to channels; remove it from all channels before deleting it", map[string]any{"group": name})
+			}
 		}
 	}
 	return nil
