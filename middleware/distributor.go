@@ -99,6 +99,11 @@ func Distribute() func(c *gin.Context) {
 		}
 		if pinned || shouldSelectChannel {
 			usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+			// 在线调试可覆盖分组且不经过 TokenAuth，选渠道前再次检查实际分组。
+			if usingGroup != "auto" && !ratio_setting.ContainsGroupRatio(usingGroup) {
+				abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgAuthTokenGroupDeprecated, map[string]any{"Group": usingGroup}))
+				return
+			}
 			var selectErr *service.ChannelSelectError
 			if value, exists := c.Get(contextKeyTaskPluginEndpointSelection); exists && !pinned {
 				if selected, ok := value.(taskPluginEndpointSelection); ok && selected.Model == modelRequest.Model && selected.Channel != nil && selected.Channel.Status == common.ChannelStatusEnabled {
