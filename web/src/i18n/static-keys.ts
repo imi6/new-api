@@ -1084,4 +1084,6 @@ export const STATIC_I18N_KEYS = [
   'Your wallet balance must be greater than {{amount}} to submit a refund ticket.',
   'Checking wallet balance...',
   'Failed to load wallet balance. Please try again.',
+  // 自动禁用排除规则的后端校验消息。
+  'Invalid auto-disable exclusions. Use one rule per line: keyword or status code | keyword; up to 100 rules and 1000 characters per keyword.',
 ] as const
