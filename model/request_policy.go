@@ -21,13 +21,14 @@ import (
 // settings API. It is rebuilt from the option map on every option write, so
 // the runtime globals updated by the same write never disagree with it.
 type RequestPolicySnapshot struct {
-	Affinity        operation_setting.ChannelAffinitySetting
-	RetryTimes      int
-	RetryCodes      []operation_setting.StatusCodeRange
-	DisableCodes    []operation_setting.StatusCodeRange
-	DisableKeywords []string
-	AutoDisable     bool
-	Options         map[string]string
+	Affinity          operation_setting.ChannelAffinitySetting
+	RetryTimes        int
+	RetryCodes        []operation_setting.StatusCodeRange
+	DisableCodes      []operation_setting.StatusCodeRange
+	DisableKeywords   []string
+	DisableExclusions []operation_setting.ChannelDisableExclusion
+	AutoDisable       bool
+	Options           map[string]string
 }
 
 var requestPolicySnapshot atomic.Pointer[RequestPolicySnapshot]
@@ -52,6 +53,7 @@ func requestPolicyDefaultOptions() map[string]string {
 	defaults["AutomaticRetryStatusCodes"] = operation_setting.AutomaticRetryStatusCodesToString()
 	defaults["AutomaticDisableStatusCodes"] = operation_setting.AutomaticDisableStatusCodesToString()
 	defaults["AutomaticDisableKeywords"] = operation_setting.AutomaticDisableKeywordsToString()
+	defaults["AutomaticDisableExclusions"] = operation_setting.DefaultAutomaticDisableExclusions
 	defaults["AutomaticDisableChannelEnabled"] = strconv.FormatBool(common.AutomaticDisableChannelEnabled)
 	defaults["AutomaticEnableChannelEnabled"] = strconv.FormatBool(common.AutomaticEnableChannelEnabled)
 	defaults["ChannelDisableThreshold"] = strconv.FormatFloat(common.ChannelDisableThreshold, 'f', -1, 64)
@@ -64,7 +66,7 @@ func IsRequestPolicyOption(key string) bool {
 		return true
 	}
 	switch key {
-	case "AutomaticEnableChannelEnabled", "ChannelDisableThreshold", "AutomaticDisableFailureCount", "monitor_setting.auto_test_channel_enabled", "monitor_setting.auto_test_channel_minutes", "monitor_setting.channel_test_concurrency", "monitor_setting.channel_test_mode", "monitor_setting.skip_recently_used_channels", "RetryTimes", "AutomaticRetryStatusCodes", "AutomaticDisableChannelEnabled", "AutomaticDisableStatusCodes", "AutomaticDisableKeywords":
+	case "AutomaticEnableChannelEnabled", "ChannelDisableThreshold", "AutomaticDisableFailureCount", "monitor_setting.auto_test_channel_enabled", "monitor_setting.auto_test_channel_minutes", "monitor_setting.channel_test_concurrency", "monitor_setting.channel_test_mode", "monitor_setting.skip_recently_used_channels", "RetryTimes", "AutomaticRetryStatusCodes", "AutomaticDisableChannelEnabled", "AutomaticDisableStatusCodes", "AutomaticDisableKeywords", "AutomaticDisableExclusions":
 		return true
 	}
 	return false
@@ -138,6 +140,10 @@ func BuildRequestPolicy(options map[string]string) (*RequestPolicySnapshot, erro
 		return nil, err
 	}
 	snapshot.DisableKeywords = strings.Split(raw["AutomaticDisableKeywords"], "\n")
+	snapshot.DisableExclusions, err = operation_setting.ParseAutomaticDisableExclusions(raw["AutomaticDisableExclusions"])
+	if err != nil {
+		return nil, err
+	}
 	for _, key := range []string{"AutomaticEnableChannelEnabled", "monitor_setting.auto_test_channel_enabled", "monitor_setting.skip_recently_used_channels"} {
 		if _, err := strconv.ParseBool(raw[key]); err != nil {
 			return nil, fmt.Errorf("invalid boolean: %s", key)
