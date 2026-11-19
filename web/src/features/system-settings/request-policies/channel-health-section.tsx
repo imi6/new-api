@@ -59,7 +59,10 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useResetForm } from '../hooks/use-reset-form'
 import { safeNumberFieldProps } from '../utils/numeric-field'
-import type { HealthSettings } from './defaults'
+import {
+  DEFAULT_AUTOMATIC_DISABLE_EXCLUSIONS,
+  type HealthSettings,
+} from './defaults'
 import { useSavePolicy } from './use-save-policy'
 
 const numericString = z.string().refine((value) => {
@@ -91,6 +94,7 @@ const createChannelHealthSchema = (
       AutomaticEnableChannelEnabled: z.boolean(),
       AutomaticDisableKeywords: z.string(),
       AutomaticDisableStatusCodes: z.string(),
+      AutomaticDisableExclusions: z.string(),
       monitor_setting: z.object({
         auto_test_channel_enabled: z.boolean(),
         auto_test_channel_minutes: z.coerce
@@ -122,6 +126,35 @@ const createChannelHealthSchema = (
           }),
         })
       }
+      const exclusions = values.AutomaticDisableExclusions.split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+      if (
+        exclusions.length > 100 ||
+        exclusions.some((line) => {
+          const separator = line.indexOf('|')
+          const hasStatusCode = separator !== -1
+          const statusCode = hasStatusCode
+            ? line.slice(0, separator).trim()
+            : ''
+          const message = hasStatusCode
+            ? line.slice(separator + 1).trim()
+            : line
+          return (
+            (hasStatusCode && !/^[1-5]\d{2}$/.test(statusCode)) ||
+            !message ||
+            [...message].length > 1000
+          )
+        })
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AutomaticDisableExclusions'],
+          message: t(
+            'Invalid auto-disable exclusions. Use one rule per line: keyword or status code | keyword; up to 100 rules and 1000 characters per keyword.'
+          ),
+        })
+      }
     })
 
 type ChannelHealthSchema = ReturnType<typeof createChannelHealthSchema>
@@ -143,6 +176,7 @@ type NormalizedChannelHealthValues = {
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
   AutomaticDisableStatusCodes: string
+  AutomaticDisableExclusions: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
   'monitor_setting.channel_test_concurrency': number
@@ -168,6 +202,9 @@ const buildFormDefaults = (
     defaults.AutomaticDisableKeywords ?? ''
   ),
   AutomaticDisableStatusCodes: defaults.AutomaticDisableStatusCodes ?? '',
+  AutomaticDisableExclusions: normalizeLineEndings(
+    defaults.AutomaticDisableExclusions ?? DEFAULT_AUTOMATIC_DISABLE_EXCLUSIONS
+  ),
   monitor_setting: {
     auto_test_channel_enabled:
       defaults['monitor_setting.auto_test_channel_enabled'],
@@ -196,6 +233,9 @@ const normalizeDefaults = (
   AutomaticDisableStatusCodes: parseHttpStatusCodeRules(
     defaults.AutomaticDisableStatusCodes ?? ''
   ).normalized,
+  AutomaticDisableExclusions: normalizeLineEndings(
+    defaults.AutomaticDisableExclusions ?? DEFAULT_AUTOMATIC_DISABLE_EXCLUSIONS
+  ).trim(),
   'monitor_setting.auto_test_channel_enabled':
     defaults['monitor_setting.auto_test_channel_enabled'],
   'monitor_setting.auto_test_channel_minutes':
@@ -222,6 +262,9 @@ const normalizeFormValues = (
   AutomaticDisableStatusCodes: parseHttpStatusCodeRules(
     values.AutomaticDisableStatusCodes
   ).normalized,
+  AutomaticDisableExclusions: normalizeLineEndings(
+    values.AutomaticDisableExclusions
+  ).trim(),
   'monitor_setting.auto_test_channel_enabled':
     values.monitor_setting.auto_test_channel_enabled,
   'monitor_setting.auto_test_channel_minutes':
@@ -657,6 +700,29 @@ export function ChannelHealthSection({
                     <FormDescription>
                       {t(
                         'If an upstream error contains any of these keywords (case insensitive), the channel will be disabled automatically.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='AutomaticDisableExclusions'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Auto-disable exclusions')}</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={4}
+                        placeholder={DEFAULT_AUTOMATIC_DISABLE_EXCLUSIONS}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'One rule per line: keyword or status code | keyword. Keywords match any part of the upstream error message, ignoring case. Matching errors do not count toward automatic disabling. Leave empty to disable exclusions.'
                       )}
                     </FormDescription>
                     <FormMessage />
