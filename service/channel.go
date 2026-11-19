@@ -73,7 +73,8 @@ func ShouldDisableChannel(err *types.NewAPIError) bool {
 	// Errors new-api raised itself never do: the request may not have reached
 	// the upstream, and their message can carry client input that would
 	// otherwise match a disable keyword.
-	switch RelayErrorSource(err) {
+	errorSource := RelayErrorSource(err)
+	switch errorSource {
 	case "channel":
 		return true
 	case "local":
@@ -81,6 +82,27 @@ func ShouldDisableChannel(err *types.NewAPIError) bool {
 	}
 	if types.IsSkipRetryError(err) {
 		return false
+	}
+	if errorSource == "upstream" {
+		// 排除规则先于禁用规则；单独关键词不限状态码，组合规则还须状态码一致。
+		// 优先取结构化消息，兼容健康检查追加正文的包装，只匹配上游错误消息。
+		message := err.Error()
+		switch relayError := err.RelayError.(type) {
+		case types.OpenAIError:
+			if relayError.Message != "" {
+				message = relayError.Message
+			}
+		case types.ClaudeError:
+			if relayError.Message != "" {
+				message = relayError.Message
+			}
+		}
+		message = strings.ToLower(message)
+		for _, exclusion := range model.CurrentRequestPolicy().DisableExclusions {
+			if (exclusion.StatusCode == 0 || err.StatusCode == exclusion.StatusCode) && strings.Contains(message, exclusion.Message) {
+				return false
+			}
+		}
 	}
 	if operation_setting.ShouldDisableByStatusCode(err.StatusCode) {
 		return true

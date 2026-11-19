@@ -29,6 +29,7 @@ export type HealthSettings = {
   AutomaticEnableChannelEnabled: boolean
   AutomaticDisableKeywords: string
   AutomaticDisableStatusCodes: string
+  AutomaticDisableExclusions: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
   'monitor_setting.channel_test_concurrency': number
@@ -68,6 +69,9 @@ export type RequestPolicySettings = RetrySettings &
   ChannelStatusSettings &
   Pick<ChannelAffinitySettings, keyof ChannelAffinitySettings>
 
+export const DEFAULT_AUTOMATIC_DISABLE_EXCLUSIONS =
+  '403 | Image generation is not enabled for this group'
+
 export const defaultRequestPolicySettings: RequestPolicySettings = {
   RetryTimes: 0,
   AutomaticRetryStatusCodes:
@@ -78,6 +82,7 @@ export const defaultRequestPolicySettings: RequestPolicySettings = {
   AutomaticEnableChannelEnabled: false,
   AutomaticDisableKeywords: '',
   AutomaticDisableStatusCodes: '401',
+  AutomaticDisableExclusions: DEFAULT_AUTOMATIC_DISABLE_EXCLUSIONS,
   'monitor_setting.auto_test_channel_enabled': false,
   'monitor_setting.auto_test_channel_minutes': 10,
   'monitor_setting.channel_test_concurrency': 1,
