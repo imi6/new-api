@@ -413,11 +413,17 @@ func migrateDB() error {
 		&SupportTicketMessage{},
 		&SupportTicketAttachment{},
 		&SupportTicketStorageLock{},
+		&SupportTicketReminderBaseline{},
+		&SupportTicketRead{},
+		&SupportTicketUserRead{},
 		&Announcement{},
 		&AnnouncementRead{},
 	)
 	if err != nil {
 		return err
+	}
+	if err := InitializeSupportTicketReminders(DB); err != nil {
+		return fmt.Errorf("initialize support ticket reminders: %w", err)
 	}
 	if err := InitializeUserAuthVersions(); err != nil {
 		return err

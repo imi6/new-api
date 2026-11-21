@@ -64,6 +64,9 @@ type FloatingWindowProps = {
   storageKey?: string
   /** A new request expands the window without resetting its position or size. */
   expandRequest?: number
+  /** 外部可控制收起状态；未提供时保留原有内部状态。 */
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
   className?: string
 }
 
@@ -223,11 +226,21 @@ export function FloatingWindow(props: FloatingWindowProps) {
   } | null>(null)
 
   useEffect(() => {
-    if (props.expandRequest === undefined) return
+    if (props.expandRequest === undefined || props.collapsed !== undefined) {
+      return
+    }
     setState((previous) =>
       previous.collapsed ? { ...previous, collapsed: false } : previous
     )
-  }, [props.expandRequest])
+  }, [props.expandRequest, props.collapsed])
+
+  const collapsed = props.collapsed ?? state.collapsed
+  const changeCollapsed = (next: boolean) => {
+    if (props.collapsed === undefined) {
+      setState((previous) => ({ ...previous, collapsed: next }))
+    }
+    props.onCollapsedChange?.(next)
+  }
 
   useEffect(() => {
     if (!props.storageKey) return
@@ -239,13 +252,13 @@ export function FloatingWindow(props: FloatingWindowProps) {
           y: state.position.y,
           width: state.size.width,
           height: state.size.height,
-          collapsed: state.collapsed,
+          collapsed,
         })
       )
     } catch {
       // Storage may be unavailable; the window still works for this session.
     }
-  }, [props.storageKey, state])
+  }, [props.storageKey, state, collapsed])
 
   useEffect(() => {
     const keepInViewport = () =>
@@ -368,7 +381,7 @@ export function FloatingWindow(props: FloatingWindowProps) {
     top: state.position.y,
   }
 
-  if (state.collapsed) {
+  if (collapsed) {
     return (
       <div
         {...dragHandleProps}
@@ -389,9 +402,7 @@ export function FloatingWindow(props: FloatingWindowProps) {
           variant='ghost'
           size='icon-xs'
           aria-label={t('Expand panel')}
-          onClick={() =>
-            setState((previous) => ({ ...previous, collapsed: false }))
-          }
+          onClick={() => changeCollapsed(false)}
         >
           <ChevronsUpDown aria-hidden='true' />
         </Button>
@@ -442,9 +453,7 @@ export function FloatingWindow(props: FloatingWindowProps) {
             variant='ghost'
             size='icon-xs'
             aria-label={t('Collapse panel')}
-            onClick={() =>
-              setState((previous) => ({ ...previous, collapsed: true }))
-            }
+            onClick={() => changeCollapsed(true)}
           >
             <ChevronsUpDown aria-hidden='true' />
           </Button>

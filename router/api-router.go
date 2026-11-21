@@ -318,7 +318,9 @@ func SetApiRouter(router *gin.Engine) {
 		supportRoute := apiRouter.Group("/support/tickets", middleware.UserAuth(), middleware.DisableCache())
 		{
 			supportRoute.GET("", controller.ListSupportTickets)
+			supportRoute.GET("/reminders", controller.GetUserSupportTicketReminders)
 			supportRoute.GET("/:id", controller.GetSupportTicket)
+			supportRoute.POST("/:id/read", middleware.SessionCookieOriginGuard(), middleware.SupportTicketReadRateLimit(), controller.MarkUserSupportTicketRead)
 			supportRoute.GET("/:id/attachments/:attachment_id", controller.DownloadSupportTicketAttachment)
 			supportRoute.POST("", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.CreateSupportTicket)
 			supportRoute.POST("/:id/messages", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.ReplySupportTicket)
@@ -327,8 +329,10 @@ func SetApiRouter(router *gin.Engine) {
 		supportAdminRoute := apiRouter.Group("/support/admin/tickets", middleware.AdminAuth(), middleware.DisableCache())
 		{
 			supportAdminRoute.GET("", controller.AdminListSupportTickets)
+			supportAdminRoute.GET("/reminders", controller.AdminGetSupportTicketReminders)
 			supportAdminRoute.POST("/batch-delete", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminBatchDeleteSupportTickets)
 			supportAdminRoute.GET("/:id", controller.AdminGetSupportTicket)
+			supportAdminRoute.POST("/:id/read", middleware.SessionCookieOriginGuard(), middleware.SupportTicketReadRateLimit(), controller.AdminMarkSupportTicketRead)
 			supportAdminRoute.GET("/:id/attachments/:attachment_id", controller.AdminDownloadSupportTicketAttachment)
 			supportAdminRoute.POST("/:id/messages", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminReplySupportTicket)
 			supportAdminRoute.POST("/:id/status", middleware.SessionCookieOriginGuard(), middleware.UserCriticalRateLimit("support-ticket-write"), controller.AdminSetSupportTicketStatus)

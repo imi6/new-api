@@ -205,6 +205,11 @@ func UserCriticalRateLimit(scope string) func(c *gin.Context) {
 	)
 }
 
+// SupportTicketReadRateLimit 为自动已读确认单独计数，避免阅读工单耗尽回复额度。
+func SupportTicketReadRateLimit() func(c *gin.Context) {
+	return userRateLimitFactory(120, 60, "support-ticket-read")
+}
+
 func DownloadRateLimit() func(c *gin.Context) {
 	return rateLimitFactory(common.DownloadRateLimitNum, common.DownloadRateLimitDuration, "DW")
 }

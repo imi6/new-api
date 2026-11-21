@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -27,6 +27,10 @@ import { ErrorState } from '@/components/error-state'
 import { LoadingState } from '@/components/loading-state'
 import { Button } from '@/components/ui/button'
 import { formatDateTimeStr } from '@/lib/format'
+import {
+  getServerErrorSources,
+  getServerErrorStatus,
+} from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
 import { getTicket, replyToTicket, setTicketStatus } from './api'
@@ -34,6 +38,8 @@ import { ticketCategoryLabel } from './labels'
 import { TicketComposer } from './ticket-composer'
 import { TicketScreenshot } from './ticket-screenshot'
 import { TicketStatusBadge } from './ticket-status-badge'
+import { ticketReminderKey } from './use-ticket-reminders'
+import { useVisibleTicketRead } from './use-visible-ticket-read'
 
 interface TicketDetailDialogProps {
   id: number
@@ -47,6 +53,7 @@ export function TicketDetailDialog(props: TicketDetailDialogProps) {
   const client = useQueryClient()
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [replyBusy, setReplyBusy] = useState(false)
+  const messageLog = useRef<HTMLDivElement>(null)
   const rootKey = ['support-tickets', props.userId, props.admin] as const
   const query = useQuery({
     queryKey: [...rootKey, 'detail', props.id],
@@ -67,7 +74,29 @@ export function TicketDetailDialog(props: TicketDetailDialogProps) {
     },
   })
   const busy = replyBusy || statusMutation.isPending
-  const detail = query.data
+  const unavailable =
+    getServerErrorStatus(query.error) === 404 ||
+    getServerErrorSources(query.error).some(
+      (source) =>
+        source.message_key === 'Support ticket not found' ||
+        source.message === 'Support ticket not found'
+    )
+  const detail = unavailable ? undefined : query.data
+  useVisibleTicketRead({
+    userId: props.userId,
+    ticketId: props.id,
+    enabled: !query.isError && !closeConfirm,
+    admin: props.admin,
+    detail,
+    container: messageLog,
+  })
+  useEffect(() => {
+    if (unavailable) {
+      void client.invalidateQueries({
+        queryKey: ticketReminderKey(props.userId, props.admin),
+      })
+    }
+  }, [client, props.admin, props.userId, unavailable])
 
   return (
     <>
@@ -125,7 +154,12 @@ export function TicketDetailDialog(props: TicketDetailDialogProps) {
                 </Button>
               )}
             </div>
-            <div className='space-y-4' role='log' aria-label={t('Messages')}>
+            <div
+              ref={messageLog}
+              className='space-y-4'
+              role='log'
+              aria-label={t('Messages')}
+            >
               {detail.messages.map((message) => {
                 let author = props.admin ? t('User') : t('You')
                 if (message.is_admin) author = t('Support')
@@ -166,6 +200,14 @@ export function TicketDetailDialog(props: TicketDetailDialogProps) {
                         ))}
                       </div>
                     )}
+                    {message.is_admin !== props.admin &&
+                      message.author_id !== props.userId && (
+                        <div
+                          className='h-px'
+                          data-ticket-incoming-message-id={message.id}
+                          aria-hidden='true'
+                        />
+                      )}
                   </article>
                 )
               })}
