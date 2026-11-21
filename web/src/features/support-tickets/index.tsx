@@ -54,9 +54,9 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import { getTickets, submitTicket } from './api'
 import { ticketCategoryLabel, ticketStatusLabel } from './labels'
+import { useTicketReminderStore } from './reminder-store'
 import { TicketComposer } from './ticket-composer'
 import { TicketDeleteDialog } from './ticket-delete-dialog'
-import { TicketDetailDialog } from './ticket-detail-dialog'
 import { TicketStatusBadge } from './ticket-status-badge'
 import {
   TICKET_CATEGORIES,
@@ -93,7 +93,6 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
   })
   const [createOpen, setCreateOpen] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
-  const [detailId, setDetailId] = useState<number | null>(null)
   const [userIdInput, setUserIdInput] = useState('')
   const [selection, setSelection] = useState<{
     filters: TicketFilters
@@ -191,7 +190,11 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
           type='button'
           variant='outline'
           size='sm'
-          onClick={() => setDetailId(ticket.id)}
+          onClick={() =>
+            useTicketReminderStore
+              .getState()
+              .openDetail(props.userId, ticket.id, props.admin)
+          }
         >
           {t('View')}
         </Button>
@@ -451,10 +454,7 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
             onOpenChange={(open) => {
               if (!open) setDeleteTargets(null)
             }}
-            onDeleted={(ids) => {
-              setDetailId((current) =>
-                current !== null && ids.includes(current) ? null : current
-              )
+            onDeleted={() => {
               setSelection(null)
               setDeleteTargets(null)
               setFilters((previous) => ({ ...previous, page: 1 }))
@@ -484,15 +484,6 @@ function TicketWorkspace(props: { userId: number; admin: boolean }) {
               }}
             />
           </Dialog>
-        )}
-        {detailId !== null && (
-          <TicketDetailDialog
-            key={detailId}
-            id={detailId}
-            userId={props.userId}
-            admin={props.admin}
-            onClose={() => setDetailId(null)}
-          />
         )}
       </SectionPageLayout.Content>
     </SectionPageLayout>

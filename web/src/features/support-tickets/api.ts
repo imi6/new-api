@@ -25,6 +25,7 @@ import type {
   TicketFilters,
   TicketMessage,
   TicketPage,
+  TicketReminders,
   TicketStatus,
   TicketSubmission,
 } from './types'
@@ -37,6 +38,31 @@ interface TicketResponse<T> {
 
 export const ticketBase = (admin: boolean) =>
   admin ? '/api/support/admin/tickets' : '/api/support/tickets'
+
+export async function getTicketReminders(
+  signal?: AbortSignal,
+  admin = true
+): Promise<TicketReminders> {
+  const response = await api.get<TicketResponse<TicketReminders>>(
+    `${ticketBase(admin)}/reminders`,
+    { signal, disableDuplicate: true }
+  )
+  return requireServerSuccess(response.data).data
+}
+
+export async function markTicketRead(
+  ticketId: number,
+  messageId: number,
+  signal?: AbortSignal,
+  admin = true
+): Promise<void> {
+  const response = await api.post<TicketResponse<unknown>>(
+    `${ticketBase(admin)}/${ticketId}/read`,
+    { message_id: messageId },
+    { signal }
+  )
+  requireServerSuccess(response.data)
+}
 
 export interface BatchDeleteTicketsResult {
   deleted_ids: number[]

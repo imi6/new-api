@@ -67,6 +67,23 @@ export interface TicketPage {
   total: number
 }
 
+export interface TicketReminder {
+  ticket_id: number
+  user_id: number
+  category: TicketCategory
+  status: TicketStatus
+  kind: 'new_ticket' | 'reply' | 'support_reply'
+  message_id: number
+  created_at: number
+  unread_count: number
+}
+
+export interface TicketReminders {
+  unread_count: number
+  latest_message_id: number
+  items: TicketReminder[]
+}
+
 export interface TicketFilters {
   page: number
   pageSize: number
