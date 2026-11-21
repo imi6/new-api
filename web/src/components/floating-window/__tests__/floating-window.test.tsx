@@ -178,3 +178,40 @@ test('pressing a header button does not start a drag', () => {
     screen.getByRole('complementary', { name: 'Scratch pad' })
   ).toHaveStyle({ left: '100px', top: '20px' })
 })
+
+test('受控收起只通知调用方，保持外部状态且不会被展开请求覆盖', async () => {
+  const user = userEvent.setup()
+  const onCollapsedChange = vi.fn()
+  const props = {
+    title: 'Ticket reminders',
+    defaultPosition: { x: 100, y: 20 },
+    defaultWidth: 300,
+    onClose: vi.fn(),
+    onCollapsedChange,
+  }
+  const view = render(
+    <FloatingWindow {...props} collapsed={false}>
+      <p>Ticket body</p>
+    </FloatingWindow>
+  )
+  await user.click(screen.getByRole('button', { name: 'Collapse panel' }))
+  expect(onCollapsedChange).toHaveBeenCalledWith(true)
+  expect(screen.getByText('Ticket body')).toBeVisible()
+
+  view.rerender(
+    <FloatingWindow {...props} collapsed expandRequest={1}>
+      <p>Ticket body</p>
+    </FloatingWindow>
+  )
+  expect(screen.queryByText('Ticket body')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Expand panel' }))
+  expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
+  expect(screen.queryByText('Ticket body')).not.toBeInTheDocument()
+
+  view.rerender(
+    <FloatingWindow {...props} collapsed={false} expandRequest={2}>
+      <p>Ticket body</p>
+    </FloatingWindow>
+  )
+  expect(screen.getByText('Ticket body')).toBeVisible()
+})

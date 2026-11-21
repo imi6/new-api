@@ -25,6 +25,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { deleteAdminTickets } from './api'
+import { useTicketReminderStore } from './reminder-store'
 import type { TicketPage } from './types'
 
 interface TicketDeleteDialogProps {
@@ -42,6 +43,10 @@ export function TicketDeleteDialog(props: TicketDeleteDialogProps) {
     mutationFn: () => deleteAdminTickets(props.ids),
     onSuccess: async (result) => {
       const deleted = new Set(result.deleted_ids)
+      const openedDetail = useTicketReminderStore.getState().openedDetail
+      if (openedDetail && deleted.has(openedDetail.ticketId)) {
+        useTicketReminderStore.getState().closeDetail(openedDetail.userId)
+      }
       props.onDeleted(result.deleted_ids)
       toast.success(t('Deleted {{count}} tickets', { count: deleted.size }))
       if (result.file_cleanup_pending) {
@@ -85,7 +90,8 @@ export function TicketDeleteDialog(props: TicketDeleteDialogProps) {
       )
       await client.invalidateQueries({
         queryKey: ['support-tickets'],
-        predicate: (query) => query.queryKey[3] === 'list',
+        predicate: (query) =>
+          query.queryKey[3] === 'list' || query.queryKey[3] === 'reminders',
       })
     },
     onError: (error) => handleServerError(error, t('Failed to delete tickets')),

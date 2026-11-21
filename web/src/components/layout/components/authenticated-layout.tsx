@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { lazy, Suspense } from 'react'
+
 import { CommandMenu } from '@/components/command-menu'
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
@@ -23,11 +25,18 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { LayoutProvider } from '@/context/layout-provider'
 import { SearchProvider } from '@/context/search-provider'
 import { getCookie } from '@/lib/cookies'
+import { ROLE } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
+
+const TicketReminders = lazy(() =>
+  import('@/features/support-tickets/ticket-reminders').then((module) => ({
+    default: module.TicketReminders,
+  }))
+)
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -36,6 +45,8 @@ type AuthenticatedLayoutProps = {
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const signedIn = useAuthStore((s) => !!s.auth.user)
+  const userId = useAuthStore((s) => s.auth.user?.id)
+  const admin = useAuthStore((s) => (s.auth.user?.role ?? 0) >= ROLE.ADMIN)
   // Unmount pages on sign-out, otherwise their queries refetch and toast "Session expired!" / "invalid access token"
   if (!signedIn) return null
 
@@ -60,6 +71,15 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
           </div>
         </SidebarProvider>
         <CommandMenu />
+        {userId !== undefined && (
+          <Suspense fallback={null}>
+            <TicketReminders
+              key={`${userId}:${admin}`}
+              userId={userId}
+              admin={admin}
+            />
+          </Suspense>
+        )}
       </SearchProvider>
     </LayoutProvider>
   )

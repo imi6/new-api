@@ -579,10 +579,20 @@ func DeleteSupportTickets(ticketIDs []int, adminID int) ([]int, []SupportTicketA
 		if err := tx.Where("ticket_id IN ?", existingIDs).Delete(&SupportTicketAttachment{}).Error; err != nil {
 			return err
 		}
-		// 只保留已删除创建请求的不可见幂等标识，避免旧请求重试重新创建工单。
-		// 清空正文与工单关联，即使未来复用工单 ID，也不能将旧请求连到新工单。
+		if err := tx.Where("ticket_id IN ?", existingIDs).Delete(&SupportTicketRead{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("ticket_id IN ?", existingIDs).Delete(&SupportTicketUserRead{}).Error; err != nil {
+			return err
+		}
+		var latestMessageID int
+		if err := tx.Model(&SupportTicketMessage{}).Select("COALESCE(MAX(id), 0)").Scan(&latestMessageID).Error; err != nil {
+			return err
+		}
+		// 保留创建请求的幂等标识，以及全表最大消息 ID，防止 MySQL 5.7 重启后复用已读游标使用过的 ID。
+		// 这些不可见标识不保留正文、时间或工单关联；即使工单 ID 被复用，也不能连到新工单。
 		if err := tx.Model(&SupportTicketMessage{}).
-			Where("ticket_id IN ? AND request_kind = ? AND request_id IS NOT NULL", existingIDs, "create").
+			Where("ticket_id IN ? AND ((request_kind = ? AND request_id IS NOT NULL) OR id = ?)", existingIDs, "create", latestMessageID).
 			Updates(map[string]any{"ticket_id": 0, "is_admin": false, "content": "", "created_at": 0, "request_hash": "", "request_kind": "deleted"}).Error; err != nil {
 			return err
 		}

@@ -96,6 +96,27 @@ func TestRedisUserRateLimiterUsesSharedFixedWindow(t *testing.T) {
 	assert.Equal(t, 23*time.Second, redisServer.TTL(key))
 }
 
+func TestSupportTicketReadDoesNotConsumeReplyAllowance(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	useRateLimitMiniRedis(t)
+	previousEnabled, previousCount, previousDuration := common.CriticalRateLimitEnable, common.CriticalRateLimitNum, common.CriticalRateLimitDuration
+	common.CriticalRateLimitEnable, common.CriticalRateLimitNum, common.CriticalRateLimitDuration = true, 1, 600
+	t.Cleanup(func() {
+		common.CriticalRateLimitEnable, common.CriticalRateLimitNum, common.CriticalRateLimitDuration = previousEnabled, previousCount, previousDuration
+	})
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("id", 42) })
+	respond := func(c *gin.Context) { c.Status(http.StatusNoContent) }
+	router.GET("/read", SupportTicketReadRateLimit(), respond)
+	router.GET("/reply", UserCriticalRateLimit("support-ticket-write"), respond)
+
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/read", "192.0.2.20:12345").Code)
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/read", "192.0.2.20:12345").Code)
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/reply", "192.0.2.20:12345").Code)
+	assert.Equal(t, http.StatusTooManyRequests, performRateLimitRequest(router, "/reply", "192.0.2.20:12345").Code)
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/read", "192.0.2.20:12345").Code)
+}
+
 func TestRedisEmailVerificationRateLimiterPreservesResponseAndTTL(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	redisServer, _ := useRateLimitMiniRedis(t)
