@@ -126,6 +126,65 @@ func AdminGetSupportTicket(c *gin.Context) {
 	getSupportTicket(c, true)
 }
 
+func AdminGetSupportTicketReminders(c *gin.Context) {
+	getSupportTicketReminders(c, true)
+}
+
+func GetUserSupportTicketReminders(c *gin.Context) {
+	getSupportTicketReminders(c, false)
+}
+
+func getSupportTicketReminders(c *gin.Context, admin bool) {
+	if _, ok := requireBrowserSession(c); !ok {
+		return
+	}
+	getReminders := model.GetUserSupportTicketReminders
+	if admin {
+		getReminders = model.GetSupportTicketReminders
+	}
+	reminders, err := getReminders(c.GetInt("id"))
+	if err != nil {
+		supportTicketError(c, err)
+		return
+	}
+	common.ApiSuccess(c, reminders)
+}
+
+func AdminMarkSupportTicketRead(c *gin.Context) {
+	markSupportTicketRead(c, true)
+}
+
+func MarkUserSupportTicketRead(c *gin.Context) {
+	markSupportTicketRead(c, false)
+}
+
+func markSupportTicketRead(c *gin.Context, admin bool) {
+	if _, ok := requireBrowserSession(c); !ok {
+		return
+	}
+	id, ok := supportTicketID(c, "id")
+	if !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1024)
+	var input struct {
+		MessageID int `json:"message_id"`
+	}
+	if err := common.DecodeJsonBody(c.Request.Body, &input); err != nil {
+		common.ApiErrorT(c, "Invalid support ticket request")
+		return
+	}
+	markRead := model.MarkUserSupportTicketRead
+	if admin {
+		markRead = model.MarkSupportTicketRead
+	}
+	if err := markRead(id, c.GetInt("id"), input.MessageID); err != nil {
+		supportTicketError(c, err)
+		return
+	}
+	common.ApiSuccess(c, nil)
+}
+
 func getSupportTicket(c *gin.Context, admin bool) {
 	if _, ok := requireBrowserSession(c); !ok {
 		return

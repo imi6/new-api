@@ -194,13 +194,17 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 
 	// 工单和截图不接受个人访问令牌，避免私密客服内容被通用 API 客户端读取。
 	"GET /api/support/tickets":                                      accessTokenSessionRule,
+	"GET /api/support/tickets/reminders":                            accessTokenSessionRule,
 	"POST /api/support/tickets":                                     accessTokenSessionRule,
 	"GET /api/support/tickets/:id":                                  accessTokenSessionRule,
+	"POST /api/support/tickets/:id/read":                            accessTokenSessionRule,
 	"POST /api/support/tickets/:id/messages":                        accessTokenSessionRule,
 	"POST /api/support/tickets/:id/close":                           accessTokenSessionRule,
 	"GET /api/support/tickets/:id/attachments/:attachment_id":       accessTokenSessionRule,
 	"GET /api/support/admin/tickets":                                accessTokenSessionRule,
+	"GET /api/support/admin/tickets/reminders":                      accessTokenSessionRule,
 	"GET /api/support/admin/tickets/:id":                            accessTokenSessionRule,
+	"POST /api/support/admin/tickets/:id/read":                      accessTokenSessionRule,
 	"POST /api/support/admin/tickets/:id/messages":                  accessTokenSessionRule,
 	"POST /api/support/admin/tickets/:id/status":                    accessTokenSessionRule,
 	"GET /api/support/admin/tickets/:id/attachments/:attachment_id": accessTokenSessionRule,
