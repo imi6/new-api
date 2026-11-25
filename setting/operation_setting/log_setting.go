@@ -14,14 +14,17 @@ type LogSetting struct {
 	// UserExportEnabled lets regular users export their own usage logs.
 	// Administrators can always export.
 	UserExportEnabled bool `json:"user_export_enabled"`
+	// CacheHitRateEnabled 控制使用日志及详情中的缓存命中率展示。
+	CacheHitRateEnabled bool `json:"cache_hit_rate_enabled"`
 	// MaxRangeDays is the longest time range a user can search in their logs
 	// and dashboard, and the longest range any export can cover.
 	MaxRangeDays int `json:"max_range_days"`
 }
 
 var logSetting = LogSetting{
-	UserExportEnabled: true,
-	MaxRangeDays:      365,
+	UserExportEnabled:   true,
+	CacheHitRateEnabled: true,
+	MaxRangeDays:        365,
 }
 
 func init() {

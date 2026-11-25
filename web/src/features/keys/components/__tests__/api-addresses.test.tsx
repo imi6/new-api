@@ -29,14 +29,23 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { STATUS_QUERY_KEY, type StatusData } from '@/lib/status-query'
+import { useAuthStore } from '@/stores/auth-store'
+import {
+  DEFAULT_CURRENCY_CONFIG,
+  useSystemConfigStore,
+  type CurrencyDisplayType,
+} from '@/stores/system-config-store'
 
 import { ApiKeysPrimaryButtons } from '../api-keys-primary-buttons'
 import { ApiKeysProvider } from '../api-keys-provider'
+import { IntelligenceTestProvider } from '../intelligence-test-provider'
 
 let client: QueryClient
 
 beforeEach(() => {
   localStorage.clear()
+  useAuthStore.getState().auth.setUser(null)
+  useSystemConfigStore.setState(useSystemConfigStore.getInitialState(), true)
   client = new QueryClient({
     defaultOptions: { queries: { enabled: false, retry: false } },
   })
@@ -45,6 +54,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   client.clear()
+  useAuthStore.getState().auth.setUser(null)
+  useSystemConfigStore.setState(useSystemConfigStore.getInitialState(), true)
   localStorage.clear()
 })
 
@@ -52,9 +63,11 @@ function renderAddresses(status: StatusData) {
   client.setQueryData(STATUS_QUERY_KEY, status)
   return render(
     <QueryClientProvider client={client}>
-      <ApiKeysProvider>
-        <ApiKeysPrimaryButtons />
-      </ApiKeysProvider>
+      <IntelligenceTestProvider>
+        <ApiKeysProvider>
+          <ApiKeysPrimaryButtons />
+        </ApiKeysProvider>
+      </IntelligenceTestProvider>
     </QueryClientProvider>
   )
 }
@@ -213,4 +226,187 @@ it('keeps long addresses readable within the scrollable panel and updates when c
     })
   )
   expect(await navigator.clipboard.readText()).toBe('https://new.example.com')
+})
+
+it.each([
+  {
+    name: '单消费门槛未达时隐藏',
+    used: 9,
+    quota: 100,
+    minUsed: 10,
+    minQuota: 0,
+    showInKeys: true,
+    visible: false,
+  },
+  {
+    name: '单余额门槛未达时隐藏',
+    used: 100,
+    quota: 9,
+    minUsed: 0,
+    minQuota: 10,
+    showInKeys: true,
+    visible: false,
+  },
+  {
+    name: '双门槛中消费达标即可显示',
+    used: 10,
+    quota: 0,
+    minUsed: 10,
+    minQuota: 50,
+    showInKeys: true,
+    visible: true,
+  },
+  {
+    name: '双门槛中余额达标即可显示',
+    used: 0,
+    quota: 50,
+    minUsed: 10,
+    minQuota: 50,
+    showInKeys: true,
+    visible: true,
+  },
+  {
+    name: '双门槛均未达时隐藏',
+    used: 9,
+    quota: 49,
+    minUsed: 10,
+    minQuota: 50,
+    showInKeys: true,
+    visible: false,
+  },
+  {
+    name: '关闭节点显示时即使额度达标也隐藏',
+    used: 100,
+    quota: 100,
+    minUsed: 10,
+    minQuota: 50,
+    showInKeys: false,
+    visible: false,
+  },
+])('$name', async ({ used, quota, minUsed, minQuota, showInKeys, visible }) => {
+  const user = userEvent.setup()
+  useAuthStore.getState().auth.setUser({
+    id: 1,
+    username: 'node-user',
+    role: 1,
+    used_quota: used * DEFAULT_CURRENCY_CONFIG.quotaPerUnit,
+    quota: quota * DEFAULT_CURRENCY_CONFIG.quotaPerUnit,
+  })
+  renderAddresses({
+    api_info: [
+      { route: 'Public', url: 'https://public.example.com', description: '' },
+      {
+        route: 'Restricted',
+        url: 'https://restricted.example.com',
+        description: '',
+        show_in_keys: showInKeys,
+        min_used_quota_usd: minUsed,
+        min_quota_usd: minQuota,
+      },
+    ],
+  })
+  await user.click(screen.getByRole('button', { name: 'API Addresses' }))
+  const dialog = await screen.findByRole('dialog', { name: 'API Addresses' })
+  expect(within(dialog).getByText('Public')).toBeVisible()
+  if (visible) {
+    expect(within(dialog).getByText('Restricted')).toBeVisible()
+  } else {
+    expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
+    expect(
+      within(dialog).queryByText('https://restricted.example.com')
+    ).not.toBeInTheDocument()
+  }
+})
+
+it.each<CurrencyDisplayType>(['CNY', 'TOKENS'])(
+  '%s 展示保持按真实美元额度判断节点门槛',
+  async (quotaDisplayType) => {
+    const user = userEvent.setup()
+    useSystemConfigStore.getState().setConfig({
+      currency: {
+        ...DEFAULT_CURRENCY_CONFIG,
+        quotaDisplayType,
+        quotaPerUnit: 1000000,
+        usdExchangeRate: 7,
+      },
+    })
+    useAuthStore.getState().auth.setUser({
+      id: 1,
+      username: 'node-user',
+      role: 1,
+      used_quota: 2000000,
+      quota: 2000000,
+    })
+    renderAddresses({
+      api_info: [
+        { route: 'Public', url: 'https://public.example.com', description: '' },
+        {
+          route: 'Restricted',
+          url: 'https://restricted.example.com',
+          description: '',
+          min_used_quota_usd: 10,
+          min_quota_usd: 10,
+        },
+      ],
+    })
+    await user.click(screen.getByRole('button', { name: 'API Addresses' }))
+    const dialog = await screen.findByRole('dialog', { name: 'API Addresses' })
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(dialog).getByText('Public')).toBeVisible()
+    expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
+  }
+)
+
+it('用户余额与后台门槛更新后立即重新计算打开的节点列表', async () => {
+  const user = userEvent.setup()
+  const account = {
+    id: 1,
+    username: 'node-user',
+    role: 1,
+    used_quota: 0,
+    quota: DEFAULT_CURRENCY_CONFIG.quotaPerUnit,
+  }
+  const publicNode = {
+    route: 'Public',
+    url: 'https://public.example.com',
+    description: '',
+  }
+  const restrictedNode = {
+    route: 'Restricted',
+    url: 'https://restricted.example.com',
+    description: '',
+    min_quota_usd: 10,
+  }
+  useAuthStore.getState().auth.setUser(account)
+  renderAddresses({ api_info: [publicNode, restrictedNode] })
+  await user.click(screen.getByRole('button', { name: 'API Addresses' }))
+  const dialog = await screen.findByRole('dialog', { name: 'API Addresses' })
+  expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
+
+  act(() => {
+    useAuthStore.getState().auth.setUser({
+      ...account,
+      quota: 10 * DEFAULT_CURRENCY_CONFIG.quotaPerUnit,
+    })
+  })
+  expect(await within(dialog).findByText('Restricted')).toBeVisible()
+
+  act(() => {
+    client.setQueryData(STATUS_QUERY_KEY, {
+      api_info: [publicNode, { ...restrictedNode, min_quota_usd: 20 }],
+    })
+  })
+  await waitFor(() =>
+    expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
+  )
+
+  act(() => {
+    useSystemConfigStore.getState().setConfig({
+      currency: {
+        ...DEFAULT_CURRENCY_CONFIG,
+        quotaPerUnit: DEFAULT_CURRENCY_CONFIG.quotaPerUnit / 2,
+      },
+    })
+  })
+  expect(await within(dialog).findByText('Restricted')).toBeVisible()
 })

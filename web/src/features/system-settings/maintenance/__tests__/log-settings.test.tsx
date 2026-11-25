@@ -43,6 +43,7 @@ function Fixture() {
           defaultValues={{
             LogConsumeEnabled: true,
             'log_setting.user_export_enabled': true,
+            'log_setting.cache_hit_rate_enabled': true,
             'log_setting.max_range_days': 30,
             'system_task_setting.retention_days': 30,
           }}
@@ -92,10 +93,15 @@ test('the page shows the log modules in order, each with its own controls', asyn
     'Server Log Management',
   ])
   const recording = screen.getByRole('group', { name: 'Log recording' })
-  expect(within(recording).getAllByRole('switch')).toHaveLength(1)
+  expect(within(recording).getAllByRole('switch')).toHaveLength(2)
   expect(
     within(recording).getByRole('switch', { name: 'Record quota usage' })
   ).toBeVisible()
+  expect(
+    within(recording).getByRole('switch', {
+      name: 'Show cache hit rate in logs',
+    })
+  ).toBeChecked()
   const search = screen.getByRole('group', { name: 'Log search and export' })
   expect(
     within(search).getByRole('switch', { name: 'Allow users to export logs' })
@@ -177,6 +183,22 @@ test('saving sends only the log export settings that changed', async () => {
   expect(api.put).toHaveBeenCalledWith('/api/option/', {
     key: 'log_setting.max_range_days',
     value: 90,
+  })
+})
+
+test('关闭缓存命中率展示时只保存对应开关', async () => {
+  const user = userEvent.setup()
+  await renderSettings()
+
+  await user.click(
+    screen.getByRole('switch', { name: 'Show cache hit rate in logs' })
+  )
+  await user.click(screen.getByRole('button', { name: 'Save log settings' }))
+
+  await waitFor(() => expect(api.put).toHaveBeenCalledTimes(1))
+  expect(api.put).toHaveBeenCalledWith('/api/option/', {
+    key: 'log_setting.cache_hit_rate_enabled',
+    value: false,
   })
 })
 

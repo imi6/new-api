@@ -19,7 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { STATUS_QUERY_KEY } from '@/lib/status-query'
 
 import { CCSwitchDialog } from '../cc-switch-dialog'
 
@@ -28,6 +31,17 @@ let queryClient: QueryClient
 beforeEach(() => {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  })
+  queryClient.setQueryData(STATUS_QUERY_KEY, {
+    server_address: 'https://console.example.com',
+    api_info: [
+      { route: 'Global', url: 'https://global.example.com', description: '' },
+      {
+        route: 'Regional',
+        url: 'https://regional.example.com/gateway/v1/',
+        description: 'Regional gateway',
+      },
+    ],
   })
 })
 
@@ -40,7 +54,7 @@ function renderDialog(models = ['gpt-5.4', 'claude-sonnet-4-6']) {
     success: true,
     data: models,
   })
-  render(
+  return render(
     <QueryClientProvider client={queryClient}>
       <CCSwitchDialog open onOpenChange={vi.fn()} tokenKey='test-only' />
     </QueryClientProvider>
@@ -123,5 +137,161 @@ describe('CC Switch model selection', () => {
 
     expect(input).toHaveValue('Development')
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+})
+
+describe('CC Switch API 节点选择', () => {
+  it.each([
+    {
+      app: 'Codex',
+      node: 'https://regional.example.com/',
+      endpoint: 'https://regional.example.com/v1',
+    },
+    {
+      app: 'Claude',
+      node: 'https://regional.example.com/gateway/v1/',
+      endpoint: 'https://regional.example.com/gateway/v1',
+    },
+    {
+      app: 'Codex',
+      node: 'https://regional.example.com/gateway/',
+      endpoint: 'https://regional.example.com/gateway/v1',
+    },
+    {
+      app: 'Codex',
+      node: 'https://regional.example.com/gateway/v1/',
+      endpoint: 'https://regional.example.com/gateway/v1',
+    },
+    {
+      app: 'Codex',
+      node: 'https://regional.example.com/gateway/?route=blue',
+      endpoint: 'https://regional.example.com/gateway/v1?route=blue',
+    },
+    {
+      app: 'Codex',
+      node: 'https://regional.example.com/gateway/?route=blue/',
+      endpoint: 'https://regional.example.com/gateway/v1?route=blue/',
+    },
+    {
+      app: 'Gemini',
+      node: 'https://regional.example.com/gateway/v1beta/',
+      endpoint: 'https://regional.example.com/gateway/v1beta',
+    },
+  ])(
+    '$app 导入选择的节点并正确处理路径：$node',
+    async ({ app, node, endpoint }) => {
+      const open = vi.spyOn(window, 'open').mockReturnValue(null)
+      const user = userEvent.setup()
+      queryClient.setQueryData(STATUS_QUERY_KEY, {
+        server_address: 'https://console.example.com',
+        api_info: [
+          {
+            route: 'Global',
+            url: 'https://global.example.com',
+            description: '',
+          },
+          { route: 'Regional', url: node, description: 'Regional gateway' },
+        ],
+      })
+      renderDialog()
+
+      await user.click(screen.getByRole('combobox', { name: /API node/i }))
+      await user.click(screen.getByRole('option', { name: /Regional/ }))
+      await user.click(screen.getByRole('radio', { name: app }))
+      await user.click(screen.getByRole('combobox', { name: 'Primary Model' }))
+      await user.click(screen.getByRole('option', { name: 'gpt-5.4' }))
+      await user.click(screen.getByRole('button', { name: 'Open CC Switch' }))
+
+      expect(open).toHaveBeenCalledTimes(1)
+      const imported = new URL(String(open.mock.calls[0][0]))
+      expect(imported.protocol).toBe('ccswitch:')
+      expect(imported.searchParams.get('app')).toBe(app.toLowerCase())
+      expect(imported.searchParams.get('endpoint')).toBe(endpoint)
+      expect(imported.searchParams.get('homepage')).toBe(
+        'https://console.example.com'
+      )
+      expect(imported.searchParams.get('apiKey')).toBe('sk-test-only')
+      expect(imported.searchParams.get('model')).toBe('gpt-5.4')
+    }
+  )
+
+  it('选中节点下线时立即回退到当前可见节点', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const user = userEvent.setup()
+    renderDialog()
+    await user.click(screen.getByRole('combobox', { name: /API node/i }))
+    await user.click(screen.getByRole('option', { name: /Regional/ }))
+    await user.click(screen.getByRole('combobox', { name: 'Primary Model' }))
+    await user.click(screen.getByRole('option', { name: 'gpt-5.4' }))
+
+    await act(async () => {
+      queryClient.setQueryData(STATUS_QUERY_KEY, {
+        server_address: 'https://console.example.com',
+        api_info: [
+          {
+            route: 'Replacement',
+            url: 'https://replacement.example.com/proxy',
+            description: '',
+          },
+        ],
+      })
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: /API node/i })
+      ).toHaveTextContent('Replacement')
+    )
+    await user.click(screen.getByRole('button', { name: 'Open CC Switch' }))
+    const imported = new URL(String(open.mock.calls[0][0]))
+    expect(imported.searchParams.get('endpoint')).toBe(
+      'https://replacement.example.com/proxy'
+    )
+  })
+
+  it('重新打开弹窗后恢复默认节点和模型', async () => {
+    const user = userEvent.setup()
+    const view = renderDialog()
+    await user.click(screen.getByRole('combobox', { name: /API node/i }))
+    await user.click(screen.getByRole('option', { name: /Regional/ }))
+    await user.click(screen.getByRole('radio', { name: 'Codex' }))
+    await user.click(screen.getByRole('combobox', { name: 'Primary Model' }))
+    await user.click(screen.getByRole('option', { name: 'gpt-5.4' }))
+
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <CCSwitchDialog
+          open={false}
+          onOpenChange={vi.fn()}
+          tokenKey='test-only'
+        />
+      </QueryClientProvider>
+    )
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <CCSwitchDialog open onOpenChange={vi.fn()} tokenKey='test-only' />
+      </QueryClientProvider>
+    )
+    await waitFor(() => {
+      expect(
+        screen.getByRole('combobox', { name: /API node/i })
+      ).toHaveTextContent('Global')
+      expect(screen.getByRole('radio', { name: 'Claude' })).toBeChecked()
+      expect(
+        screen.getByRole('combobox', { name: 'Primary Model' })
+      ).toHaveValue('')
+    })
+  })
+
+  it('未选择主模型时保留弹窗并阻止导入', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const warning = vi.spyOn(toast, 'warning')
+    const user = userEvent.setup()
+    renderDialog()
+    await user.click(screen.getByRole('button', { name: 'Open CC Switch' }))
+    expect(warning).toHaveBeenCalledWith('Please select a primary model')
+    expect(open).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('dialog', { name: 'Import to CC Switch' })
+    ).toBeVisible()
   })
 })

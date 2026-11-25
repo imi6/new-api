@@ -32,12 +32,14 @@ import dayjs from '@/lib/dayjs'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
+import { getLogCacheWriteTokens } from '../lib/cache-hit-rate'
 import { formatModelName, logTokenName, parseLogOther } from '../lib/format'
 import {
   getLogTypeConfig,
   isDisplayableLogType,
   isTimingLogType,
 } from '../lib/utils'
+import { CacheHitRate } from './cache-hit-rate'
 import { ModelBadge, ResponseModelDetails } from './model-badge'
 import { StreamTpsCell, TimingMetricsCell } from './timing-metrics-cell'
 import { useUsageLogsContext } from './usage-logs-provider'
@@ -128,11 +130,7 @@ export function CommonLogMobileCard<TData>(props: {
   const contentCell = props.cells.get('content')
   const channelCell = props.cells.get('channel')
   const cacheRead = other?.cache_tokens || 0
-  const cacheWrite =
-    (other?.cache_creation_tokens_5m || 0) +
-      (other?.cache_creation_tokens_1h || 0) ||
-    other?.cache_creation_tokens ||
-    0
+  const cacheWrite = getLogCacheWriteTokens(other)
   const showTokens =
     displayable &&
     props.cells.has('prompt_tokens') &&
@@ -289,29 +287,32 @@ export function CommonLogMobileCard<TData>(props: {
         </div>
       )}
       {showTokens && (
-        <div className='text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-xs [overflow-wrap:anywhere]'>
-          <span>
-            {t('Input')}{' '}
-            <span className='text-foreground tabular-nums'>
-              {log.prompt_tokens.toLocaleString()}
-            </span>
-          </span>
-          <span>
-            {t('Output')}{' '}
-            <span className='text-foreground tabular-nums'>
-              {log.completion_tokens.toLocaleString()}
-            </span>
-          </span>
-          {cacheRead > 0 && (
+        <div className='space-y-1'>
+          <div className='text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-xs [overflow-wrap:anywhere]'>
             <span>
-              {t('Cache')} ↓ {cacheRead.toLocaleString()}
+              {t('Input')}{' '}
+              <span className='text-foreground tabular-nums'>
+                {log.prompt_tokens.toLocaleString()}
+              </span>
             </span>
-          )}
-          {cacheWrite > 0 && (
             <span>
-              {t('Cache')} ↑ {cacheWrite.toLocaleString()}
+              {t('Output')}{' '}
+              <span className='text-foreground tabular-nums'>
+                {log.completion_tokens.toLocaleString()}
+              </span>
             </span>
-          )}
+            {cacheRead > 0 && (
+              <span>
+                {t('Cache')} ↓ {cacheRead.toLocaleString()}
+              </span>
+            )}
+            {cacheWrite > 0 && (
+              <span>
+                {t('Cache')} ↑ {cacheWrite.toLocaleString()}
+              </span>
+            )}
+          </div>
+          <CacheHitRate promptTokens={log.prompt_tokens} other={other} />
         </div>
       )}
       {contentCell && (

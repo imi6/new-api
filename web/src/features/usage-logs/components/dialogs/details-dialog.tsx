@@ -75,6 +75,7 @@ import { cn } from '@/lib/utils'
 
 import { AuditDetailFields } from '../../audit/components/audit-detail-fields'
 import type { UsageLog } from '../../data/schema'
+import { getLogCacheWriteTokens } from '../../lib/cache-hit-rate'
 import {
   parseLogOther,
   getParamOverrideActionLabel,
@@ -97,6 +98,7 @@ import {
   isTimingLogType,
 } from '../../lib/utils'
 import { USAGE_BILLING_PATH, type LogOtherData } from '../../types'
+import { CacheHitRate } from '../cache-hit-rate'
 import { ResponseModelDetails } from '../model-badge'
 import { PluginAuthorLink } from '../plugin-author-link'
 import {
@@ -405,14 +407,15 @@ function TokenBreakdown(props: { log: UsageLog; other: LogOtherData }) {
   const promptTokens = log.prompt_tokens || 0
   const completionTokens = log.completion_tokens || 0
   const cacheRead = other.cache_tokens || 0
-  const cacheWrite = other.cache_creation_tokens || 0
+  const cacheWrite = getLogCacheWriteTokens(other)
   const cacheWrite5m = other.cache_creation_tokens_5m || 0
   const cacheWrite1h = other.cache_creation_tokens_1h || 0
   const cacheWrite12h = other.cache_creation_tokens_12h || 0
   // cache_creation_tokens counts OpenAI 30-minute and 12-hour writes together.
   const cacheWrite30m =
     cacheWrite12h > 0 ? Math.max(cacheWrite - cacheWrite12h, 0) : 0
-  const hasTokens = promptTokens > 0 || completionTokens > 0
+  const hasTokens =
+    promptTokens > 0 || completionTokens > 0 || cacheRead > 0 || cacheWrite > 0
 
   if (!hasTokens) return null
 
@@ -498,6 +501,7 @@ function TokenBreakdown(props: { log: UsageLog; other: LogOtherData }) {
       {rows.map((row) => (
         <DetailRow key={row.label} label={row.label} value={row.value} mono />
       ))}
+      <CacheHitRate promptTokens={promptTokens} other={other} />
       {other.billing_tokens && (
         <div
           role='group'

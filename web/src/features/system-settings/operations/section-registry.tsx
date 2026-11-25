@@ -112,6 +112,8 @@ const OPERATIONS_SECTIONS = [
           LogConsumeEnabled: Boolean(settings.LogConsumeEnabled),
           'log_setting.user_export_enabled':
             settings['log_setting.user_export_enabled'] ?? true,
+          'log_setting.cache_hit_rate_enabled':
+            settings['log_setting.cache_hit_rate_enabled'] ?? true,
           'log_setting.max_range_days':
             settings['log_setting.max_range_days'] ?? 365,
           'system_task_setting.retention_days':

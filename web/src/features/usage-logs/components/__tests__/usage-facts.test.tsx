@@ -160,6 +160,35 @@ test('keeps one cache write row and no cache prices for OpenAI logs without 12-h
   queryClient.clear()
 })
 
+test('shows the recorded total-input cache percentage in log details', () => {
+  const queryClient = renderDetails(
+    {
+      usage_semantic: 'anthropic',
+      cache_tokens: 800,
+      cache_write_tokens: 200,
+      input_tokens_total: 1000,
+    },
+    100
+  )
+  expect(screen.getByText('Cache hit rate')).toBeVisible()
+  expect(screen.getByText('80.0%')).toBeVisible()
+  expect(rowValue('Cache Write')).toBe('200')
+  queryClient.clear()
+})
+
+test('retains the token breakdown and cache percentage for cached-only input', () => {
+  const queryClient = renderDetails({
+    usage_semantic: 'anthropic',
+    cache_tokens: 750,
+    cache_write_tokens: 250,
+  })
+  expect(screen.getByText('Token Breakdown')).toBeVisible()
+  expect(rowValue('Input Tokens')).toBe('0')
+  expect(rowValue('Cache Read')).toBe('750')
+  expect(screen.getByText('75.0%')).toBeVisible()
+  queryClient.clear()
+})
+
 test('shows matching GPT cache duration labels in billing details and the tier table', () => {
   const queryClient = renderDetails(
     {

@@ -23,6 +23,7 @@ import { ApiKeyCreateDialog } from './api-key-create-dialog'
 import { ApiKeysDeleteDialog } from './api-keys-delete-dialog'
 import { useApiKeys } from './api-keys-provider'
 import { CCSwitchDialog } from './dialogs/cc-switch-dialog'
+import { CopyConnectionDialog } from './dialogs/copy-connection-dialog'
 
 const route = getRouteApi('/_authenticated/keys/')
 
@@ -56,6 +57,13 @@ export function ApiKeysDialogs() {
         initialGroup={open === 'create' ? initialGroup : undefined}
       />
       <ApiKeysDeleteDialog />
+      {open === 'copy-connection' && (
+        <CopyConnectionDialog
+          open
+          onOpenChange={(isOpen) => !isOpen && setOpen(null)}
+          tokenKey={resolvedKey}
+        />
+      )}
       <CCSwitchDialog
         open={open === 'cc-switch'}
         onOpenChange={(isOpen) => !isOpen && setOpen(null)}

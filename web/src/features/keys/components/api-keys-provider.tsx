@@ -36,6 +36,10 @@ type ApiKeysContextType = {
   resolvedKey: string
   setResolvedKey: React.Dispatch<React.SetStateAction<string>>
   resolveRealKey: (id: number) => Promise<string | null>
+  openResolvedKeyDialog: (
+    row: ApiKey,
+    dialog: 'copy-connection' | 'cc-switch'
+  ) => Promise<void>
   resolveRealKeysBatch: (ids: number[]) => Promise<Record<number, string>>
   resolvedKeys: Record<number, string>
   loadingKeys: Record<number, boolean>
@@ -47,7 +51,15 @@ const ApiKeysContext = React.createContext<ApiKeysContextType | null>(null)
 
 export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useDialogState<ApiKeysDialogType>(null)
+  const [open, setDialogOpen] = useDialogState<ApiKeysDialogType>(null)
+  const keyDialogRequest = useRef(0)
+  const setOpen = useCallback(
+    (dialog: ApiKeysDialogType | null) => {
+      keyDialogRequest.current += 1
+      setDialogOpen(dialog)
+    },
+    [setDialogOpen]
+  )
   const [currentRow, setCurrentRow] = useState<ApiKey | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [resolvedKey, setResolvedKey] = useState('')
@@ -108,6 +120,19 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
     [resolvedKeys, t]
   )
 
+  const openResolvedKeyDialog = useCallback(
+    async (row: ApiKey, dialog: 'copy-connection' | 'cc-switch') => {
+      const request = ++keyDialogRequest.current
+      const key = await resolveRealKey(row.id)
+      // 后发起的操作优先，慢响应不能覆盖其他密钥或编辑、删除弹窗。
+      if (!key || request !== keyDialogRequest.current) return
+      setResolvedKey(key)
+      setCurrentRow(row)
+      setDialogOpen(dialog)
+    },
+    [resolveRealKey, setDialogOpen]
+  )
+
   const resolveRealKeysBatch = useCallback(
     async (ids: number[]): Promise<Record<number, string>> => {
       const uncachedIds = ids.filter((id) => !resolvedKeys[id])
@@ -166,6 +191,7 @@ export function ApiKeysProvider({ children }: { children: React.ReactNode }) {
         resolvedKey,
         setResolvedKey,
         resolveRealKey,
+        openResolvedKeyDialog,
         resolveRealKeysBatch,
         resolvedKeys,
         loadingKeys,
