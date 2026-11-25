@@ -90,6 +90,27 @@ afterEach(() => {
 })
 
 describe('shared status query deduplication', () => {
+  test.each([true, false, undefined])(
+    '将日志缓存命中率开关 %s 同步到展示配置，旧服务缺省为开启',
+    async (enabled) => {
+      useSystemConfigStore
+        .getState()
+        .setConfig({ logCacheHitRateEnabled: false })
+      apiClient.get = async () => ({
+        data: {
+          success: true,
+          data: { log_cache_hit_rate_enabled: enabled },
+        },
+      })
+
+      await ensureStatus(createQueryClient())
+
+      expect(
+        useSystemConfigStore.getState().config.logCacheHitRateEnabled
+      ).toBe(enabled !== false)
+    }
+  )
+
   test.each(['cold', 'stale'] as const)(
     'deduplicates %s cache requests across guards and hook consumers',
     async (cacheState) => {

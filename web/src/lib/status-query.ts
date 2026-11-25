@@ -99,6 +99,7 @@ export function mapStatusDataToConfig(
     displayTokenStatEnabled: data.display_token_stat_enabled as
       | boolean
       | undefined,
+    logCacheHitRateEnabled: data.log_cache_hit_rate_enabled !== false,
     currency,
   }
 }

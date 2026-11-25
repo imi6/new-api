@@ -52,7 +52,6 @@ import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import { resolveChatUrl, type ChatPreset } from '@/features/chat/lib/chat-links'
 import { sendToFluent } from '@/features/chat/lib/send-to-fluent'
 import { useStatus } from '@/hooks/use-status'
-import { encodeChannelConnectionInfo } from '@/lib/channel-connection-info'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
 import { handleServerError } from '@/lib/handle-server-error'
 
@@ -61,19 +60,6 @@ import { API_KEY_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import { apiKeySchema } from '../types'
 import { useApiKeys } from './api-keys-provider'
 import { useIntelligenceTest } from './intelligence-test-provider'
-
-function getServerAddress(): string {
-  try {
-    const raw = localStorage.getItem('status')
-    if (raw) {
-      const status = JSON.parse(raw)
-      if (status.server_address) return status.server_address as string
-    }
-  } catch {
-    /* empty */
-  }
-  return window.location.origin
-}
 
 type DataTableRowActionsProps<TData> = {
   row: Row<TData>
@@ -88,7 +74,7 @@ export function DataTableRowActions<TData>({
     setOpen,
     setCurrentRow,
     triggerRefresh,
-    setResolvedKey,
+    openResolvedKeyDialog,
     resolveRealKey,
     loadingKeys,
   } = useApiKeys()
@@ -261,16 +247,7 @@ export function DataTableRowActions<TData>({
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={isRealKeyLoading}
-          onClick={async () => {
-            const realKey = await resolveRealKey(apiKey.id)
-            if (!realKey) return
-            const connStr = encodeChannelConnectionInfo(
-              realKey,
-              getServerAddress()
-            )
-            const ok = await copyToClipboard(connStr)
-            if (ok) toast.success(t('Copied'))
-          }}
+          onClick={() => openResolvedKeyDialog(apiKey, 'copy-connection')}
         >
           {t('Copy Connection Info')}
           <DropdownMenuShortcut>
@@ -279,13 +256,8 @@ export function DataTableRowActions<TData>({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={async () => {
-            const realKey = await resolveRealKey(apiKey.id)
-            if (!realKey) return
-            setResolvedKey(realKey)
-            setCurrentRow(apiKey)
-            setOpen('cc-switch')
-          }}
+          disabled={isRealKeyLoading}
+          onClick={() => openResolvedKeyDialog(apiKey, 'cc-switch')}
         >
           {t('CC Switch')}
           <DropdownMenuShortcut>
@@ -293,7 +265,9 @@ export function DataTableRowActions<TData>({
           </DropdownMenuShortcut>
         </DropdownMenuItem>
         {showIntelligenceTest && (
-          <DropdownMenuItem onClick={() => intelligenceTest.openDialog(apiKey.id)}>
+          <DropdownMenuItem
+            onClick={() => intelligenceTest.openDialog(apiKey.id)}
+          >
             {t('Intelligence test')}
             <DropdownMenuShortcut>
               <Brain size={16} />
