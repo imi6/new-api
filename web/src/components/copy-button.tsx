@@ -40,6 +40,7 @@ interface CopyButtonProps {
   successTooltip?: string
   /** 是否显示复制成功或失败提示，默认关闭。 */
   notify?: boolean
+  disabled?: boolean
   'aria-label'?: string
 }
 
@@ -53,6 +54,7 @@ export function CopyButton({
   tooltip,
   successTooltip,
   notify = false,
+  disabled = false,
   'aria-label': ariaLabel,
 }: CopyButtonProps) {
   const { t } = useTranslation()
@@ -68,6 +70,7 @@ export function CopyButton({
       variant={variant}
       size={size}
       className={cn('shrink-0', className)}
+      disabled={disabled}
       onClick={() => copyToClipboard(value)}
       aria-label={isCopied ? copiedAriaLabel : resolvedAriaLabel}
     >

@@ -27,8 +27,12 @@ import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { useStatus } from '@/hooks/use-status'
 import { getUserModels } from '@/lib/api'
 import { requireServerSuccess } from '@/lib/server-error-message'
+
+import { useApiKeyEndpoints } from '../../hooks/use-api-key-endpoints'
+import { ApiEndpointSelect } from '../api-endpoint-select'
 
 const APP_CONFIGS = {
   claude: {
@@ -55,37 +59,37 @@ const APP_CONFIGS = {
 
 type AppType = keyof typeof APP_CONFIGS
 
-function getServerAddress(): string {
-  try {
-    const raw = localStorage.getItem('status')
-    if (raw) {
-      const status = JSON.parse(raw)
-      if (status.server_address) return status.server_address
-    }
-  } catch {
-    /* empty */
-  }
-  return window.location.origin
-}
-
 function buildCCSwitchURL(
   app: string,
   name: string,
   models: Record<string, string>,
-  apiKey: string
+  apiKey: string,
+  apiEndpoint: string,
+  homepage: string
 ): string {
-  const serverAddress = getServerAddress()
-  const endpoint = app === 'codex' ? `${serverAddress}/v1` : serverAddress
+  const endpoint = new URL(apiEndpoint)
+  // 保留反代路径；Codex 的 /v1 前缀只补一次。
+  let path = endpoint.pathname.replace(/\/+$/, '')
+  if (app === 'codex' && !path.endsWith('/v1')) {
+    path += '/v1'
+  }
+  endpoint.pathname = path
+  const endpointURL = endpoint.toString()
   const params = new URLSearchParams()
   params.set('resource', 'provider')
   params.set('app', app)
   params.set('name', name)
-  params.set('endpoint', endpoint)
+  params.set(
+    'endpoint',
+    endpoint.pathname === '/' && !endpoint.search && !endpoint.hash
+      ? endpointURL.slice(0, -1)
+      : endpointURL
+  )
   params.set('apiKey', apiKey)
   for (const [k, v] of Object.entries(models)) {
     if (v) params.set(k, v)
   }
-  params.set('homepage', serverAddress)
+  params.set('homepage', homepage)
   params.set('enabled', 'true')
   return `ccswitch://v1/import?${params.toString()}`
 }
@@ -98,9 +102,16 @@ interface Props {
 
 export function CCSwitchDialog(props: Props) {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const { endpoints, loading } = useApiKeyEndpoints()
   const [app, setApp] = useState<AppType>('claude')
   const [name, setName] = useState<string>(APP_CONFIGS.claude.defaultName)
   const [models, setModels] = useState<Record<string, string>>({})
+  const [selectedEndpoint, setSelectedEndpoint] = useState('')
+  const apiEndpoint =
+    endpoints.find((item) => item.url === selectedEndpoint)?.url ??
+    endpoints[0]?.url ??
+    ''
 
   const { data: modelsData } = useQuery({
     queryKey: ['user-models-ccswitch'],
@@ -122,6 +133,8 @@ export function CCSwitchDialog(props: Props) {
       setApp('claude')
 
       setName(APP_CONFIGS.claude.defaultName)
+
+      setSelectedEndpoint('')
     }
   }, [props.open])
 
@@ -135,6 +148,7 @@ export function CCSwitchDialog(props: Props) {
   }
 
   const handleSubmit = () => {
+    if (!apiEndpoint || loading || !props.tokenKey.trim()) return
     if (!models.model) {
       toast.warning(t('Please select a primary model'))
       return
@@ -142,7 +156,11 @@ export function CCSwitchDialog(props: Props) {
     const key = props.tokenKey.startsWith('sk-')
       ? props.tokenKey
       : `sk-${props.tokenKey}`
-    const url = buildCCSwitchURL(app, name, models, key)
+    const homepage =
+      (typeof status?.server_address === 'string' &&
+        status.server_address.trim()) ||
+      window.location.origin
+    const url = buildCCSwitchURL(app, name, models, key, apiEndpoint, homepage)
     window.open(url, '_blank')
     props.onOpenChange(false)
   }
@@ -160,11 +178,23 @@ export function CCSwitchDialog(props: Props) {
           <Button variant='outline' onClick={() => props.onOpenChange(false)}>
             {t('Cancel')}
           </Button>
-          <Button onClick={handleSubmit}>{t('Open CC Switch')}</Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !apiEndpoint || !props.tokenKey.trim()}
+          >
+            {t('Open CC Switch')}
+          </Button>
         </>
       }
     >
       <div className='space-y-4'>
+        <ApiEndpointSelect
+          id='cc-switch-endpoint'
+          endpoints={endpoints}
+          value={apiEndpoint}
+          onValueChange={setSelectedEndpoint}
+          disabled={loading}
+        />
         <div className='space-y-2'>
           <Label>{t('Application')}</Label>
           <RadioGroup

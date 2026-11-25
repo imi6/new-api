@@ -226,6 +226,66 @@ it('keeps input, output and cache quantities readable without empty metric cells
   expect(screen.getByText('Cache ↑ 200')).toBeVisible()
 })
 
+it.each([false, true])(
+  'shows the cache hit percentage below mobile token quantities for admin=%s',
+  (admin) => {
+    renderLogs({
+      admin,
+      logs: [
+        {
+          ...log,
+          other: JSON.stringify({
+            cache_tokens: 300,
+            cache_write_tokens: 250,
+            input_tokens_total: 1200,
+          }),
+        },
+      ],
+    })
+    expect(screen.getByText('Cache hit rate')).toBeVisible()
+    expect(screen.getByText('25.0%')).toBeVisible()
+    expect(screen.getByText('Cache ↑ 250')).toBeVisible()
+  }
+)
+
+it('shows the mobile cache percentage when all input is cached', () => {
+  renderLogs({
+    logs: [
+      {
+        ...log,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        other: JSON.stringify({
+          usage_semantic: 'anthropic',
+          cache_tokens: 750,
+          cache_write_tokens: 250,
+        }),
+      },
+    ],
+  })
+  expect(screen.getByText('Input')).toBeVisible()
+  expect(screen.getByText('Cache hit rate')).toBeVisible()
+  expect(screen.getByText('75.0%')).toBeVisible()
+})
+
+it('hides the mobile cache percentage when the token column is hidden', () => {
+  renderLogs({
+    visibility: { prompt_tokens: false },
+    logs: [
+      {
+        ...log,
+        other: JSON.stringify({
+          cache_tokens: 300,
+          input_tokens_total: 1200,
+        }),
+      },
+    ],
+  })
+  expect(screen.queryByText('Input')).not.toBeInTheDocument()
+  expect(screen.queryByText('Cache hit rate')).not.toBeInTheDocument()
+  expect(screen.queryByText('25.0%')).not.toBeInTheDocument()
+})
+
 it('shows the established empty state when no logs exist', () => {
   renderLogs({ logs: [] })
   expect(screen.getByText('No Logs Found')).toBeVisible()

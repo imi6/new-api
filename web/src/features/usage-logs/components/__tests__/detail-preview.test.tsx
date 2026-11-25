@@ -78,6 +78,7 @@ function DetailPreview(props: {
   other: LogOtherData
   isAdmin: boolean
   type?: number
+  column?: 'content' | 'prompt_tokens'
 }) {
   const table = useReactTable({
     data: [makeLog(props.other, props.type)],
@@ -87,8 +88,8 @@ function DetailPreview(props: {
   const cell = table
     .getRowModel()
     .rows[0].getAllCells()
-    .find((item) => item.column.id === 'content')
-  if (!cell) throw new Error('The log must have a content column')
+    .find((item) => item.column.id === (props.column ?? 'content'))
+  if (!cell) throw new Error('The requested log column must exist')
   return flexRender(cell.column.columnDef.cell, cell.getContext())
 }
 const plugin = {
@@ -131,6 +132,30 @@ function renderPreview(other: LogOtherData, isAdmin = true, type?: number) {
   )
   return screen.getByRole('button', { name: /./ })
 }
+
+test.each([false, true])(
+  'shows cache-only token input and its cache percentage in the desktop column for admin=%s',
+  (isAdmin) => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={client}>
+          <DetailPreview
+            other={{
+              usage_semantic: 'anthropic',
+              cache_tokens: 750,
+              cache_write_tokens: 250,
+            }}
+            isAdmin={isAdmin}
+            column='prompt_tokens'
+          />
+        </QueryClientProvider>
+      </I18nextProvider>
+    )
+    expect(screen.getByText('0 / 0')).toBeVisible()
+    expect(screen.getByText('Cache hit rate')).toBeVisible()
+    expect(screen.getByText('75.0%')).toBeVisible()
+  }
+)
 
 test('keeps log details open when the parent refreshes with unchanged data', async () => {
   const other = { model_price: 0.25 }
