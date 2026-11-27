@@ -7,12 +7,15 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/jsplugin"
 	"github.com/QuantumNous/new-api/plugins"
+	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,6 +91,107 @@ func TestListModelsSupportsOpenAIAndGeminiAuthentication(t *testing.T) {
 			if test.expectedObject != "" {
 				assert.Equal(t, test.expectedObject, payload["object"])
 			}
+		})
+	}
+}
+
+func TestSub2APIKeyBilling(t *testing.T) {
+	setupRelayRouterTestDB(t)
+	require.NoError(t, i18n.Init())
+	previousGroups := setting.UserUsableGroups2JSONString()
+	previousRatios := ratio_setting.GroupRatio2JSONString()
+	previousSpecialRatios := ratio_setting.GroupGroupRatio2JSONString()
+	t.Cleanup(func() {
+		require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(previousGroups))
+		require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(previousRatios))
+		require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(previousSpecialRatios))
+	})
+	require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"billing-vip":"VIP","billing-free":"Free","auto":"Auto"}`))
+	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"billing-member":1.2,"billing-vip":1.5,"billing-free":2,"billing-private":3}`))
+	require.NoError(t, ratio_setting.UpdateGroupGroupRatioByJSONString(`{"billing-member":{"billing-vip":0.4,"billing-free":0}}`))
+
+	user := model.User{Username: "key-billing", AffCode: "bk01", Status: common.UserStatusEnabled, Group: "billing-member"}
+	require.NoError(t, model.DB.Create(&user).Error)
+	blockedUser := model.User{Username: "key-billing-blocked", AffCode: "bk02", Status: common.UserStatusDisabled, Group: "billing-member"}
+	require.NoError(t, model.DB.Create(&blockedUser).Error)
+	deletedUser := model.User{Username: "key-billing-deleted", AffCode: "bk03", Status: common.UserStatusEnabled, Group: "billing-member"}
+	require.NoError(t, model.DB.Create(&deletedUser).Error)
+	require.NoError(t, model.DB.Delete(&deletedUser).Error)
+
+	engine := gin.New()
+	SetRelayRouter(engine)
+
+	for _, tc := range []struct {
+		name           string
+		key            string
+		group          string
+		tokenStatus    int
+		expiredTime    int64
+		userID         int
+		allowIPs       *string
+		queryKey       bool
+		unknown        bool
+		status         int
+		groupRatio     float64
+		specialRatio   *float64
+		effectiveRatio float64
+	}{
+		{name: "固定分组使用专属倍率", key: "ratetestspecial", group: "billing-vip", status: http.StatusOK, groupRatio: 1.5, specialRatio: common.GetPointer(0.4), effectiveRatio: 0.4},
+		{name: "额度耗尽仍可以读取零倍率", key: "ratetestfree", group: "billing-free", tokenStatus: common.TokenStatusExhausted, status: http.StatusOK, groupRatio: 2, specialRatio: common.GetPointer(0.0)},
+		{name: "未绑定分组时使用账号分组", key: "ratetestinherited", status: http.StatusOK, groupRatio: 1.2, effectiveRatio: 1.2},
+		{name: "过期密钥仍可查询", key: "ratetestexpired", expiredTime: 1, status: http.StatusOK, groupRatio: 1.2, effectiveRatio: 1.2},
+		{name: "自动分组不报固定倍率", key: "ratetestauto", group: "auto", status: http.StatusNotFound},
+		{name: "没有分组权限", key: "ratetestprivate", group: "billing-private", status: http.StatusForbidden},
+		{name: "密钥已停用", key: "ratetestdisabled", tokenStatus: common.TokenStatusDisabled, status: http.StatusUnauthorized},
+		{name: "用户已停用", key: "ratetestblockeduser", userID: blockedUser.Id, status: http.StatusForbidden},
+		{name: "用户已删除", key: "ratetestdeleteduser", userID: deletedUser.Id, status: http.StatusUnauthorized},
+		{name: "请求 IP 不匹配", key: "ratetestiprestricted", allowIPs: common.GetPointer("198.51.100.0/24"), status: http.StatusForbidden},
+		{name: "拒绝 URL 查询参数里的密钥", key: "ratetestquery", queryKey: true, status: http.StatusUnauthorized},
+		{name: "缺少密钥", status: http.StatusUnauthorized},
+		{name: "未知密钥", key: "ratetestunknown", unknown: true, status: http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.key != "" && !tc.unknown {
+				userID := tc.userID
+				if userID == 0 {
+					userID = user.Id
+				}
+				require.NoError(t, model.DB.Create(&model.Token{
+					UserId: userID, Key: tc.key, Group: tc.group, Status: tc.tokenStatus,
+					ExpiredTime: tc.expiredTime, AllowIps: tc.allowIPs,
+				}).Error)
+			}
+
+			request := httptest.NewRequest(http.MethodGet, "/v1/sub2api/billing", nil)
+			if tc.queryKey {
+				request.URL.RawQuery = "key=sk-" + tc.key
+			} else if tc.key != "" {
+				request.Header.Set("Authorization", "Bearer sk-"+tc.key)
+			}
+			recorder := httptest.NewRecorder()
+			engine.ServeHTTP(recorder, request)
+			require.Equal(t, tc.status, recorder.Code, recorder.Body.String())
+			var payload map[string]any
+			require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &payload))
+			assert.Contains(t, recorder.Header().Get("Cache-Control"), "no-store")
+			if tc.status != http.StatusOK {
+				assert.NotContains(t, payload, "effective_rate_multiplier")
+				return
+			}
+
+			observedAt, ok := payload["observed_at"].(string)
+			require.True(t, ok)
+			_, err := time.Parse(time.RFC3339Nano, observedAt)
+			assert.NoError(t, err)
+			expected := map[string]any{
+				"object": "sub2api.key_billing", "schema_version": float64(1), "billing_scope": "token",
+				"group_rate_multiplier": tc.groupRatio, "resolved_rate_multiplier": tc.effectiveRatio,
+				"effective_rate_multiplier": tc.effectiveRatio, "peak_rate_enabled": false, "observed_at": observedAt,
+			}
+			if tc.specialRatio != nil {
+				expected["user_rate_multiplier"] = *tc.specialRatio
+			}
+			assert.Equal(t, expected, payload)
 		})
 	}
 }

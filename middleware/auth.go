@@ -457,6 +457,15 @@ func TokenOrUserAuth() func(c *gin.Context) {
 // 即使令牌已过期或已耗尽，也允许访问；已禁用的令牌会被拒绝。
 // 仍然检查令牌 IP 白名单和用户是否被封禁。
 func TokenAuthReadOnly() func(c *gin.Context) {
+	return tokenAuthReadOnly(false)
+}
+
+// TokenBillingAuth 校验倍率查询的密钥及分组权限，允许过期或额度耗尽的密钥读取。
+func TokenBillingAuth() func(c *gin.Context) {
+	return tokenAuthReadOnly(true)
+}
+
+func tokenAuthReadOnly(checkBillingGroup bool) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		key := c.Request.Header.Get("Authorization")
 		if key == "" {
@@ -485,7 +494,7 @@ func TokenAuthReadOnly() func(c *gin.Context) {
 
 		// TokenAuthReadOnly must keep allowing other token states to query read-only
 		// data, such as token usage logs; only explicitly disabled tokens are denied.
-		if token.Status == common.TokenStatusDisabled {
+		if token.Status == common.TokenStatusDisabled || (checkBillingGroup && token.Status != common.TokenStatusEnabled && token.Status != common.TokenStatusExpired && token.Status != common.TokenStatusExhausted) {
 			common.ApiErrorStatus(c, http.StatusUnauthorized, errors.New(common.TranslateMessage(c, i18n.MsgTokenStatusUnavailable)))
 			c.Abort()
 			return
@@ -524,6 +533,12 @@ func TokenAuthReadOnly() func(c *gin.Context) {
 			return
 		}
 
+		if checkBillingGroup {
+			if !setTokenUsingGroup(c, userCache.Group, token.Group) {
+				return
+			}
+			common.SetContextKey(c, constant.ContextKeyUserGroup, userCache.Group)
+		}
 		c.Set("id", token.UserId)
 		c.Set("token_id", token.Id)
 		c.Set("token_key", token.Key)
@@ -630,22 +645,9 @@ func TokenAuth() func(c *gin.Context) {
 
 		userCache.WriteContext(c)
 
-		userGroup := userCache.Group
-		tokenGroup := token.Group
-		if tokenGroup != "" {
-			// check common.UserUsableGroups[userGroup]
-			if !service.GroupInUserUsableGroups(userGroup, tokenGroup) {
-				abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgAuthTokenGroupForbidden, map[string]any{"Group": tokenGroup}))
-				return
-			}
-			userGroup = tokenGroup
-		}
-		// 显式分组和继承的用户分组都必须有效，避免已删除分组回退到默认倍率。
-		if userGroup != "auto" && !ratio_setting.ContainsGroupRatio(userGroup) {
-			abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgAuthTokenGroupDeprecated, map[string]any{"Group": userGroup}))
+		if !setTokenUsingGroup(c, userCache.Group, token.Group) {
 			return
 		}
-		common.SetContextKey(c, constant.ContextKeyUsingGroup, userGroup)
 
 		err = SetupContextForToken(c, token, parts...)
 		if err != nil {
@@ -653,6 +655,24 @@ func TokenAuth() func(c *gin.Context) {
 		}
 		c.Next()
 	}
+}
+
+func setTokenUsingGroup(c *gin.Context, userGroup, tokenGroup string) bool {
+	usingGroup := userGroup
+	if tokenGroup != "" {
+		if !service.GroupInUserUsableGroups(userGroup, tokenGroup) {
+			abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgAuthTokenGroupForbidden, map[string]any{"Group": tokenGroup}))
+			return false
+		}
+		usingGroup = tokenGroup
+	}
+	// 显式分组与继承的分组均须有效，避免已删除分组回退到默认倍率。
+	if usingGroup != "auto" && !ratio_setting.ContainsGroupRatio(usingGroup) {
+		abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgAuthTokenGroupDeprecated, map[string]any{"Group": usingGroup}))
+		return false
+	}
+	common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
+	return true
 }
 
 func applyWebSocketSubprotocolAuthorization(header http.Header) bool {

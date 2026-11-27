@@ -63,13 +63,13 @@ func GetGroupRatioCopy() map[string]float64 {
 	return groupRatioMap.ReadAll()
 }
 
-// lookupGroupRatio 改名期间同一分组可能还以别名出现在配置里，用别名兜底。
-func lookupGroupRatio(name string) (float64, bool) {
+// LookupGroupRatio 查找分组倍率，改名期间也接受别名。
+func LookupGroupRatio(name string) (float64, bool) {
 	return common.LookupRenamedGroup(name, groupRatioMap.Get)
 }
 
 func ContainsGroupRatio(name string) bool {
-	_, ok := lookupGroupRatio(name)
+	_, ok := LookupGroupRatio(name)
 	return ok
 }
 
@@ -82,7 +82,7 @@ func UpdateGroupRatioByJSONString(jsonStr string) error {
 }
 
 func GetGroupRatio(name string) float64 {
-	ratio, ok := lookupGroupRatio(name)
+	ratio, ok := LookupGroupRatio(name)
 	if !ok {
 		common.SysLog(common.LogText("group ratio not found: %s", name))
 		return 1
