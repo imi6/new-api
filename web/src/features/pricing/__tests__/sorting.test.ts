@@ -196,7 +196,9 @@ describe('model order sorting', () => {
   )
 
   test('defaults to the recommended order without a sort in the link', () => {
-    const { result } = renderHook(() => useFilters(squareModels, order))
+    const { result } = renderHook(() =>
+      useFilters(squareModels, new Map(), order)
+    )
 
     expect(result.current.sortBy).toBe(SORT_OPTIONS.RECOMMENDED)
     expect(result.current.filteredModels.map((m) => m.model_name)).toEqual([
@@ -210,11 +212,35 @@ describe('model order sorting', () => {
   test('keeps name order for old links with sort=name', () => {
     vi.mocked(useSearch).mockReturnValue({ sort: 'name' })
 
-    const { result } = renderHook(() => useFilters(squareModels, order))
+    const { result } = renderHook(() =>
+      useFilters(squareModels, new Map(), order)
+    )
 
     expect(result.current.filteredModels.map((m) => m.model_name)).toEqual(
       nameOrder
     )
+  })
+
+  test('preserves recommended order within the selected platform', () => {
+    vi.mocked(useSearch).mockReturnValue({ platform: 'platform-a' })
+    const platformModels = [
+      pricingModel('Alpha', { enable_groups: ['group-a'] }),
+      pricingModel('beta', { enable_groups: ['group-b'] }),
+      pricingModel('gamma', { enable_groups: ['group-a'] }),
+    ]
+    const groupPlatformOf = new Map([
+      ['group-a', 'platform-a'],
+      ['group-b', 'platform-b'],
+    ])
+
+    const { result } = renderHook(() =>
+      useFilters(platformModels, groupPlatformOf, order)
+    )
+
+    expect(result.current.filteredModels.map((m) => m.model_name)).toEqual([
+      'gamma',
+      'Alpha',
+    ])
   })
 
   test('breaks usage ties like the server and lists unused models by name', () => {
