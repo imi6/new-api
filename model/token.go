@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -262,12 +263,15 @@ func ValidateUserToken(key string) (token *Token, err error) {
 }
 
 func GetTokenByIds(id int, userId int) (*Token, error) {
+	return GetTokenByIdsContext(context.Background(), id, userId)
+}
+
+func GetTokenByIdsContext(ctx context.Context, id int, userId int) (*Token, error) {
 	if id == 0 || userId == 0 {
 		return nil, common.NewMessage("Token ID or user ID is empty")
 	}
 	token := Token{Id: id, UserId: userId}
-	var err error = nil
-	err = DB.First(&token, "id = ? and user_id = ?", id, userId).Error
+	err := DB.WithContext(ctx).First(&token, "id = ? and user_id = ?", id, userId).Error
 	return &token, err
 }
 

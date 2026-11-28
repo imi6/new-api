@@ -52,6 +52,7 @@ const logSettingsSchema = z.object({
   LogConsumeEnabled: z.boolean(),
   log_setting: z.object({
     user_export_enabled: z.boolean(),
+    public_key_usage_enabled: z.boolean(),
     cache_hit_rate_enabled: z.boolean(),
     max_range_days: z.number().int().min(1),
   }),
@@ -66,6 +67,7 @@ type LogSettingsSectionProps = {
   defaultValues: {
     LogConsumeEnabled: boolean
     'log_setting.user_export_enabled': boolean
+    'log_setting.public_key_usage_enabled': boolean
     'log_setting.cache_hit_rate_enabled': boolean
     'log_setting.max_range_days': number
     'system_task_setting.retention_days': number
@@ -84,6 +86,8 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
       log_setting: {
         user_export_enabled:
           props.defaultValues['log_setting.user_export_enabled'],
+        public_key_usage_enabled:
+          props.defaultValues['log_setting.public_key_usage_enabled'],
         cache_hit_rate_enabled:
           props.defaultValues['log_setting.cache_hit_rate_enabled'],
         max_range_days: props.defaultValues['log_setting.max_range_days'],
@@ -112,6 +116,10 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
         values.log_setting.user_export_enabled,
       ],
       ['log_setting.max_range_days', values.log_setting.max_range_days],
+      [
+        'log_setting.public_key_usage_enabled',
+        values.log_setting.public_key_usage_enabled,
+      ],
       [
         'log_setting.cache_hit_rate_enabled',
         values.log_setting.cache_hit_rate_enabled,
@@ -250,6 +258,29 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
                 )}
               />
             </SettingsFormGrid>
+            <FormField
+              control={form.control}
+              name='log_setting.public_key_usage_enabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('Public API key usage lookup')}</FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Let visitors use an API key to view its quota and call records without signing in.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </SettingsSwitchItem>
+              )}
+            />
           </div>
 
           <Separator />

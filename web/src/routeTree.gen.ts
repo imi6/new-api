@@ -31,6 +31,7 @@ import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_
 import { Route as AboutIndexRouteImport } from './routes/about/index'
 import { Route as ContactIndexRouteImport } from './routes/contact/index'
 import { Route as HealthIndexRouteImport } from './routes/health/index'
+import { Route as KeyUsageIndexRouteImport } from './routes/key-usage/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
@@ -71,6 +72,7 @@ import { Route as AuthenticatedUsageLogsAuditRouteImport } from './routes/_authe
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenticated/wallet/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
+import { Route as AuthenticatedKeysKeyIdUsageRouteImport } from './routes/_authenticated/keys/$keyId/usage'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
 import { Route as AuthenticatedSystemSettingsBillingIndexRouteImport } from './routes/_authenticated/system-settings/billing/index'
@@ -196,6 +198,11 @@ const ContactIndexRoute = ContactIndexRouteImport.update({
 const HealthIndexRoute = HealthIndexRouteImport.update({
   id: '/health/',
   path: '/health/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KeyUsageIndexRoute = KeyUsageIndexRouteImport.update({
+  id: '/key-usage/',
+  path: '/key-usage/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OauthProviderRoute = OauthProviderRouteImport.update({
@@ -428,6 +435,12 @@ const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
   path: '/pricing/$modelId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedKeysKeyIdUsageRoute =
+  AuthenticatedKeysKeyIdUsageRouteImport.update({
+    id: '/keys/$keyId/usage',
+    path: '/keys/$keyId/usage',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSystemSettingsAuthIndexRoute =
   AuthenticatedSystemSettingsAuthIndexRouteImport.update({
     id: '/auth/',
@@ -553,6 +566,7 @@ export interface FileRoutesByFullPath {
   '/about/': typeof AboutIndexRoute
   '/contact/': typeof ContactIndexRoute
   '/health/': typeof HealthIndexRoute
+  '/key-usage/': typeof KeyUsageIndexRoute
   '/partner/': typeof PartnerIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
@@ -592,6 +606,7 @@ export interface FileRoutesByFullPath {
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/wallet/': typeof AuthenticatedWalletIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
+  '/keys/$keyId/usage': typeof AuthenticatedKeysKeyIdUsageRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
   '/system-settings/content/$section': typeof AuthenticatedSystemSettingsContentSectionRoute
@@ -631,6 +646,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutIndexRoute
   '/contact': typeof ContactIndexRoute
   '/health': typeof HealthIndexRoute
+  '/key-usage': typeof KeyUsageIndexRoute
   '/partner': typeof PartnerIndexRoute
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
@@ -670,6 +686,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersIndexRoute
   '/wallet': typeof AuthenticatedWalletIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
+  '/keys/$keyId/usage': typeof AuthenticatedKeysKeyIdUsageRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
   '/system-settings/content/$section': typeof AuthenticatedSystemSettingsContentSectionRoute
@@ -713,6 +730,7 @@ export interface FileRoutesById {
   '/about/': typeof AboutIndexRoute
   '/contact/': typeof ContactIndexRoute
   '/health/': typeof HealthIndexRoute
+  '/key-usage/': typeof KeyUsageIndexRoute
   '/partner/': typeof PartnerIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
@@ -752,6 +770,7 @@ export interface FileRoutesById {
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/wallet/': typeof AuthenticatedWalletIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
+  '/_authenticated/keys/$keyId/usage': typeof AuthenticatedKeysKeyIdUsageRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
   '/_authenticated/system-settings/content/$section': typeof AuthenticatedSystemSettingsContentSectionRoute
@@ -794,6 +813,7 @@ export interface FileRouteTypes {
     | '/about/'
     | '/contact/'
     | '/health/'
+    | '/key-usage/'
     | '/partner/'
     | '/pricing/'
     | '/rankings/'
@@ -833,6 +853,7 @@ export interface FileRouteTypes {
     | '/users/'
     | '/wallet/'
     | '/pricing/$modelId/'
+    | '/keys/$keyId/usage'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
     | '/system-settings/content/$section'
@@ -872,6 +893,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/health'
+    | '/key-usage'
     | '/partner'
     | '/pricing'
     | '/rankings'
@@ -911,6 +933,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/wallet'
     | '/pricing/$modelId'
+    | '/keys/$keyId/usage'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
     | '/system-settings/content/$section'
@@ -953,6 +976,7 @@ export interface FileRouteTypes {
     | '/about/'
     | '/contact/'
     | '/health/'
+    | '/key-usage/'
     | '/partner/'
     | '/pricing/'
     | '/rankings/'
@@ -992,6 +1016,7 @@ export interface FileRouteTypes {
     | '/_authenticated/users/'
     | '/_authenticated/wallet/'
     | '/pricing/$modelId/'
+    | '/_authenticated/keys/$keyId/usage'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
     | '/_authenticated/system-settings/content/$section'
@@ -1026,6 +1051,7 @@ export interface RootRouteChildren {
   AboutIndexRoute: typeof AboutIndexRoute
   ContactIndexRoute: typeof ContactIndexRoute
   HealthIndexRoute: typeof HealthIndexRoute
+  KeyUsageIndexRoute: typeof KeyUsageIndexRoute
   PartnerIndexRoute: typeof PartnerIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
@@ -1187,6 +1213,13 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health/'
       preLoaderRoute: typeof HealthIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/key-usage/': {
+      id: '/key-usage/'
+      path: '/key-usage'
+      fullPath: '/key-usage/'
+      preLoaderRoute: typeof KeyUsageIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oauth/$provider': {
@@ -1469,6 +1502,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingModelIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/keys/$keyId/usage': {
+      id: '/_authenticated/keys/$keyId/usage'
+      path: '/keys/$keyId/usage'
+      fullPath: '/keys/$keyId/usage'
+      preLoaderRoute: typeof AuthenticatedKeysKeyIdUsageRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/system-settings/auth/': {
       id: '/_authenticated/system-settings/auth/'
       path: '/auth'
@@ -1715,6 +1755,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWalletIndexRoute: typeof AuthenticatedWalletIndexRoute
+  AuthenticatedKeysKeyIdUsageRoute: typeof AuthenticatedKeysKeyIdUsageRoute
   AuthenticatedOauthPluginKeyCallbackRoute: typeof AuthenticatedOauthPluginKeyCallbackRoute
 }
 
@@ -1761,6 +1802,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWalletIndexRoute: AuthenticatedWalletIndexRoute,
+  AuthenticatedKeysKeyIdUsageRoute: AuthenticatedKeysKeyIdUsageRoute,
   AuthenticatedOauthPluginKeyCallbackRoute:
     AuthenticatedOauthPluginKeyCallbackRoute,
 }
@@ -1783,6 +1825,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutIndexRoute: AboutIndexRoute,
   ContactIndexRoute: ContactIndexRoute,
   HealthIndexRoute: HealthIndexRoute,
+  KeyUsageIndexRoute: KeyUsageIndexRoute,
   PartnerIndexRoute: PartnerIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,

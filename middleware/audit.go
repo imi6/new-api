@@ -264,6 +264,12 @@ type accessTokenRequestAudit struct {
 // authentication (for example, rate limiting). It does not grant authentication.
 func AccessTokenAudit() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 公开用量接口使用模型调用密钥。跳过个人访问令牌的解析及数据库查询。
+		switch c.FullPath() {
+		case "/api/key-usage/", "/api/key-usage/export", "/api/key-usage/settings":
+			c.Next()
+			return
+		}
 		raw, present := authorizationToken(c.GetHeader("Authorization"))
 		if present {
 			_, internal, _ := service.ParseDashboardAccessToken(raw)

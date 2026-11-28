@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Link as RouterLink } from '@tanstack/react-router'
 import type { Row } from '@tanstack/react-table'
 import {
   Trash2,
@@ -27,6 +28,7 @@ import {
   Brain,
   Copy,
   Link,
+  List,
   Loader2,
 } from 'lucide-react'
 import { useCallback, useState } from 'react'
@@ -231,6 +233,19 @@ export function DataTableRowActions<TData>({
         contentClassName='w-[200px]'
         modal={false}
       >
+        <DropdownMenuItem
+          render={
+            <RouterLink
+              to='/keys/$keyId/usage'
+              params={{ keyId: String(apiKey.id) }}
+            />
+          }
+        >
+          {t('View call records')}
+          <DropdownMenuShortcut>
+            <List size={16} />
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={isRealKeyLoading}
           onClick={async () => {

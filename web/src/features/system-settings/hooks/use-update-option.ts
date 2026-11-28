@@ -20,6 +20,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import i18next from 'i18next'
 import { toast } from 'sonner'
 
+import { PUBLIC_KEY_USAGE_SETTINGS_QUERY_KEY } from '@/features/key-usage/api'
 import { handleServerError } from '@/lib/handle-server-error'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
@@ -34,6 +35,7 @@ const STATUS_RELATED_KEYS = new Set([
   'Notice',
   'LogConsumeEnabled',
   'log_setting.user_export_enabled',
+  'log_setting.public_key_usage_enabled',
   'log_setting.cache_hit_rate_enabled',
   'log_setting.max_range_days',
   'QuotaPerUnit',
@@ -94,6 +96,17 @@ export function useUpdateOption() {
 
         if (variables.key === 'Contact') {
           queryClient.invalidateQueries({ queryKey: ['contact-content'] })
+        }
+
+        if (
+          variables.key === 'LogConsumeEnabled' ||
+          variables.key === 'log_setting.user_export_enabled' ||
+          variables.key === 'log_setting.public_key_usage_enabled' ||
+          variables.key === 'log_setting.max_range_days'
+        ) {
+          queryClient.invalidateQueries({
+            queryKey: PUBLIC_KEY_USAGE_SETTINGS_QUERY_KEY,
+          })
         }
 
         // If updating frontend-display-related config, also refresh status

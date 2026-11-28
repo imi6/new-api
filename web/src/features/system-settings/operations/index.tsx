@@ -50,6 +50,7 @@ const defaultOperationsSettings: OperationsSettings = {
   WorkerAllowHttpImageRequestEnabled: false,
   LogConsumeEnabled: false,
   'log_setting.user_export_enabled': true,
+  'log_setting.public_key_usage_enabled': false,
   'log_setting.cache_hit_rate_enabled': true,
   'log_setting.max_range_days': 365,
   'system_task_setting.retention_days': 30,

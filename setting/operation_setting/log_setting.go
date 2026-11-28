@@ -8,6 +8,7 @@ import (
 )
 
 const LogMaxRangeDaysOptionKey = "log_setting.max_range_days"
+const PublicKeyUsageEnabledOptionKey = "log_setting.public_key_usage_enabled"
 
 // LogSetting limits how far regular users can reach into usage logs.
 type LogSetting struct {
@@ -16,6 +17,8 @@ type LogSetting struct {
 	UserExportEnabled bool `json:"user_export_enabled"`
 	// CacheHitRateEnabled 控制使用日志及详情中的缓存命中率展示。
 	CacheHitRateEnabled bool `json:"cache_hit_rate_enabled"`
+	// PublicKeyUsageEnabled 允许持有 API 密钥的访客查询该密钥的公开用量。
+	PublicKeyUsageEnabled bool `json:"public_key_usage_enabled"`
 	// MaxRangeDays is the longest time range a user can search in their logs
 	// and dashboard, and the longest range any export can cover.
 	MaxRangeDays int `json:"max_range_days"`
@@ -33,6 +36,12 @@ func init() {
 
 func GetLogSetting() *LogSetting {
 	return &logSetting
+}
+
+func LogSettingsSnapshot() LogSetting {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	return logSetting
 }
 
 func (s *LogSetting) MaxRangeSeconds() int64 {

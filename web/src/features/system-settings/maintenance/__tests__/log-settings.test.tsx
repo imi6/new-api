@@ -43,6 +43,7 @@ function Fixture() {
           defaultValues={{
             LogConsumeEnabled: true,
             'log_setting.user_export_enabled': true,
+            'log_setting.public_key_usage_enabled': false,
             'log_setting.cache_hit_rate_enabled': true,
             'log_setting.max_range_days': 30,
             'system_task_setting.retention_days': 30,
@@ -183,6 +184,24 @@ test('saving sends only the log export settings that changed', async () => {
   expect(api.put).toHaveBeenCalledWith('/api/option/', {
     key: 'log_setting.max_range_days',
     value: 90,
+  })
+})
+
+test('公开密钥用量查询默认关闭，开启后只保存对应开关', async () => {
+  const user = userEvent.setup()
+  await renderSettings()
+
+  const lookup = screen.getByRole('switch', {
+    name: 'Public API key usage lookup',
+  })
+  expect(lookup).not.toBeChecked()
+  await user.click(lookup)
+  await user.click(screen.getByRole('button', { name: 'Save log settings' }))
+
+  await waitFor(() => expect(api.put).toHaveBeenCalledTimes(1))
+  expect(api.put).toHaveBeenCalledWith('/api/option/', {
+    key: 'log_setting.public_key_usage_enabled',
+    value: true,
   })
 })
 

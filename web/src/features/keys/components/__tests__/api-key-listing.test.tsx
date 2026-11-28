@@ -55,6 +55,7 @@ import { ApiKeyQuotaCell } from '../api-key-quota-cell'
 import { useApiKeysColumns } from '../api-keys-columns'
 import { ApiKeysProvider } from '../api-keys-provider'
 import { ApiKeysTable } from '../api-keys-table'
+import { IntelligenceTestProvider } from '../intelligence-test-provider'
 
 const now = 1_700_000_000_000
 const key = apiKeySchema.parse({
@@ -296,10 +297,12 @@ it('keeps a long amount within its column while showing the full amount in detai
 
 function KeysPage() {
   return (
-    <ApiKeysProvider>
-      <ApiKeysTable />
-      <Toaster />
-    </ApiKeysProvider>
+    <IntelligenceTestProvider>
+      <ApiKeysProvider>
+        <ApiKeysTable />
+        <Toaster />
+      </ApiKeysProvider>
+    </IntelligenceTestProvider>
   )
 }
 

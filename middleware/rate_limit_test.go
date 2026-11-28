@@ -96,6 +96,102 @@ func TestRedisUserRateLimiterUsesSharedFixedWindow(t *testing.T) {
 	assert.Equal(t, 23*time.Second, redisServer.TTL(key))
 }
 
+func TestKeyUsageFailureLimitSharedByServers(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	redisServer, _ := useRateLimitMiniRedis(t)
+	makeRouter := func() *gin.Engine {
+		router := gin.New()
+		require.NoError(t, router.SetTrustedProxies(nil))
+		router.GET("/lookup", func(c *gin.Context) {
+			complete, release, ok := AdmitPublicKeyUsage(c)
+			if !ok {
+				return
+			}
+			defer release()
+			failed := c.Query("valid") != "yes"
+			complete(failed)
+			if failed {
+				c.Status(http.StatusUnauthorized)
+				return
+			}
+			c.Status(http.StatusNoContent)
+		})
+		return router
+	}
+	first, second := makeRouter(), makeRouter()
+	const source = "[2001:db8:9:10::2]:12345"
+	const sameNetwork = "[2001:db8:9:10::3]:12345"
+	for range 6 {
+		require.Equal(t, http.StatusNoContent, performRateLimitRequest(first, "/lookup?valid=yes", source).Code)
+	}
+	for i := range 5 {
+		router := first
+		if i%2 != 0 {
+			router = second
+		}
+		require.Equal(t, http.StatusUnauthorized, performRateLimitRequest(router, "/lookup", source).Code)
+	}
+	rejected := performRateLimitRequest(second, "/lookup?valid=yes", sameNetwork)
+	require.Equal(t, http.StatusTooManyRequests, rejected.Code)
+	assert.NotEmpty(t, rejected.Header().Get("Retry-After"))
+	assert.Contains(t, rejected.Body.String(), "Too many requests")
+	total, err := redisServer.Get(keyUsageLimitNamespace + "global")
+	require.NoError(t, err)
+	assert.Equal(t, "11", total, "requests blocked by the failed-attempt limit do not consume another global slot")
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(second, "/lookup?valid=yes", "[2001:db8:9:11::3]:12345").Code)
+
+	// 全站预算独立于来源和失败次数，耗尽时在鉴权前直接拒绝。
+	siteKey := keyUsageLimitNamespace + "global"
+	redisServer.Set(siteKey, "600")
+	redisServer.SetTTL(siteKey, time.Minute)
+	siteRejected := performRateLimitRequest(second, "/lookup", "[2001:db8:9:12::3]:12345")
+	assert.Equal(t, http.StatusTooManyRequests, siteRejected.Code)
+	assert.Equal(t, "60", siteRejected.Header().Get("Retry-After"))
+	assert.False(t, redisServer.Exists(keyUsageLimitNamespace+"invalid:2001:db8:9:12::/64"))
+
+	redisServer.FastForward(10 * time.Minute)
+	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(first, "/lookup?valid=yes", source).Code)
+}
+
+func TestKeyUsageFailureLimitReservesBeforeAuthentication(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	useRateLimitMiniRedis(t)
+	router := gin.New()
+	require.NoError(t, router.SetTrustedProxies(nil))
+	started := make(chan struct{}, 5)
+	finish := make(chan struct{})
+	router.GET("/lookup", func(c *gin.Context) {
+		complete, release, ok := AdmitPublicKeyUsage(c)
+		if !ok {
+			return
+		}
+		defer release()
+		started <- struct{}{}
+		<-finish
+		complete(false)
+		c.Status(http.StatusNoContent)
+	})
+
+	const source = "192.0.2.105:12000"
+	results := make(chan int, 5)
+	var workers sync.WaitGroup
+	defer workers.Wait()
+	defer close(finish)
+	for range 5 {
+		workers.Go(func() {
+			results <- performRateLimitRequest(router, "/lookup", source).Code
+		})
+	}
+	for range 5 {
+		select {
+		case <-started:
+		case code := <-results:
+			t.Fatalf("request finished before authentication with status %d", code)
+		}
+	}
+	assert.Equal(t, http.StatusTooManyRequests, performRateLimitRequest(router, "/lookup", source).Code)
+}
+
 func TestSupportTicketReadDoesNotConsumeReplyAllowance(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	useRateLimitMiniRedis(t)
@@ -238,6 +334,14 @@ func TestRedisFailurePolicies(t *testing.T) {
 	router.GET("/email", EmailVerificationRateLimit(), func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	})
+	router.GET("/key-usage", func(c *gin.Context) {
+		complete, release, ok := AdmitPublicKeyUsage(c)
+		if ok {
+			defer release()
+			complete(false)
+			c.Status(http.StatusNoContent)
+		}
+	})
 
 	ipResponse := performRateLimitRequest(router, "/ip", "192.0.2.60:12345")
 	assert.Equal(t, http.StatusInternalServerError, ipResponse.Code)
@@ -246,6 +350,7 @@ func TestRedisFailurePolicies(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, userResponse.Code)
 	assert.Empty(t, userResponse.Body.String())
 	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/email", "192.0.2.62:12345").Code)
+	assert.Equal(t, http.StatusServiceUnavailable, performRateLimitRequest(router, "/key-usage", "192.0.2.63:12345").Code)
 }
 
 func TestGlobalWebRateLimitCountsFrontendFilesInStaticBucket(t *testing.T) {

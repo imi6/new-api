@@ -411,6 +411,7 @@ export type OperationsSettings = {
   WorkerAllowHttpImageRequestEnabled: boolean
   LogConsumeEnabled: boolean
   'log_setting.user_export_enabled': boolean
+  'log_setting.public_key_usage_enabled': boolean
   'log_setting.cache_hit_rate_enabled': boolean
   'log_setting.max_range_days': number
   'system_task_setting.retention_days': number

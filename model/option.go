@@ -303,6 +303,9 @@ func validateOptionValue(key string, value string) error {
 	if key == operation_setting.LogMaxRangeDaysOptionKey {
 		return operation_setting.ValidateLogMaxRangeDays(value)
 	}
+	if key == operation_setting.PublicKeyUsageEnabledOptionKey && value != "true" && value != "false" {
+		return common.NewMessage("Invalid parameters")
+	}
 	if key == operation_setting.SystemTaskRetentionDaysOptionKey {
 		return operation_setting.ValidateSystemTaskRetentionDays(value)
 	}

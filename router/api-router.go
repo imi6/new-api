@@ -464,12 +464,28 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.GET("/search", middleware.SearchRateLimit(), controller.SearchTokens)
 			tokenRoute.GET("/auto-groups", controller.GetTokenAutoGroups)
 			tokenRoute.GET("/:id", controller.GetToken)
+			tokenRoute.GET("/:id/usage", middleware.DisableCache(), controller.OwnKeyUsage(false))
+			tokenRoute.GET("/:id/usage/export", middleware.DisableCache(), controller.OwnKeyUsage(true))
 			tokenRoute.POST("/:id/key", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKey)
 			tokenRoute.POST("/", controller.AddToken)
 			tokenRoute.PUT("/", controller.UpdateToken)
 			tokenRoute.DELETE("/:id", controller.DeleteToken)
 			tokenRoute.POST("/batch", controller.DeleteTokenBatch)
 			tokenRoute.POST("/batch/keys", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKeysBatch)
+		}
+
+		keyUsageRoute := apiRouter.Group("/key-usage", middleware.DisableCache())
+		{
+			keyUsageRoute.GET("/settings", middleware.PublicKeyUsageSettingsRateLimit(), controller.GetPublicKeyUsageSettings)
+			keyUsageRoute.GET("/", controller.PublicKeyUsage(false))
+			keyUsageRoute.GET("/export", controller.PublicKeyUsage(true))
+			// 拒绝跨源预检，避免请求落入中继的通用跨域处理。
+			for _, path := range []string{"/settings", "/", "/export"} {
+				keyUsageRoute.OPTIONS(path, func(c *gin.Context) {
+					c.Header("Allow", http.MethodGet)
+					c.Status(http.StatusMethodNotAllowed)
+				})
+			}
 		}
 
 		usageRoute := apiRouter.Group("/usage")

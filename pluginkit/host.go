@@ -38,7 +38,7 @@ const MaxPluginKeyLength = 30
 var newAPIReservedKeys = []string{
 	"401", "403", "404", "500", "503", "about", "affiliate-rewards", "ali", "announcement-management", "api",
 	"assets", "channel-status", "channels", "chat", "chat2link", "console", "dashboard", "errors",
-	"forbidden", "forgot-password", "health", "invoice", "invoice-management", "keys", "login", "mj", "models",
+	"forbidden", "forgot-password", "health", "invoice", "invoice-management", "key-usage", "keys", "login", "mj", "models",
 	"oauth", "otp", "partner", "partner-apply", "partner-offers", "pg", "playground", "pricing", "privacy-policy",
 	"profile", "rankings", "redemption-codes", "referral", "register", "request-processing", "reset", "security",
 	"setup", "sign-in", "sign-up", "subscriptions", "suno", "support-ticket-management", "support-tickets",

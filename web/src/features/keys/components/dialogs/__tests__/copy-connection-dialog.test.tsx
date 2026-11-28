@@ -17,6 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import {
   act,
@@ -221,6 +228,47 @@ function RowActionsFixture(props: { multiple?: boolean }) {
   )
 }
 
+async function renderRowActions(multiple = false) {
+  const root = createRootRoute()
+  const keys = createRoute({
+    getParentRoute: () => root,
+    path: 'keys',
+    component: () => (
+      <IntelligenceTestProvider>
+        <ApiKeysProvider>
+          <RowActionsFixture multiple={multiple} />
+        </ApiKeysProvider>
+      </IntelligenceTestProvider>
+    ),
+  })
+  const usage = createRoute({
+    getParentRoute: () => root,
+    path: 'keys/$keyId/usage',
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([keys, usage]),
+    history: createMemoryHistory({ initialEntries: ['/keys'] }),
+  })
+  await router.load()
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  )
+  return router
+}
+
+it('从密钥操作菜单打开该密钥的调用记录', async () => {
+  const user = userEvent.setup()
+  client.setQueryData(STATUS_QUERY_KEY, status)
+  const router = await renderRowActions()
+  await user.click(screen.getByRole('button', { name: 'Open menu' }))
+  await user.click(screen.getByRole('menuitem', { name: 'View call records' }))
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe('/keys/42/usage')
+  )
+})
+
 it('点击行菜单先打开节点弹窗，确认复制时使用取得的完整密钥', async () => {
   const user = userEvent.setup()
   const write = vi.spyOn(navigator.clipboard, 'writeText')
@@ -229,15 +277,7 @@ it('点击行菜单先打开节点弹窗，确认复制时使用取得的完整�
     data: { key: 'resolved-complete-key' },
   })
   client.setQueryData(STATUS_QUERY_KEY, status)
-  render(
-    <QueryClientProvider client={client}>
-      <IntelligenceTestProvider>
-        <ApiKeysProvider>
-          <RowActionsFixture />
-        </ApiKeysProvider>
-      </IntelligenceTestProvider>
-    </QueryClientProvider>
-  )
+  await renderRowActions()
   await user.click(screen.getByRole('button', { name: 'Open menu' }))
   await user.click(
     screen.getByRole('menuitem', { name: 'Copy Connection Info' })
@@ -278,15 +318,7 @@ it.each(['copy', 'edit'])(
         : Promise.resolve({ success: true, data: { key: 'second-key' } })
     )
     client.setQueryData(STATUS_QUERY_KEY, status)
-    render(
-      <QueryClientProvider client={client}>
-        <IntelligenceTestProvider>
-          <ApiKeysProvider>
-            <RowActionsFixture multiple />
-          </ApiKeysProvider>
-        </IntelligenceTestProvider>
-      </QueryClientProvider>
-    )
+    await renderRowActions(true)
     await user.click(
       within(screen.getByRole('group', { name: 'Development' })).getByRole(
         'button',

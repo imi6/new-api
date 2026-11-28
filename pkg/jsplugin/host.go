@@ -44,6 +44,7 @@ var reservedRouteNamespaces = []string{
 	"/dashboard",
 	"/errors",
 	"/keys",
+	"/key-usage",
 	"/models",
 	"/playground",
 	"/profile",
