@@ -65,6 +65,10 @@ var reservedRouteNamespaces = []string{
 	"/partner-apply",
 	"/partner-offers",
 	"/announcement-management",
+	"/affiliate-rewards",
+	"/support-ticket-management",
+	"/support-tickets",
+	"/system-announcements",
 }
 
 // The settings are read on every use, so values loaded from the environment

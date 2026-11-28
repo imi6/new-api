@@ -220,7 +220,7 @@ func TestTelegramTrialConfigRequiresAdministratorBrowserSession(t *testing.T) {
 	setupRelayRouterTestDB(t)
 	require.NoError(t, i18n.Init())
 	require.NoError(t, model.DB.AutoMigrate(
-		&model.UserSession{}, &model.UserAccessToken{}, &model.Option{}, &model.AuditLog{},
+		&model.UserSession{}, &model.UserAccessToken{}, &model.UserIDReservation{}, &model.Option{}, &model.AuditLog{},
 		&model.TelegramBotConfig{}, &model.TelegramBotTrialConfig{}, &model.TelegramBotTrialDay{},
 	))
 	previousSecret := common.SessionSecret
@@ -265,7 +265,7 @@ func TestTelegramTrialConfigRequiresAdministratorBrowserSession(t *testing.T) {
 		{name: "root_browser_write", method: http.MethodPut, token: credentials[2], origin: "https://panel.example.test", status: http.StatusOK},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequest(tc.method, "https://panel.example.test/api/telegram-bot/trial/config", strings.NewReader(`{"enabled":true,"quota":100,"daily_limit":1000,"total_limit":1000,"version":0}`))
+			request := httptest.NewRequest(tc.method, "https://panel.example.test/api/telegram-bot/trial/config", strings.NewReader(`{"enabled":true,"min_user_id":1,"quota":100,"daily_limit":1000,"total_limit":1000,"version":0}`))
 			request.Header.Set("Content-Type", "application/json")
 			if tc.token != "" {
 				request.Header.Set("Authorization", "Bearer "+tc.token)

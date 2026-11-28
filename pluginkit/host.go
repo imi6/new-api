@@ -36,11 +36,13 @@ const MaxPluginKeyLength = 30
 // namespaces, and the route prefixes its built-in plugins own. A root-module
 // test derives the set from new-api's routers and checks this list.
 var newAPIReservedKeys = []string{
-	"401", "403", "404", "500", "503", "about", "ali", "api", "assets", "channels", "chat", "chat2link",
-	"console", "dashboard", "errors", "forbidden", "forgot-password", "keys", "login", "mj", "models",
-	"oauth", "otp", "pg", "playground", "pricing", "privacy-policy", "profile", "rankings",
-	"redemption-codes", "register", "request-processing", "reset", "security", "setup", "sign-in",
-	"sign-up", "subscriptions", "suno", "system-info", "system-settings", "task-plugins", "usage-logs",
+	"401", "403", "404", "500", "503", "about", "affiliate-rewards", "ali", "announcement-management", "api",
+	"assets", "channel-status", "channels", "chat", "chat2link", "console", "dashboard", "errors",
+	"forbidden", "forgot-password", "health", "invoice", "invoice-management", "keys", "login", "mj", "models",
+	"oauth", "otp", "partner", "partner-apply", "partner-offers", "pg", "playground", "pricing", "privacy-policy",
+	"profile", "rankings", "redemption-codes", "referral", "register", "request-processing", "reset", "security",
+	"setup", "sign-in", "sign-up", "subscriptions", "suno", "support-ticket-management", "support-tickets",
+	"system-announcements", "system-info", "system-settings", "task-plugins", "usage-logs",
 	"user", "user-agreement", "users", "v1", "v1beta", "wallet",
 }
 

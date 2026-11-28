@@ -53,15 +53,18 @@ func GetGroupEnabledModels(group string) []string {
 	return models
 }
 
-// IsModelConfiguredForGroups checks enabled and disabled channel abilities for
-// the requested model and its routing name.
+// IsModelConfiguredForGroups 查询模型在候选分组及其改名别名下的渠道配置，包含停用渠道。
 func IsModelConfiguredForGroups(groups []string, modelName string) (bool, error) {
+	groupNames := make([]string, 0, len(groups))
+	for _, group := range groups {
+		groupNames = append(groupNames, abilityGroupNames(group)...)
+	}
 	names := []string{modelName}
 	if normalized := ratio_setting.RoutingMatchModelName(modelName); normalized != "" && normalized != modelName {
 		names = append(names, normalized)
 	}
 	var ability Ability
-	result := DB.Select("channel_id").Where(map[string]any{"group": groups, "model": names}).Limit(1).Find(&ability)
+	result := DB.Select("channel_id").Where(map[string]any{"group": groupNames, "model": names}).Limit(1).Find(&ability)
 	return result.RowsAffected > 0, result.Error
 }
 

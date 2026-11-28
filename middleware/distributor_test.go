@@ -338,10 +338,12 @@ func TestDistributeModelAvailability(t *testing.T) {
 		require.NoError(t, setting.UpdateAutoGroupsByJsonString(autoGroups))
 		require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(usableGroups))
 		require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(groupRatios))
+		require.NoError(t, common.UpdateGroupRenameAliases(""))
 	})
 	require.NoError(t, setting.UpdateAutoGroupsByJsonString(`["default","vip"]`))
 	require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"default":"Default","vip":"VIP"}`))
 	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"default":1,"vip":1}`))
+	require.NoError(t, common.UpdateGroupRenameAliases(`{"revision":1,"aliases":[{"old":"vip-old","new":"vip","phase":"migrated"}]}`))
 
 	for _, dialect := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -350,6 +352,7 @@ func TestDistributeModelAvailability(t *testing.T) {
 				{Group: "default", Models: "online", Status: common.ChannelStatusEnabled},
 				{Group: "default", Models: "auto-paused", Status: common.ChannelStatusAutoDisabled},
 				{Group: "vip", Models: "deepseek-flash", Status: common.ChannelStatusManuallyDisabled},
+				{Group: "vip-old", Models: "renamed-paused", Status: common.ChannelStatusManuallyDisabled},
 				{Group: "private", Models: "private-only", Status: common.ChannelStatusEnabled},
 			} {
 				channel.Type = constant.ChannelTypeOpenAI
@@ -370,6 +373,7 @@ func TestDistributeModelAvailability(t *testing.T) {
 					{name: "other group only", path: "/v1/messages", group: "default", model: "private-only", status: http.StatusNotFound},
 					{name: "manually disabled", path: "/v1/messages", group: "vip", model: "deepseek-flash", status: http.StatusServiceUnavailable},
 					{name: "automatically disabled", group: "default", model: "auto-paused", status: http.StatusServiceUnavailable},
+					{name: "disabled in renamed group", group: "auto", model: "renamed-paused", status: http.StatusServiceUnavailable},
 					{name: "normalized model in later auto group", group: "auto", model: "deepseek-flash@effort:max", status: http.StatusServiceUnavailable},
 					{name: "restricted auto groups", group: "auto", tokenGroups: []string{"default"}, model: "deepseek-flash", status: http.StatusNotFound},
 					{name: "enabled", group: "auto", model: "online", status: http.StatusNoContent},

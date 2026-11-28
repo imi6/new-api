@@ -184,7 +184,7 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 				assert.Equal(t, user.Id, items[0].UserID)
 				assert.Equal(t, user.Username, items[0].Username)
 				assert.Equal(t, "***@example.com", items[0].EmailMasked)
-				assert.Equal(t, user.TelegramId, items[0].TelegramID)
+				assert.Equal(t, claim.TelegramID, items[0].TelegramID)
 				assert.Equal(t, claim.Quota, items[0].Quota)
 				assert.False(t, items[0].UserDeleted)
 				items, total, err = ListTelegramTrialClaims(TelegramTrialClaimFilter{Keyword: "%"}, page)
@@ -205,7 +205,7 @@ func TestTelegramBotTrialDatabaseContracts(t *testing.T) {
 						user, identity := telegramTrialAccountFixture(t, 10+index)
 						config, err := GetTelegramBotTrialConfig()
 						require.NoError(t, err)
-						expected := ErrTelegramBotNotConnected
+						var expected error = ErrTelegramBotNotConnected
 						switch condition {
 						case "email":
 							expected = ErrTelegramTrialEmailRequired
