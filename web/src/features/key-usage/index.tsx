@@ -70,7 +70,7 @@ export function PublicKeyUsagePage() {
             <KeyRound aria-hidden='true' />
           </IconBadge>
           <h1 className='text-2xl font-semibold tracking-tight'>
-            {t('API key usage')}
+            {t('Usage lookup')}
           </h1>
         </div>
         {content}
@@ -83,7 +83,7 @@ export function OwnerKeyUsagePage(props: { keyId: string }) {
   const { t } = useTranslation()
   return (
     <SectionPageLayout stackActionsOnMobile>
-      <SectionPageLayout.Title>{t('API key usage')}</SectionPageLayout.Title>
+      <SectionPageLayout.Title>{t('Usage lookup')}</SectionPageLayout.Title>
       <SectionPageLayout.Actions>
         <Button variant='outline' size='sm' render={<Link to='/keys' />}>
           <ArrowLeft aria-hidden='true' />

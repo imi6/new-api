@@ -72,10 +72,6 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Console'), href: '/dashboard' })
   }
 
-  if (status?.public_key_usage_enabled === true) {
-    links.push({ title: t('API key usage'), href: '/key-usage' })
-  }
-
   // Pricing
   const pricing = modules?.pricing
   if (pricing && typeof pricing === 'object' && pricing.enabled) {
@@ -101,6 +97,10 @@ export function useTopNavLinks(): TopNavLink[] {
       href: '/partner',
       requiresAuth,
     })
+  }
+
+  if (status?.public_key_usage_enabled === true) {
+    links.push({ title: t('Usage lookup'), href: '/key-usage' })
   }
 
   // Rankings
