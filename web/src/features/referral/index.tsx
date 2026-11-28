@@ -45,6 +45,7 @@ import { getServerErrorMessage } from '@/lib/server-error-message'
 
 import { AffiliateCashHistory } from './components/affiliate-cash-history'
 import { AffiliateClaimCard } from './components/affiliate-claim-card'
+import { AffiliateRebateGuide } from './components/affiliate-rebate-guide'
 import { AffiliateWithdrawalCard } from './components/affiliate-withdrawal-card'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,9 +162,10 @@ export function ReferralPage() {
   )
 
   return (
-    <SectionPageLayout>
+    <SectionPageLayout stackActionsOnMobile>
       <SectionPageLayout.Title>{t('Referral rebate')}</SectionPageLayout.Title>
       <SectionPageLayout.Actions>
+        <AffiliateRebateGuide summary={summary} />
         <Button
           variant='outline'
           size='sm'
